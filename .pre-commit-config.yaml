@@ -1,0 +1,17 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.14
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ty does not yet ship an official pre-commit hook.
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: ty-check
+        entry: uv run ty check
+        language: system
+        pass_filenames: false
+        types: [python]
