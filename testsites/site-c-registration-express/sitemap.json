@@ -1,0 +1,145 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/register",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/products",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/products/core",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/products/edge",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/blog/launch",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/blog/launch/faq",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    }
+  ],
+  "tree": {
+    "children": {
+      "blog": {
+        "children": {
+          "launch": {
+            "children": {
+              "faq": {
+                "children": {},
+                "pages": [
+                  {
+                    "method": "GET",
+                    "url": "http://localhost:8003/blog/launch/faq",
+                    "status": 200,
+                    "content_type": "text/html",
+                    "timestamp": null
+                  }
+                ]
+              }
+            },
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8003/blog/launch",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      },
+      "products": {
+        "children": {
+          "core": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8003/products/core",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          },
+          "edge": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8003/products/edge",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8003/products",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "register": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8003/register",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      }
+    },
+    "pages": [
+      {
+        "method": "GET",
+        "url": "http://localhost:8003/",
+        "status": 200,
+        "content_type": "text/html",
+        "timestamp": null
+      }
+    ]
+  }
+}

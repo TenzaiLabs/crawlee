@@ -1,0 +1,10 @@
+{
+  "name": "registration-lab",
+  "version": "1.0.0",
+  "description": "Express registration demo for crawler safety tests",
+  "main": "server.js",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

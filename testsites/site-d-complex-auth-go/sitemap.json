@@ -1,0 +1,101 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8004/",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8004/login",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8004/register",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8004/app",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8004/app/billing",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    }
+  ],
+  "tree": {
+    "children": {
+      "app": {
+        "children": {
+          "billing": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8004/app/billing",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8004/app",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "login": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8004/login",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "register": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8004/register",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      }
+    },
+    "pages": [
+      {
+        "method": "GET",
+        "url": "http://localhost:8004/",
+        "status": 200,
+        "content_type": "text/html",
+        "timestamp": null
+      }
+    ]
+  }
+}

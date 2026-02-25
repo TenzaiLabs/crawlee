@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - Harbor Accounts</title>
+    <style>
+      body { font-family: "Trebuchet MS", sans-serif; margin: 2rem; background: #f4f8fb; color: #1b2b34; }
+      nav a { margin-right: 1rem; color: #1b2b34; }
+      form { background: white; padding: 1.5rem; border-radius: 12px; max-width: 420px; }
+      label { display: block; margin-top: 0.8rem; }
+      .error { color: #a32020; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/public">Public Page</a>
+    </nav>
+    <h1>Sign In</h1>
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+    <form method="post">
+      <label>
+        Username
+        <input type="text" name="username" required />
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" required />
+      </label>
+      <button type="submit">Login</button>
+    </form>
+  </body>
+</html>

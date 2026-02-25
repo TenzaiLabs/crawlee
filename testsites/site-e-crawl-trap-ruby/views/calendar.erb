@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calendar <%= current.strftime("%Y-%m-%d") %></title>
+  </head>
+  <body>
+    <h1><%= current.strftime("%B %d, %Y") %></h1>
+    <p>This page links endlessly forward and backward.</p>
+    <ul>
+      <li><a href="/calendar/<%= prev_day.strftime("%Y/%m/%d") %>">Previous Day</a></li>
+      <li><a href="/calendar/<%= next_day.strftime("%Y/%m/%d") %>">Next Day</a></li>
+    </ul>
+    <p><a href="/limits">Read crawler limits</a></p>
+  </body>
+</html>

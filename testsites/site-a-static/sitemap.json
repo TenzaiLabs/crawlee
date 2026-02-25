@@ -1,0 +1,177 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/about.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/docs/guide.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/docs/reference.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/contact/",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/news/2026.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/library/overview.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/library/checklist/packing.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    }
+  ],
+  "tree": {
+    "children": {
+      "about.html": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8001/about.html",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "contact": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8001/contact/",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "docs": {
+        "children": {
+          "guide.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/docs/guide.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          },
+          "reference.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/docs/reference.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      },
+      "library": {
+        "children": {
+          "checklist": {
+            "children": {
+              "packing.html": {
+                "children": {},
+                "pages": [
+                  {
+                    "method": "GET",
+                    "url": "http://localhost:8001/library/checklist/packing.html",
+                    "status": 200,
+                    "content_type": "text/html",
+                    "timestamp": null
+                  }
+                ]
+              }
+            },
+            "pages": []
+          },
+          "overview.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/library/overview.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      },
+      "news": {
+        "children": {
+          "2026.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/news/2026.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      }
+    },
+    "pages": [
+      {
+        "method": "GET",
+        "url": "http://localhost:8001/",
+        "status": 200,
+        "content_type": "text/html",
+        "timestamp": null
+      }
+    ]
+  }
+}

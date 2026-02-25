@@ -1,0 +1,48 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/totp-seed",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/app/overview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/app/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/app/billing",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/app/reports",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8113/app/audit",
+      "status": 200
+    }
+  ],
+  "tree": {
+    "children": {},
+    "pages": []
+  }
+}

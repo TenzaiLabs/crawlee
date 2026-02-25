@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/app/overview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/app/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/app/billing",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/app/reports",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8104/app/audit",
+      "status": 200
+    }
+  ],
+  "tree": {
+    "children": {},
+    "pages": []
+  }
+}

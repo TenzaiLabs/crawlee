@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - Compass Control</title>
+    <style>
+      body { font-family: "Helvetica Neue", sans-serif; margin: 2rem; background: #eef2f7; }
+      form { background: white; padding: 1.2rem; border-radius: 10px; max-width: 420px; }
+      .error { color: #a32626; }
+    </style>
+  </head>
+  <body>
+    <h1>Sign In</h1>
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+    <form method="post">
+      <label>Username <input name="username" required /></label><br />
+      <label>Password <input type="password" name="password" required /></label><br />
+      <button type="submit" name="action" value="signin">Sign In</button>
+      <button type="submit" name="action" value="register">Register</button>
+    </form>
+    <p>Use <strong>admin</strong> / <strong>swordfish</strong> to sign in.</p>
+  </body>
+</html>

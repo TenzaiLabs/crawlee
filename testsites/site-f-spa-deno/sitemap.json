@@ -1,0 +1,153 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/styles.css",
+      "status": 200,
+      "content_type": "text/css",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/app.js",
+      "status": 200,
+      "content_type": "text/javascript",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/api/links",
+      "status": 200,
+      "content_type": "application/json",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/app/overview",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/app/projects",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/app/reports/2026",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    }
+  ],
+  "tree": {
+    "children": {
+      "api": {
+        "children": {
+          "links": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8006/api/links",
+                "status": 200,
+                "content_type": "application/json",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      },
+      "app": {
+        "children": {
+          "overview": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8006/app/overview",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          },
+          "projects": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8006/app/projects",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          },
+          "reports": {
+            "children": {
+              "2026": {
+                "children": {},
+                "pages": [
+                  {
+                    "method": "GET",
+                    "url": "http://localhost:8006/app/reports/2026",
+                    "status": 200,
+                    "content_type": "text/html",
+                    "timestamp": null
+                  }
+                ]
+              }
+            },
+            "pages": []
+          }
+        },
+        "pages": []
+      },
+      "app.js": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8006/app.js",
+            "status": 200,
+            "content_type": "text/javascript",
+            "timestamp": null
+          }
+        ]
+      },
+      "styles.css": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8006/styles.css",
+            "status": 200,
+            "content_type": "text/css",
+            "timestamp": null
+          }
+        ]
+      }
+    },
+    "pages": [
+      {
+        "method": "GET",
+        "url": "http://localhost:8006/",
+        "status": 200,
+        "content_type": "text/html",
+        "timestamp": null
+      }
+    ]
+  }
+}

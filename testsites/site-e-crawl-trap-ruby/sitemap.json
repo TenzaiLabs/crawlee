@@ -1,0 +1,206 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/about",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/limits",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/calendar/2026/01/01",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/calendar/2025/12/31",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/calendar/2026/01/02",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/calendar/2026/02/01",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/calendar/2026/01/31",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/calendar/2026/02/02",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    }
+  ],
+  "tree": {
+    "children": {
+      "about": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8005/about",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "calendar": {
+        "children": {
+          "2025": {
+            "children": {
+              "12": {
+                "children": {
+                  "31": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2025/12/31",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  }
+                },
+                "pages": []
+              }
+            },
+            "pages": []
+          },
+          "2026": {
+            "children": {
+              "01": {
+                "children": {
+                  "01": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2026/01/01",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  },
+                  "02": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2026/01/02",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  },
+                  "31": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2026/01/31",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  }
+                },
+                "pages": []
+              },
+              "02": {
+                "children": {
+                  "01": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2026/02/01",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  },
+                  "02": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2026/02/02",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  }
+                },
+                "pages": []
+              }
+            },
+            "pages": []
+          }
+        },
+        "pages": []
+      },
+      "limits": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8005/limits",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      }
+    },
+    "pages": [
+      {
+        "method": "GET",
+        "url": "http://localhost:8005/",
+        "status": 200,
+        "content_type": "text/html",
+        "timestamp": null
+      }
+    ]
+  }
+}

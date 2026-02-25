@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Signal Grid SPA</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Signal Grid</h1>
+      <p class="tagline">A client-rendered app that hydrates links via API.</p>
+    </header>
+    <main>
+      <section id="link-panel" class="panel">
+        <h2>Loading navigation...</h2>
+      </section>
+      <section id="route-panel" class="panel">
+        <h2>Loading page...</h2>
+      </section>
+      <section class="panel">
+        <h2>App Notes</h2>
+        <p>This SPA inserts anchors after fetching <code>/api/links</code>.</p>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

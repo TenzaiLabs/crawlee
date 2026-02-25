@@ -1,0 +1,125 @@
+services:
+  site-a:
+    build: ./site-a-static
+    ports:
+      - "8001:8000"
+  site-b:
+    build: ./site-b-login-flask
+    ports:
+      - "8002:8000"
+  site-c:
+    build: ./site-c-registration-express
+    ports:
+      - "8003:8000"
+  site-d:
+    build: ./site-d-complex-auth-go
+    ports:
+      - "8004:8000"
+  site-e:
+    build: ./site-e-crawl-trap-ruby
+    ports:
+      - "8005:8000"
+  site-f:
+    build: ./site-f-spa-deno
+    ports:
+      - "8006:8000"
+  auth-a:
+    build: ./auth-a-simple-form
+    ports:
+      - "8101:8000"
+  auth-b:
+    build: ./auth-b-http-basic
+    ports:
+      - "8102:8000"
+  auth-c:
+    build: ./auth-c-complex-form
+    ports:
+      - "8103:8000"
+  auth-d:
+    build: ./auth-d-interactive-captcha
+    ports:
+      - "8104:8000"
+  auth-e:
+    build: ./auth-e-delay-login
+    ports:
+      - "8105:8000"
+  auth-f:
+    build: ./auth-f-ocr-captcha
+    ports:
+      - "8106:8000"
+  auth-g:
+    build: ./auth-g-multi-step
+    ports:
+      - "8107:8000"
+  auth-h:
+    build: ./auth-h-new-window
+    ports:
+      - "8108:8000"
+  auth-i:
+    build: ./auth-i-iframe
+    ports:
+      - "8109:8000"
+  auth-j:
+    build: ./auth-j-xsrf-token
+    ports:
+      - "8110:8000"
+  auth-k:
+    build: ./auth-k-dynamic-fields
+    ports:
+      - "8111:8000"
+  auth-l:
+    build: ./auth-l-security-question
+    ports:
+      - "8112:8000"
+  auth-m:
+    build: ./auth-m-totp-mfa
+    ports:
+      - "8113:8000"
+  auth-o:
+    build: ./auth-o-bearer-token
+    ports:
+      - "8115:8000"
+  gateway:
+    build: ./nginx
+    depends_on:
+      - site-a
+      - site-b
+      - site-c
+      - site-d
+      - site-e
+      - site-f
+      - auth-a
+      - auth-b
+      - auth-c
+      - auth-d
+      - auth-e
+      - auth-f
+      - auth-g
+      - auth-h
+      - auth-i
+      - auth-j
+      - auth-k
+      - auth-l
+      - auth-m
+      - auth-o
+    ports:
+      - "9101:9101"
+      - "9102:9102"
+      - "9103:9103"
+      - "9104:9104"
+      - "9105:9105"
+      - "9106:9106"
+      - "9201:9201"
+      - "9202:9202"
+      - "9203:9203"
+      - "9204:9204"
+      - "9205:9205"
+      - "9206:9206"
+      - "9207:9207"
+      - "9208:9208"
+      - "9209:9209"
+      - "9210:9210"
+      - "9211:9211"
+      - "9212:9212"
+      - "9213:9213"
+      - "9215:9215"

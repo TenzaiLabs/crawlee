@@ -1,0 +1,53 @@
+{
+  "entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/token-login",
+      "status": 401
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/app/overview",
+      "status": 200,
+      "headers": {"Authorization": "Bearer t0k3nId"}
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/app/projects",
+      "status": 200,
+      "headers": {"Authorization": "Bearer t0k3nId"}
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/app/billing",
+      "status": 200,
+      "headers": {"Authorization": "Bearer t0k3nId"}
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/app/reports",
+      "status": 200,
+      "headers": {"Authorization": "Bearer t0k3nId"}
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8115/app/audit",
+      "status": 200,
+      "headers": {"Authorization": "Bearer t0k3nId"}
+    }
+  ],
+  "tree": {
+    "children": {},
+    "pages": []
+  }
+}
