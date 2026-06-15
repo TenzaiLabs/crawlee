@@ -29,7 +29,10 @@ APP_PAGES = [
 
 
 def render_page(title: str, body: str) -> str:
-    links = "".join([f'<li><a href="/app/{slug}">{label}</a></li>' for slug, label in APP_PAGES])
+    links = ""
+    if is_authenticated():
+        app_links = "".join([f'<li><a href="/app/{slug}">{label}</a></li>' for slug, label in APP_PAGES])
+        links = f"<h2>Workspace</h2><ul>{app_links}</ul>"
     return render_template_string(
         """
         <!doctype html>
@@ -37,7 +40,6 @@ def render_page(title: str, body: str) -> str:
         <head><meta charset="utf-8"><title>{{ title }}</title></head>
         <body>
             <h1>{{ title }}</h1>
-            <p><strong>Pattern:</strong> {{ pattern }}</p>
             <nav>
                 <a href="/">Home</a> |
                 <a href="/login">Login</a> |
@@ -45,8 +47,7 @@ def render_page(title: str, body: str) -> str:
             </nav>
             <hr>
             {{ body|safe }}
-            <h2>Post-login pages</h2>
-            <ul>{{ links|safe }}</ul>
+            {{ links|safe }}
         </body>
         </html>
         """,
@@ -83,27 +84,9 @@ def login_required(view):
 
 @app.route("/")
 def home() -> str:
-    details = {
-        "auth-a-simple-form": "Simple username/password form.",
-        "auth-b-http-basic": "HTTP Basic auth (user/pass) plus optional form login.",
-        "auth-c-complex-form": "Form with tenant, region, and remember-me fields.",
-        "auth-d-interactive-captcha": "Interactive challenge code must be entered.",
-        "auth-e-delay-login": "Server intentionally delays successful login response.",
-        "auth-f-ocr-captcha": "OCR-style text challenge field required.",
-        "auth-g-multi-step": "Username and password submitted across two steps.",
-        "auth-h-new-window": "Authentication form opens in a new window route.",
-        "auth-i-iframe": "Login form is embedded in an iframe route.",
-        "auth-j-xsrf-token": "Login requires anti-CSRF token and cookie-backed session state.",
-        "auth-k-dynamic-fields": "Credential input names are dynamic on every page load.",
-        "auth-l-security-question": "Login requires a case-insensitive security answer.",
-        "auth-m-totp-mfa": "Password + MFA code required. Seed exposed via helper endpoint.",
-        "auth-n-session-hijack": "Session takeover path accepts issued session transfer token.",
-        "auth-o-bearer-token": "Bearer token auth unlocks access (Authorization header).",
-    }
     body = (
-        f"<p>{details[PATTERN_KEY]}</p>"
-        f"<p>Credentials: <code>{VALID_EMAIL}</code> / <code>{VALID_PASSWORD}</code></p>"
-        "<p><a href='/login'>Proceed to login</a></p>"
+        "<p>Sign in to access the application workspace.</p>"
+        "<p><a href='/login'>Continue</a></p>"
     )
     return render_page("Authentication Pattern Fixture", body)
 
@@ -149,7 +132,7 @@ def login_form_html() -> str:
             "<label><input type='checkbox' name='remember'>Remember me</label><br>"
         )
     elif PATTERN_KEY == "auth-d-interactive-captcha":
-        extras = "<label>Challenge Code (588357) <input name='challenge'></label><br>"
+        extras = "<label>Challenge code <input name='challenge' autocomplete='one-time-code'></label><br>"
     elif PATTERN_KEY == "auth-f-ocr-captcha":
         extras = "<p>OCR Challenge:</p><img src='/captcha-image' alt='captcha'><br><label>Captcha <input name='captcha'></label><br>"
     elif PATTERN_KEY == "auth-j-xsrf-token":
@@ -157,15 +140,15 @@ def login_form_html() -> str:
         session["csrf_token"] = token
         extras = f"<input type='hidden' name='csrf' value='{token}'>"
     elif PATTERN_KEY == "auth-l-security-question":
-        extras = "<label>Security answer (favorite color?) <input name='security'></label><br>"
+        extras = "<label>Security answer <input name='security'></label><br>"
     elif PATTERN_KEY == "auth-m-totp-mfa":
-        extras = "<p>MFA seed endpoint: <a href='/totp-seed'>/totp-seed</a></p><label>MFA code <input name='mfa'></label><br>"
+        extras = "<label>MFA code <input name='mfa' autocomplete='one-time-code'></label><br>"
     elif PATTERN_KEY == "auth-n-session-hijack":
         extras = "<p>After login, call <code>/issue-session-token</code> and replay via <code>/hijack/&lt;token&gt;</code>.</p>"
     elif PATTERN_KEY == "auth-o-bearer-token":
-        extras = "<label>Bearer token <input name='api_token' placeholder='t0k3nId'></label><br>"
+        extras = "<label>Access token <input name='api_token'></label><br>"
     elif PATTERN_KEY == "auth-b-http-basic":
-        extras = "<p>Alternative auth: send <code>Authorization: Basic dXNlcjpwYXNz</code> to protected pages.</p>"
+        extras = ""
     elif PATTERN_KEY == "auth-e-delay-login":
         extras = "<p>This login intentionally sleeps before completing.</p>"
 
@@ -358,7 +341,7 @@ def token_login() -> Response:
     if request.headers.get("Authorization", "") == "Bearer t0k3nId":
         session["auth"] = True
         return redirect("/app/overview")
-    return Response("Missing bearer token", status=401)
+    return Response("Unauthorized", status=401)
 
 
 @app.route("/logout")

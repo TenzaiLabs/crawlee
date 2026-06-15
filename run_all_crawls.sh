@@ -252,8 +252,8 @@ crawl "auth-l-security-question" "auth-l-security-question" \
   '{"target_url": "http://localhost:8112",
     "auth_config": {
       "login_url": "http://localhost:8112/login",
-      "credentials": {"email": "auth-l-security-question@auth.local", "password": "pa$$w0rd", "security_answer": "blue"},
-      "instructions": "Fill in email, password, and the security question answer. The answer is: blue"
+      "credentials": {"email": "auth-l-security-question@auth.local", "password": "pa$$w0rd", "security_answer": "42"},
+      "instructions": "Fill in email, password, and the security question answer. The answer is: 42"
     }}'
 
 crawl "auth-m-totp-mfa" "auth-m-totp-mfa" \
