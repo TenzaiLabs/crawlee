@@ -8,32 +8,32 @@
     {
       "method": "GET",
       "url": "http://localhost:8102/login",
-      "status": 200
+      "status": 401
     },
     {
       "method": "GET",
       "url": "http://localhost:8102/app/overview",
-      "status": 200
+      "status": 401
     },
     {
       "method": "GET",
       "url": "http://localhost:8102/app/projects",
-      "status": 200
+      "status": 401
     },
     {
       "method": "GET",
       "url": "http://localhost:8102/app/billing",
-      "status": 200
+      "status": 401
     },
     {
       "method": "GET",
       "url": "http://localhost:8102/app/reports",
-      "status": 200
+      "status": 401
     },
     {
       "method": "GET",
       "url": "http://localhost:8102/app/audit",
-      "status": 200
+      "status": 401
     }
   ],
   "tree": {

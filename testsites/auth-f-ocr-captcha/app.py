@@ -7,7 +7,7 @@ import secrets
 import time
 from functools import wraps
 
-from flask import Flask, Response, jsonify, redirect, render_template_string, request, send_file, session, url_for
+from flask import Flask, Response, redirect, render_template_string, request, send_file, session, url_for
 from PIL import Image, ImageDraw, ImageFont
 
 PATTERN_KEY = "auth-f-ocr-captcha"
@@ -59,17 +59,7 @@ def render_page(title: str, body: str) -> str:
 
 
 def is_authenticated() -> bool:
-    if session.get("auth"):
-        return True
-    if PATTERN_KEY == "auth-b-http-basic":
-        auth = request.authorization
-        if auth and auth.username == "user" and auth.password == "pass":
-            return True
-    if PATTERN_KEY == "auth-o-bearer-token":
-        header = request.headers.get("Authorization", "")
-        if header == "Bearer t0k3nId":
-            return True
-    return False
+    return bool(session.get("auth"))
 
 
 def login_required(view):
@@ -93,13 +83,6 @@ def home() -> str:
 
 @app.route("/login", methods=["GET", "POST"])
 def login() -> str | Response:
-    if PATTERN_KEY == "auth-g-multi-step":
-        return handle_multi_step_login()
-    if PATTERN_KEY == "auth-h-new-window":
-        return handle_new_window_login()
-    if PATTERN_KEY == "auth-i-iframe":
-        return handle_iframe_login()
-
     message = ""
     if request.method == "POST":
         if handle_login_submit():
@@ -112,46 +95,7 @@ def login() -> str | Response:
 
 
 def login_form_html() -> str:
-    if PATTERN_KEY == "auth-k-dynamic-fields":
-        email_field = f"email_{secrets.token_hex(2)}"
-        password_field = f"password_{secrets.token_hex(2)}"
-        session["dynamic_email_field"] = email_field
-        session["dynamic_password_field"] = password_field
-        return (
-            "<form method='post'>"
-            f"<label>{email_field}<input name='{email_field}'></label><br>"
-            f"<label>{password_field}<input name='{password_field}' type='password'></label><br>"
-            "<button type='submit'>Sign In</button></form>"
-        )
-
-    extras = ""
-    if PATTERN_KEY == "auth-c-complex-form":
-        extras = (
-            "<label>Tenant <input name='tenant' value='north'></label><br>"
-            "<label>Region <select name='region'><option>us-east</option></select></label><br>"
-            "<label><input type='checkbox' name='remember'>Remember me</label><br>"
-        )
-    elif PATTERN_KEY == "auth-d-interactive-captcha":
-        extras = "<label>Challenge code <input name='challenge' autocomplete='one-time-code'></label><br>"
-    elif PATTERN_KEY == "auth-f-ocr-captcha":
-        extras = "<p>OCR Challenge:</p><img src='/captcha-image' alt='captcha'><br><label>Captcha <input name='captcha'></label><br>"
-    elif PATTERN_KEY == "auth-j-xsrf-token":
-        token = secrets.token_hex(8)
-        session["csrf_token"] = token
-        extras = f"<input type='hidden' name='csrf' value='{token}'>"
-    elif PATTERN_KEY == "auth-l-security-question":
-        extras = "<label>Security answer <input name='security'></label><br>"
-    elif PATTERN_KEY == "auth-m-totp-mfa":
-        extras = "<label>MFA code <input name='mfa' autocomplete='one-time-code'></label><br>"
-    elif PATTERN_KEY == "auth-n-session-hijack":
-        extras = "<p>After login, call <code>/issue-session-token</code> and replay via <code>/hijack/&lt;token&gt;</code>.</p>"
-    elif PATTERN_KEY == "auth-o-bearer-token":
-        extras = "<label>Access token <input name='api_token'></label><br>"
-    elif PATTERN_KEY == "auth-b-http-basic":
-        extras = ""
-    elif PATTERN_KEY == "auth-e-delay-login":
-        extras = "<p>This login intentionally sleeps before completing.</p>"
-
+    extras = "<p>OCR Challenge:</p><img src='/captcha-image' alt='captcha'><br><label>Captcha <input name='captcha'></label><br>"
     return (
         "<form method='post'>"
         "<label>E-Mail <input name='email'></label><br>"
@@ -162,186 +106,15 @@ def login_form_html() -> str:
 
 
 def handle_login_submit() -> bool:
-    if PATTERN_KEY == "auth-k-dynamic-fields":
-        email = request.form.get(session.get("dynamic_email_field", ""), "").strip()
-        password = request.form.get(session.get("dynamic_password_field", ""), "").strip()
-    else:
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "").strip()
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "").strip()
 
     if email != VALID_EMAIL or password != VALID_PASSWORD:
         return False
 
-    if PATTERN_KEY == "auth-c-complex-form":
-        if request.form.get("tenant", "").strip() != "north" or request.form.get("region", "").strip() != "us-east":
-            return False
-    elif PATTERN_KEY == "auth-d-interactive-captcha":
-        if request.form.get("challenge", "").strip() != "588357":
-            return False
-    elif PATTERN_KEY == "auth-e-delay-login":
-        time.sleep(2)
-    elif PATTERN_KEY == "auth-f-ocr-captcha":
-        if request.form.get("captcha", "").strip() != "4319":
-            return False
-    elif PATTERN_KEY == "auth-j-xsrf-token":
-        if request.form.get("csrf") != session.get("csrf_token"):
-            return False
-    elif PATTERN_KEY == "auth-l-security-question":
-        if request.form.get("security", "").strip().lower() != "blue":
-            return False
-    elif PATTERN_KEY == "auth-m-totp-mfa":
-        if request.form.get("mfa", "").strip() != "123456":
-            return False
-    elif PATTERN_KEY == "auth-o-bearer-token":
-        if request.form.get("api_token", "").strip() != "t0k3nId":
-            return False
+    if request.form.get("captcha", "").strip() != "4319":
+        return False
     return True
-
-
-def handle_multi_step_login() -> str | Response:
-    message = ""
-    if request.method == "POST":
-        email = request.form.get("email", "").strip()
-        if email == VALID_EMAIL:
-            session["multi_step_email"] = email
-            return redirect("/login/step2")
-        message = "<p style='color:red'>Unknown e-mail</p>"
-    form = "<form method='post'><label>E-Mail <input name='email'></label><button type='submit'>Next</button></form>"
-    return render_page("Multi-Step Login - Step 1", message + form)
-
-
-@app.route("/login/step2", methods=["GET", "POST"])
-def login_step2() -> str | Response:
-    if PATTERN_KEY != "auth-g-multi-step":
-        return redirect("/login")
-
-    message = ""
-    if request.method == "POST":
-        if session.get("multi_step_email") == VALID_EMAIL and request.form.get("password", "").strip() == VALID_PASSWORD:
-            session["auth"] = True
-            session.pop("multi_step_email", None)
-            return redirect("/app/overview")
-        message = "<p style='color:red'>Invalid password</p>"
-
-    form = "<form method='post'><label>Password <input type='password' name='password'></label><button type='submit'>Sign In</button></form>"
-    return render_page("Multi-Step Login - Step 2", message + form)
-
-
-def handle_new_window_login() -> str:
-    return render_page(
-        "New Window Login",
-        "<p>Launch auth popup:</p><p><a href='/popup-login' target='_blank'>Open Login Window</a></p>",
-    )
-
-
-@app.route("/popup-login", methods=["GET", "POST"])
-def popup_login() -> str | Response:
-    if PATTERN_KEY != "auth-h-new-window":
-        return redirect("/login")
-
-    message = ""
-    if request.method == "POST" and handle_login_submit():
-        session["auth"] = True
-        return render_page("Popup Login Complete", "<p>Authenticated. You can close this window.</p>")
-    elif request.method == "POST":
-        message = "<p style='color:red'>Authentication failed</p>"
-
-    return render_page("Popup Login", message + login_form_html())
-
-
-def handle_iframe_login() -> str:
-    return render_page("IFrame Login", "<iframe src='/frame-login' title='iframe-login' width='700' height='380'></iframe>")
-
-
-@app.route("/frame-login", methods=["GET", "POST"])
-def frame_login() -> str | Response:
-    if PATTERN_KEY != "auth-i-iframe":
-        return redirect("/login")
-
-    if request.method == "POST" and handle_login_submit():
-        session["auth"] = True
-        return render_page("IFrame Login Complete", "<p>Authenticated from iframe.</p>")
-
-    message = "<p style='color:red'>Authentication failed</p>" if request.method == "POST" else ""
-    return render_page("IFrame Login Form", message + login_form_html())
-
-
-CAPTCHA_CODE = "4319"
-
-
-def _generate_captcha_image(text: str) -> io.BytesIO:
-    width, height = 180, 70
-    img = Image.new("RGB", (width, height), color=(245, 245, 245))
-    draw = ImageDraw.Draw(img)
-
-    # Noise: random lines
-    for _ in range(6):
-        x1, y1 = random.randint(0, width), random.randint(0, height)
-        x2, y2 = random.randint(0, width), random.randint(0, height)
-        draw.line([(x1, y1), (x2, y2)], fill=(random.randint(100, 200), random.randint(100, 200), random.randint(100, 200)), width=1)
-
-    # Draw each character with slight random offset and rotation
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 36)
-    except OSError:
-        font = ImageFont.load_default(size=36)
-
-    x_offset = 15
-    for char in text:
-        y_jitter = random.randint(-5, 5)
-        draw.text((x_offset, 12 + y_jitter), char, font=font, fill=(random.randint(0, 80), random.randint(0, 80), random.randint(0, 80)))
-        x_offset += 38
-
-    # Noise: random dots
-    for _ in range(150):
-        x, y = random.randint(0, width - 1), random.randint(0, height - 1)
-        draw.point((x, y), fill=(random.randint(80, 180), random.randint(80, 180), random.randint(80, 180)))
-
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    return buf
-
-
-@app.route("/captcha-image")
-def captcha_image() -> Response:
-    buf = _generate_captcha_image(CAPTCHA_CODE)
-    return send_file(buf, mimetype="image/png", download_name="captcha.png")
-
-
-@app.route("/totp-seed")
-def totp_seed() -> Response:
-    if PATTERN_KEY != "auth-m-totp-mfa":
-        return jsonify({"enabled": False})
-    return jsonify({"seed": "I65VU7K5ZQL7WB4E"})
-
-
-@app.route("/issue-session-token")
-@login_required
-def issue_session_token() -> Response:
-    token = secrets.token_hex(12)
-    session["transfer_token"] = token
-    return jsonify({"token": token, "use": f"/hijack/{token}"})
-
-
-@app.route("/hijack/<token>")
-def hijack(token: str) -> Response:
-    if PATTERN_KEY != "auth-n-session-hijack":
-        return redirect("/login")
-    if token and token == session.get("transfer_token"):
-        session["auth"] = True
-        return redirect("/app/overview")
-    return redirect("/login")
-
-
-@app.route("/token-login")
-def token_login() -> Response:
-    if PATTERN_KEY != "auth-o-bearer-token":
-        return redirect("/login")
-    if request.headers.get("Authorization", "") == "Bearer t0k3nId":
-        session["auth"] = True
-        return redirect("/app/overview")
-    return Response("Unauthorized", status=401)
 
 
 @app.route("/logout")

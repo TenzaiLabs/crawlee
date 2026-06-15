@@ -260,8 +260,8 @@ crawl "auth-m-totp-mfa" "auth-m-totp-mfa" \
   '{"target_url": "http://localhost:8113",
     "auth_config": {
       "login_url": "http://localhost:8113/login",
-      "credentials": {"email": "auth-m-totp-mfa@auth.local", "password": "pa$$w0rd", "totp_code": "123456"},
-      "instructions": "Fill in email and password and submit. If prompted for a TOTP/MFA code, enter 123456."
+      "credentials": {"email": "auth-m-totp-mfa@auth.local", "password": "pa$$w0rd", "totp_seed": "I65VU7K5ZQL7WB4E", "totp_code": "{{totp_seed:I65VU7K5ZQL7WB4E}}"},
+      "instructions": "Fill in email and password and submit. If prompted for a TOTP/MFA code, use the generated code from the provided seed."
     }}'
 
 crawl "auth-o-bearer-token" "auth-o-bearer-token" \

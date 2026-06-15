@@ -12,11 +12,6 @@
     },
     {
       "method": "GET",
-      "url": "http://localhost:8113/totp-seed",
-      "status": 200
-    },
-    {
-      "method": "GET",
       "url": "http://localhost:8113/app/overview",
       "status": 200
     },

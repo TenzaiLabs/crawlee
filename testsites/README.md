@@ -93,7 +93,7 @@ Pattern mapping (all ideas listed on `https://authenticationtest.com/`):
 - `auth-j-xsrf-token`: Cross-Site Request Forgery token challenge.
 - `auth-k-dynamic-fields`: Dynamic Field Names challenge.
 - `auth-l-security-question`: Security Question challenge (answer `42`).
-- `auth-m-totp-mfa`: TOTP MFA challenge (seed helper at `/totp-seed`, demo code `123456`).
+- `auth-m-totp-mfa`: TOTP MFA challenge.
 - `auth-o-bearer-token`: Bearer Token pattern (`Authorization: Bearer t0k3nId`).
 
 Fixture credentials format:
