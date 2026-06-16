@@ -160,5 +160,12 @@
         "timestamp": null
       }
     ]
-  }
+  },
+  "blocked_entries": [
+    {
+      "method": "POST",
+      "url": "http://localhost:8003/workspace/delete",
+      "reason": "destructive or session-ending action that normal crawls must not hit"
+    }
+  ]
 }

@@ -76,13 +76,6 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
-    },
-    {
-      "method": "GET",
-      "url": "http://localhost:8001/workspace/deleted.html",
-      "status": 200,
-      "content_type": "text/html",
-      "timestamp": null
     }
   ],
   "tree": {
@@ -228,18 +221,6 @@
                 "timestamp": null
               }
             ]
-          },
-          "deleted.html": {
-            "children": {},
-            "pages": [
-              {
-                "method": "GET",
-                "url": "http://localhost:8001/workspace/deleted.html",
-                "status": 200,
-                "content_type": "text/html",
-                "timestamp": null
-              }
-            ]
           }
         },
         "pages": []
@@ -254,5 +235,12 @@
         "timestamp": null
       }
     ]
-  }
+  },
+  "blocked_entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/workspace/deleted.html",
+      "reason": "destructive or session-ending action that normal crawls must not hit"
+    }
+  ]
 }

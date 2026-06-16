@@ -127,6 +127,7 @@ def logout_button_html() -> str:
         <form method="get" action="/logout" style="display:inline; margin-left: 0.5rem;">
             <button type="submit">Logout</button>
         </form>
+        <a href="/logout" style="margin-left: 0.5rem;">Legacy logout link</a>
     """
 
 

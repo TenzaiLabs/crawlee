@@ -44,5 +44,17 @@
   "tree": {
     "children": {},
     "pages": []
-  }
+  },
+  "blocked_entries": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8106/logout",
+      "reason": "destructive or session-ending action that normal crawls must not hit"
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:8106/app/actions/delete",
+      "reason": "destructive or session-ending action that normal crawls must not hit"
+    }
+  ]
 }

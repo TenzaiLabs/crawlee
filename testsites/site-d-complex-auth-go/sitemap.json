@@ -116,5 +116,17 @@
         "timestamp": null
       }
     ]
-  }
+  },
+  "blocked_entries": [
+    {
+      "method": "POST",
+      "url": "http://localhost:8004/logout",
+      "reason": "destructive or session-ending action that normal crawls must not hit"
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:8004/app/actions/delete",
+      "reason": "destructive or session-ending action that normal crawls must not hit"
+    }
+  ]
 }

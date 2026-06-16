@@ -34,6 +34,11 @@ for e in expected.get('entries', []):
     url = e.get('url', '')
     if url:
         expected_urls.add(url.rstrip('/'))
+blocked_urls = set()
+for e in expected.get('blocked_entries', []):
+    url = e.get('url', '')
+    if url:
+        blocked_urls.add(url.rstrip('/'))
 
 actual_sitemap = response.get('sitemap') or {}
 actual_entries = actual_sitemap.get('entries') or []
@@ -46,17 +51,24 @@ for e in actual_entries:
 found = expected_urls & actual_urls
 missing = expected_urls - actual_urls
 extra = actual_urls - expected_urls
+blocked = blocked_urls & actual_urls
 
 print(f'    Expected: {len(expected_urls)} URLs')
 print(f'    Found:    {len(found)}/{len(expected_urls)} expected URLs')
+if blocked_urls:
+    print(f'    Blocked:  {len(blocked)}/{len(blocked_urls)} forbidden URLs crawled')
 if missing:
     print(f'    Missing:  {len(missing)} URLs')
     for u in sorted(missing):
         print(f'      - {u}')
+if blocked:
+    print(f'    Forbidden URLs crawled: {len(blocked)}')
+    for u in sorted(blocked):
+        print(f'      - {u}')
 if extra:
     print(f'    Extra:    {len(extra)} URLs (not in sitemap.json)')
 
-if missing:
+if missing or blocked:
     sys.exit(1)
 " "$response_json"
 }
@@ -126,9 +138,9 @@ print(len(entries))
     PASS=$((PASS + 1))
     RESULTS="${RESULTS}\n  PASS  $name - ${entries} entries"
   else
-    echo "  RESULT: FAIL (missing expected URLs)"
+    echo "  RESULT: FAIL (sitemap contract violation)"
     FAIL=$((FAIL + 1))
-    RESULTS="${RESULTS}\n  FAIL  $name - ${entries} entries (missing expected URLs)"
+    RESULTS="${RESULTS}\n  FAIL  $name - ${entries} entries (sitemap contract violation)"
   fi
 }
 

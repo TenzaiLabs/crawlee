@@ -103,3 +103,34 @@ def test_validate_sitemap_passes_when_expected_blocked_path_is_absent() -> None:
     assert passed
     assert urls == ["http://localhost:8101/app/overview"]
     assert error is None
+
+
+def test_validate_sitemap_rejects_sitemap_blocked_entries() -> None:
+    case = SimpleNamespace(
+        name="site-c-registration-express",
+        mode="llm_no_auth",
+        target_url="http://localhost:8003",
+        probe_path="/",
+    )
+
+    passed, urls, error = run_crawler_auth_tests._validate_sitemap(
+        case,
+        {
+            "entries": [
+                {"url": "http://localhost:8003/workspace", "status": 200},
+                {"url": "http://localhost:8003/workspace/delete", "status": 200},
+            ]
+        },
+    )
+
+    assert not passed
+    assert urls == ["http://localhost:8003/workspace/delete"]
+    assert error == "blocked URL was crawled: http://localhost:8003/workspace/delete"
+
+
+def test_blocked_paths_for_case_uses_base_site_name() -> None:
+    case = SimpleNamespace(name="site-a-static-llm-no-auth")
+
+    assert run_crawler_auth_tests._blocked_paths_for_case(case) == (
+        "/workspace/deleted.html",
+    )

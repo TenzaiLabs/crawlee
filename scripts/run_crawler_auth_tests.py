@@ -18,6 +18,7 @@ import httpx
 
 TERMINAL_STATUSES = {"completed", "failed", "failed_interrupted", "cancelled"}
 DEFAULT_MODES = ["llm_no_auth", "manual_headers", "llm"]
+TESTSITES_DIR = Path(__file__).resolve().parent.parent / "testsites"
 
 
 @dataclass
@@ -140,6 +141,44 @@ def _entry_matches_path(entry: dict[str, Any], target_url: str, path: str) -> bo
     return parsed_url.path.rstrip("/") == parsed_expected.path.rstrip("/")
 
 
+def _site_name_for_case(case: Any) -> str | None:
+    case_name = getattr(case, "name", None)
+    if not isinstance(case_name, str):
+        return None
+    site_names = sorted(
+        (path.parent.name for path in TESTSITES_DIR.glob("*/sitemap.json")),
+        key=len,
+        reverse=True,
+    )
+    for site_name in site_names:
+        if case_name == site_name or case_name.startswith(f"{site_name}-"):
+            return site_name
+    return None
+
+
+def _blocked_paths_for_case(case: Any) -> tuple[str, ...]:
+    site_name = _site_name_for_case(case)
+    if site_name is None:
+        return ()
+    sitemap_path = TESTSITES_DIR / site_name / "sitemap.json"
+    try:
+        data = json.loads(sitemap_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ()
+
+    paths: list[str] = []
+    for entry in data.get("blocked_entries", []):
+        if not isinstance(entry, dict):
+            continue
+        url = entry.get("url")
+        if not isinstance(url, str):
+            continue
+        path = urlparse(url).path
+        if path and path not in paths:
+            paths.append(path)
+    return tuple(paths)
+
+
 def _entry_is_successful_same_origin(entry: dict[str, Any], target_url: str) -> bool:
     url = entry.get("url")
     status = entry.get("status")
@@ -159,7 +198,12 @@ def _validate_sitemap(
     if not isinstance(entries, list):
         return False, [], "sitemap entries are missing or malformed"
 
-    excluded_paths = tuple(getattr(case, "expected_blocked_paths", ()))
+    excluded_paths = _unique_strings(
+        [
+            *tuple(getattr(case, "expected_blocked_paths", ())),
+            *_blocked_paths_for_case(case),
+        ]
+    )
     crawled_excluded_urls = [
         entry.get("url")
         for entry in entries
@@ -193,6 +237,16 @@ def _validate_sitemap(
     if urls:
         return True, urls[:5], None
     return False, [], f"protected probe path was not crawled: {case.probe_path}"
+
+
+def _unique_strings(values: list[str]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            unique.append(value)
+    return tuple(unique)
 
 
 async def _poll_job(
