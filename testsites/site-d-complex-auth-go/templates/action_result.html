@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compass Control - {{.Action}}</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/app">Overview</a>
+      <a href="/app/actions">Actions</a>
+      <form method="post" action="/logout" style="display:inline;">
+        <button type="submit">Logout</button>
+      </form>
+    </nav>
+    <h1>{{.Action}}</h1>
+    <p>{{.Summary}}</p>
+    <p>No persistent data was changed by this test site.</p>
+  </body>
+</html>

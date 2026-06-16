@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workspace - Looping Calendar</title>
+    <style>
+      body { font-family: "Palatino", serif; margin: 2rem; background: #f2f5ef; }
+      nav a { margin-right: 1rem; color: #335533; }
+      form { background: white; padding: 1rem; margin: 1rem 0; max-width: 460px; }
+      label { display: block; margin-top: 0.7rem; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/limits">Crawler Limits</a>
+    </nav>
+    <h1>Workspace Actions</h1>
+    <p>These forms return mock confirmations and do not change persistent state.</p>
+    <form method="post" action="/workspace/create">
+      <label>Title <input name="title" value="New calendar note" /></label>
+      <label>Owner <input name="owner" value="ops@example.test" /></label>
+      <button type="submit">Create entry</button>
+    </form>
+    <form method="post" action="/workspace/update">
+      <label>Entry ID <input name="entry_id" value="calendar-001" /></label>
+      <label>Status
+        <select name="status">
+          <option>Active</option>
+          <option>Paused</option>
+          <option>Needs review</option>
+        </select>
+      </label>
+      <button type="submit">Update entry</button>
+    </form>
+    <form method="post" action="/workspace/delete">
+      <label>Entry ID <input name="entry_id" value="calendar-001" /></label>
+      <button type="submit">Delete entry</button>
+    </form>
+  </body>
+</html>

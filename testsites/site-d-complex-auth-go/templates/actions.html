@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compass Control - Actions</title>
+    <style>
+      body { font-family: "Helvetica Neue", sans-serif; margin: 2rem; background: #eef2f7; }
+      nav a { margin-right: 1rem; }
+      form { background: white; padding: 1rem; margin: 1rem 0; max-width: 460px; }
+      label { display: block; margin-top: 0.7rem; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/app">Overview</a>
+      <a href="/app/billing">Billing</a>
+      <form method="post" action="/logout" style="display:inline;">
+        <button type="submit">Logout</button>
+      </form>
+    </nav>
+    <h1>Workspace Actions</h1>
+    <p>These forms return mock confirmations and do not persist changes.</p>
+    <form method="post" action="/app/actions/create">
+      <label>Title <input name="title" value="New billing note" /></label>
+      <label>Owner <input name="owner" value="finance@example.test" /></label>
+      <button type="submit">Create entry</button>
+    </form>
+    <form method="post" action="/app/actions/update">
+      <label>Entry ID <input name="entry_id" value="compass-001" /></label>
+      <label>Status
+        <select name="status">
+          <option>Active</option>
+          <option>Paused</option>
+          <option>Needs review</option>
+        </select>
+      </label>
+      <button type="submit">Update entry</button>
+    </form>
+    <form method="post" action="/app/actions/delete">
+      <label>Entry ID <input name="entry_id" value="compass-001" /></label>
+      <button type="submit">Delete entry</button>
+    </form>
+  </body>
+</html>

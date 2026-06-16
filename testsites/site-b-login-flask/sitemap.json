@@ -41,16 +41,23 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8002/actions",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
     }
   ],
   "tree": {
     "children": {
-      "dashboard": {
+      "public": {
         "children": {},
         "pages": [
           {
             "method": "GET",
-            "url": "http://localhost:8002/dashboard",
+            "url": "http://localhost:8002/public",
             "status": 200,
             "content_type": "text/html",
             "timestamp": null
@@ -69,12 +76,24 @@
           }
         ]
       },
-      "public": {
+      "dashboard": {
         "children": {},
         "pages": [
           {
             "method": "GET",
-            "url": "http://localhost:8002/public",
+            "url": "http://localhost:8002/dashboard",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "settings": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8002/settings",
             "status": 200,
             "content_type": "text/html",
             "timestamp": null
@@ -93,12 +112,12 @@
           }
         ]
       },
-      "settings": {
+      "actions": {
         "children": {},
         "pages": [
           {
             "method": "GET",
-            "url": "http://localhost:8002/settings",
+            "url": "http://localhost:8002/actions",
             "status": 200,
             "content_type": "text/html",
             "timestamp": null

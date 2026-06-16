@@ -64,13 +64,16 @@ def parse_log(job_id: str, target_url: str | None = None) -> dict[str, Any]:
                     continue
 
                 key = (record["method"], record["url"])
-                deduped[key] = {
+                entry = {
                     "method": record["method"],
                     "url": record["url"],
                     "status": record["status"],
                     "content_type": record["content_type"],
                     "timestamp": record["timestamp"],
                 }
+                previous = deduped.get(key)
+                if previous is None or previous["status"] is None or entry["status"] is not None:
+                    deduped[key] = entry
 
     entries = list(deduped.values())
     return {

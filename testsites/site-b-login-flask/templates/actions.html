@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Actions - Harbor Accounts</title>
+    <style>
+      body { font-family: "Trebuchet MS", sans-serif; margin: 2rem; background: #f4f8fb; color: #1b2b34; }
+      nav a { margin-right: 1rem; color: #1b2b34; }
+      form { background: white; padding: 1rem; margin: 1rem 0; max-width: 460px; }
+      label { display: block; margin-top: 0.7rem; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <a href="/reports">Reports</a>
+      <form method="post" action="/logout" style="display:inline;">
+        <button type="submit">Logout</button>
+      </form>
+    </nav>
+    <h1>Workspace Actions</h1>
+    <p>These forms return mock confirmations and do not change persistent state.</p>
+    <form method="post" action="/actions/create">
+      <label>Title <input name="title" value="New onboarding checklist" /></label>
+      <label>Owner <input name="owner" value="ops@example.test" /></label>
+      <button type="submit">Create entry</button>
+    </form>
+    <form method="post" action="/actions/update">
+      <label>Entry ID <input name="entry_id" value="account-101" /></label>
+      <label>Status
+        <select name="status">
+          <option>Active</option>
+          <option>Paused</option>
+          <option>Needs review</option>
+        </select>
+      </label>
+      <button type="submit">Update entry</button>
+    </form>
+    <form method="post" action="/actions/delete">
+      <label>Entry ID <input name="entry_id" value="account-101" /></label>
+      <button type="submit">Delete entry</button>
+    </form>
+  </body>
+</html>

@@ -40,6 +40,18 @@ nav a:hover {
   border-bottom-color: #6b4f2f;
 }
 
+form.action-form {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #fff8ec;
+  border: 1px solid #e5d9c5;
+}
+
+form.action-form label {
+  display: block;
+  margin-top: 0.7rem;
+}
+
 main section {
   margin-bottom: 2rem;
   background: #fff8ec;

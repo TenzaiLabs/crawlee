@@ -62,6 +62,13 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/workspace",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
     }
   ],
   "tree": {
@@ -78,30 +85,20 @@
           }
         ]
       },
+      "limits": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8005/limits",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
       "calendar": {
         "children": {
-          "2025": {
-            "children": {
-              "12": {
-                "children": {
-                  "31": {
-                    "children": {},
-                    "pages": [
-                      {
-                        "method": "GET",
-                        "url": "http://localhost:8005/calendar/2025/12/31",
-                        "status": 200,
-                        "content_type": "text/html",
-                        "timestamp": null
-                      }
-                    ]
-                  }
-                },
-                "pages": []
-              }
-            },
-            "pages": []
-          },
           "2026": {
             "children": {
               "01": {
@@ -176,16 +173,38 @@
               }
             },
             "pages": []
+          },
+          "2025": {
+            "children": {
+              "12": {
+                "children": {
+                  "31": {
+                    "children": {},
+                    "pages": [
+                      {
+                        "method": "GET",
+                        "url": "http://localhost:8005/calendar/2025/12/31",
+                        "status": 200,
+                        "content_type": "text/html",
+                        "timestamp": null
+                      }
+                    ]
+                  }
+                },
+                "pages": []
+              }
+            },
+            "pages": []
           }
         },
         "pages": []
       },
-      "limits": {
+      "workspace": {
         "children": {},
         "pages": [
           {
             "method": "GET",
-            "url": "http://localhost:8005/limits",
+            "url": "http://localhost:8005/workspace",
             "status": 200,
             "content_type": "text/html",
             "timestamp": null

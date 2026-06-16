@@ -48,10 +48,10 @@ async def _run_auth_if_needed(
     base_headers: list[str],
     proxy_process: proxy.ProxyProcess,
     cancel_event: asyncio.Event,
-) -> tuple[list[str], str | None]:
+) -> tuple[list[str], str | None, list[str]]:
     merged_headers = list(base_headers)
     if not auth_agent.needs_auth(auth_config):
-        return merged_headers, None
+        return merged_headers, None, []
 
     logger.info("Running authentication for job_id=%s", job_id)
     resolved_config = auth_agent.resolve_secrets(auth_config)
@@ -59,7 +59,17 @@ async def _run_auth_if_needed(
     resolved_config["_proxify_log_path"] = proxy_process.log_path
     auth_result = await auth_agent.authenticate(target_url, resolved_config, cancel_event)
     merged_headers.extend(auth_result.headers)
-    return merged_headers, auth_result.landing_url
+    dynamic_exclude_patterns = crawler.blocked_urls_to_exclude_patterns(
+        auth_result.blocked_urls,
+        target_url=target_url,
+        base_url=auth_result.landing_url or target_url,
+    )
+    if dynamic_exclude_patterns:
+        logger.info(
+            "Auth produced %d dynamic crawl exclusion pattern(s)",
+            len(dynamic_exclude_patterns),
+        )
+    return merged_headers, auth_result.landing_url, dynamic_exclude_patterns
 
 
 async def has_active_job() -> bool:
@@ -116,7 +126,7 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
 
         await proxy.check_target_connectivity(row["target_url"])
 
-        merged_headers, landing_url = await _run_auth_if_needed(
+        merged_headers, landing_url, dynamic_exclude_patterns = await _run_auth_if_needed(
             job_id,
             row["target_url"],
             auth_config,
@@ -136,10 +146,11 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
             extra_seed_urls = [landing_url]
 
         logger.info(
-            "Crawl config: headers=%d landing_url=%s extra_seeds=%s",
+            "Crawl config: headers=%d landing_url=%s extra_seeds=%s dynamic_exclusions=%d",
             len(merged_headers),
             landing_url,
             extra_seed_urls,
+            len(dynamic_exclude_patterns),
         )
         await crawler.run_crawl(
             crawler.CrawlConfig(
@@ -147,6 +158,7 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
                 scope_config=db.loads_json(row["scope_config"]),
                 headers=merged_headers or None,
                 extra_seed_urls=extra_seed_urls,
+                dynamic_exclude_patterns=dynamic_exclude_patterns or None,
             ),
             cancel_event=cancel_event,
             log_path=proxy_process.log_path,

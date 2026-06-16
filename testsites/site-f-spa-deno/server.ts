@@ -8,6 +8,7 @@ const links = [
   "/app/overview",
   "/app/projects",
   "/app/reports/2026",
+  "/app/actions",
 ];
 
 const contentTypes: Record<string, string> = {
@@ -27,10 +28,42 @@ function respondWithFile(pathname: string): Response {
   }
 }
 
+function actionPage(action: string): Response {
+  return new Response(`<!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>${action} - Signal Grid</title>
+    </head>
+    <body>
+      <h1>${action}</h1>
+      <p>Mock ${action.toLowerCase()} request accepted.</p>
+      <p>No persistent data was changed by this test site.</p>
+      <p><a href="/app/actions">Return to actions</a></p>
+    </body>
+  </html>`, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
 serve((req) => {
   const url = new URL(req.url);
   if (url.pathname === "/api/links") {
     return Response.json({ links });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/actions/create") {
+    return actionPage("Created");
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/actions/update") {
+    return actionPage("Updated");
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/actions/delete") {
+    return actionPage("Deleted");
   }
 
   if (url.pathname === "/") {

@@ -13,9 +13,14 @@
     <nav>
       <a href="/app">Overview</a>
       <a href="/app/billing">Billing</a>
+      <a href="/app/actions">Actions</a>
       <a href="/">Home</a>
+      <form method="post" action="/logout" style="display:inline;">
+        <button type="submit">Logout</button>
+      </form>
     </nav>
     <h1>{{.Section}}</h1>
     <p>Authenticated view of the Compass Control app.</p>
+    <p><a href="/app/actions">Create, update, or delete a workspace entry</a>.</p>
   </body>
 </html>

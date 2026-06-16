@@ -6,6 +6,7 @@ import time
 from functools import wraps
 
 from flask import Flask, Response, redirect, render_template_string, request, session, url_for
+from markupsafe import escape
 
 PATTERN_KEY = "auth-h-new-window"
 PATTERN_TITLE = "New Window Authentication Challenge"
@@ -39,8 +40,8 @@ def render_page(title: str, body: str) -> str:
             <h1>{{ title }}</h1>
             <nav>
                 <a href="/">Home</a> |
-                <a href="/login">Login</a> |
-                <a href="/logout">Logout</a>
+                <a href="/login">Login</a>
+                {{ logout_button|safe }}
             </nav>
             <hr>
             {{ body|safe }}
@@ -52,6 +53,7 @@ def render_page(title: str, body: str) -> str:
         pattern=PATTERN_TITLE,
         body=body,
         links=links,
+        logout_button=logout_button_html(),
     )
 
 
@@ -131,6 +133,80 @@ def logout() -> Response:
     return redirect("/")
 
 
+def logout_button_html() -> str:
+    if not is_authenticated():
+        return ""
+    return """
+        <form method="get" action="/logout" style="display:inline; margin-left: 0.5rem;">
+            <button type="submit">Logout</button>
+        </form>
+    """
+
+
+def action_forms(page_slug: str, page_label: str) -> str:
+    entry_id = f"{page_slug}-entry-001"
+    return f"""
+        <section aria-label="Workspace actions">
+            <h2>Workspace actions</h2>
+            <p>Use these forms to simulate normal create, modify, and delete workflows for {page_label}.</p>
+            <form method="post" action="/app/actions/create">
+                <input type="hidden" name="source" value="{page_slug}">
+                <label>Title <input name="title" value="New {page_label} entry"></label><br>
+                <label>Owner <input name="owner" value="ops@example.test"></label><br>
+                <button type="submit">Create entry</button>
+            </form>
+            <form method="post" action="/app/actions/update">
+                <input type="hidden" name="source" value="{page_slug}">
+                <label>Entry ID <input name="entry_id" value="{entry_id}"></label><br>
+                <label>Status <select name="status"><option>Active</option><option>Paused</option><option>Needs review</option></select></label><br>
+                <label>Note <input name="note" value="Updated by test operator"></label><br>
+                <button type="submit">Update entry</button>
+            </form>
+            <form method="post" action="/app/actions/delete">
+                <input type="hidden" name="source" value="{page_slug}">
+                <label>Entry ID <input name="entry_id" value="{entry_id}"></label><br>
+                <button type="submit">Delete entry</button>
+            </form>
+        </section>
+    """
+
+
+def action_result(action: str, details: str) -> str:
+    body = f"""
+        <p>Mock {escape(action)} request accepted.</p>
+        <p>{details}</p>
+        <p>No persistent data was changed by this test fixture.</p>
+        <p><a href="/app/overview">Return to overview</a></p>
+    """
+    return render_page("Action Recorded", body)
+
+
+@app.post("/app/actions/create")
+@login_required
+def create_entry() -> str:
+    title = escape(request.form.get("title", "Untitled entry").strip() or "Untitled entry")
+    owner = escape(request.form.get("owner", "unassigned").strip() or "unassigned")
+    source = escape(request.form.get("source", "workspace").strip() or "workspace")
+    return action_result("create", f"Created {title} for {owner} from {source}.")
+
+
+@app.post("/app/actions/update")
+@login_required
+def update_entry() -> str:
+    entry_id = escape(request.form.get("entry_id", "entry-001").strip() or "entry-001")
+    status = escape(request.form.get("status", "Active").strip() or "Active")
+    note = escape(request.form.get("note", "No note").strip() or "No note")
+    return action_result("update", f"Updated {entry_id} to {status}. Note: {note}.")
+
+
+@app.post("/app/actions/delete")
+@login_required
+def delete_entry() -> str:
+    entry_id = escape(request.form.get("entry_id", "entry-001").strip() or "entry-001")
+    source = escape(request.form.get("source", "workspace").strip() or "workspace")
+    return action_result("delete", f"Marked {entry_id} from {source} for deletion review.")
+
+
 for slug, label in APP_PAGES:
     endpoint = f"app_{slug}"
 
@@ -138,7 +214,10 @@ for slug, label in APP_PAGES:
         @app.route(f"/app/{page_slug}", endpoint=f"app_{page_slug}")
         @login_required
         def view_page() -> str:
-            body = f"<p>{page_label} content for {PATTERN_TITLE}.</p>"
+            body = (
+                f"<p>{page_label} content for {PATTERN_TITLE}.</p>"
+                + action_forms(page_slug, page_label)
+            )
             return render_page(page_label, body)
 
         return view_page

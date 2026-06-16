@@ -6,9 +6,9 @@ import logging
 import re
 from collections import deque
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
-from .common import coerce_int, open_text_writer
+from .common import coerce_int, is_host_in_scope, open_text_writer
 from .process import run_safe_subprocess
 from .scope_config import _coerce_bool, validate_scope_config
 from .settings import CRAWLER_SUBPROCESS_TIMEOUT_SECONDS
@@ -33,6 +33,7 @@ class CrawlConfig:
     scope_config: dict | None = None
     headers: list[str] | None = None
     extra_seed_urls: list[str] | None = None
+    dynamic_exclude_patterns: list[str] | None = None
 
 
 def _unique_patterns(patterns: list[str]) -> list[str]:
@@ -43,6 +44,38 @@ def _unique_patterns(patterns: list[str]) -> list[str]:
             seen.add(pattern)
             ordered.append(pattern)
     return ordered
+
+
+def blocked_urls_to_exclude_patterns(
+    blocked_urls: list[str] | None,
+    *,
+    target_url: str,
+    base_url: str | None = None,
+) -> list[str]:
+    """Convert URL hints into safe Katana out-of-scope regex snippets."""
+    if not blocked_urls:
+        return []
+
+    patterns: list[str] = []
+    base = base_url or target_url
+    for blocked_url in blocked_urls:
+        url_text = str(blocked_url).strip()
+        if not url_text or len(url_text) > 2048:
+            continue
+
+        parsed = urlparse(urljoin(base, url_text))
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            continue
+        if not is_host_in_scope(parsed.hostname, target_url):
+            continue
+
+        path = parsed.path.rstrip("/")
+        if not path:
+            continue
+
+        patterns.append(f"{re.escape(path)}(?:$|[/?#])")
+
+    return _unique_patterns(patterns)
 
 
 def build_katana_command(
@@ -103,6 +136,8 @@ def build_katana_command(
     exclude_regex = scope_config.get("exclude_regex")
     if exclude_regex:
         filters.append(str(exclude_regex))
+    if config.dynamic_exclude_patterns:
+        filters.extend(str(pattern) for pattern in config.dynamic_exclude_patterns if pattern)
     filters = _unique_patterns(filters)
     if filters:
         command.extend(["-crawl-out-scope", "|".join(filters)])

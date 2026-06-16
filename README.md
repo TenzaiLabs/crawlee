@@ -1,8 +1,17 @@
 # Crawler
 
-Crawler is an async-native FastAPI service that crawls websites through Katana + Proxify, stores job state in SQLite, and optionally performs pre-crawl login with Playwright + LLM tool-calling.
+Crawler is an async-native FastAPI service for crawling websites with Katana and Proxify. It stores job state in SQLite, writes request logs to disk, and can perform pre-crawl authentication with either operator-supplied headers or a Playwright-driven LLM auth agent.
 
-The service executes one job at a time because Proxify binds `127.0.0.1:8888`. Additional jobs are accepted and queued, then drained serially by a background worker.
+The service runs as a single-job worker. Jobs are accepted through the API, stored as queued records, and drained serially because Proxify binds the fixed local proxy address `127.0.0.1:8888`.
+
+## Architecture
+
+- **API**: FastAPI endpoints create, inspect, list, and cancel crawl jobs.
+- **Job store**: SQLite stores target URLs, status, scope config, auth config, errors, and timestamps.
+- **Orchestrator**: owns job status transitions, starts/stops Proxify, runs authentication when required, invokes Katana, and processes completed logs.
+- **Authentication**: header-only configs are passed directly to the crawler; credential or login-url configs run the LLM auth agent before crawl.
+- **Crawler**: Katana receives target URLs, authenticated headers, extra seed URLs, scope limits, and exclusion patterns. The crawler remains auth-agnostic.
+- **Parser**: Proxify and Katana JSONL logs are normalized into a completed-job sitemap.
 
 ## Requirements
 
@@ -40,8 +49,8 @@ Run checks:
 
 ```bash
 uv run pytest -q
-uv run ruff check app tests --fix
-uv run ruff format app tests
+uv run ruff check app tests scripts --fix
+uv run ruff format app tests scripts
 uv run ty check
 ```
 
@@ -101,9 +110,11 @@ Pass `scope_config` via `--scope-config-json` / `--scope-config-file`, or use sh
 
 ## Authentication Usage
 
+Authentication is optional. `auth_config` controls which mode runs.
+
 ### Manual-header mode
 
-Use header-only `auth_config` to skip AI auth:
+Use header-only `auth_config` when the operator already has headers or cookies. This mode does not run the LLM auth agent.
 
 ```json
 {
@@ -119,7 +130,7 @@ Use header-only `auth_config` to skip AI auth:
 
 ### AI-auth mode
 
-Use `credentials` and/or `login_url` to run auth before crawl:
+Use `credentials` and/or `login_url` when the service should log in before crawling. The auth agent uses Playwright browser controls exposed as structured tools, including page/frame element refs, popup handling, iframe interaction, explicit authentication verification, blocked URL recording, and TOTP code generation.
 
 ```json
 {
@@ -128,19 +139,68 @@ Use `credentials` and/or `login_url` to run auth before crawl:
     "login_url": "https://example.com/login",
     "credentials": {
       "email": "{{env:APP_EMAIL}}",
-      "password": "{{env:APP_PASSWORD}}"
+      "password": "{{env:APP_PASSWORD}}",
+      "totp_secret": "{{env:APP_TOTP_SECRET}}"
     },
-    "instructions": "Login and stop once the dashboard is visible.",
+    "instructions": "Login and stop once the dashboard is visible. If MFA is requested, use get_totp_code(\"totp_secret\").",
     "success_indicator": "Dashboard"
   }
 }
 ```
 
 - AI auth runs only when `credentials` or `login_url` is present; header-only config never triggers it.
-- Sensitive credential fields must use `{{env:VAR}}` / `{{totp:VAR}}`; plaintext secrets are rejected.
+- Auth browsing is direct through Playwright; Proxify is used for the Katana crawl path.
+- The auth agent must verify access to authenticated content before returning a session.
+- Cookies, captured auth headers, and the authenticated landing URL are passed to Katana.
+- Unsafe URLs detected during auth, such as logout or destructive actions, can be recorded and converted into Katana exclusion patterns.
+- Secret templates `{{env:VAR}}`, `{{totp:VAR}}`, and `{{totp_seed:SECRET}}` are resolved only in memory before auth.
 - `auth_config.api_key` is rejected; use `api_key_env` instead.
 
 From the CLI, use `--auth-header` for manual headers or `--auth-config-json` / `--auth-config-file` for full config. `--auth-login-url` sets the login URL. Flags override matching keys when combined with JSON/file config.
+
+## Local Auth Testsites
+
+The `testsites/` stack provides local fixtures for public sites, manual-header auth, and LLM-driven auth flows:
+
+- Basic form login
+- Complex and dynamic forms
+- Multi-step login
+- Popup/new-window login
+- Iframe login
+- XSRF token login
+- Delay-after-submit login
+- Challenge/captcha-style login with supplied answers
+- Security question login
+- TOTP/MFA login
+- HTTP Basic and Bearer-token header auth
+
+Start the fixtures:
+
+```bash
+cd testsites
+docker compose up -d --build
+```
+
+Run the standalone auth agent against the fixtures:
+
+```bash
+uv run python -m scripts.run_auth_agent_tests --timeout 30
+```
+
+Run full crawler jobs against the auth fixtures:
+
+```bash
+uv run python -m scripts.run_crawler_auth_tests --crawl-duration 25s --job-timeout 180
+```
+
+Stop the fixtures:
+
+```bash
+cd testsites
+docker compose down
+```
+
+The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `--mode`, `--gateway`, `--db-path`, and `--log-dir` to narrow or persist a run.
 
 ## Environment
 
@@ -151,6 +211,8 @@ From the CLI, use `--auth-header` for manual headers or `--auth-config-json` / `
 | `CRAWLER_DB_PATH` | `/data/jobs.db` | SQLite database path |
 | `CRAWLER_LOG_DIR` | `/data/logs` | Log output directory |
 | `CRAWLER_AUTH_MODEL` | `gpt-5-mini` | LLM model for AI auth |
+| `CRAWLER_AUTH_ATTEMPTS` | `3` | Auth retry attempts |
+| `CRAWLER_AUTH_MAX_STEPS` | `85` | Default max tool-calling steps for auth |
 | `CRAWLER_SUBPROCESS_TIMEOUT` | `60` | Subprocess timeout (seconds) |
 | `CRAWLER_ENABLE_DEBUG_ENDPOINTS` | off | Set `1` to enable debug routes |
 
@@ -163,6 +225,8 @@ Completed jobs expose a `sitemap` on `GET /jobs/<job_id>` with:
 
 Log artifacts are written to `$CRAWLER_LOG_DIR`: `{job_id}.jsonl` (Proxify) and `{job_id}.jsonl.katana` (Katana sidecar).
 
+Katana can emit both response-bearing records and request-only records for the same URL. Completed sitemaps preserve response status and content type when duplicate records are normalized.
+
 ## Deployment
 
 Apply Kubernetes manifests:
@@ -174,9 +238,10 @@ kubectl apply -f k8s/service.yaml
 
 ## Known Limitations
 
-- Authorization extraction from Proxify logs is heuristic and may miss unusual record shapes.
-- `success_indicator` is prompt context and not a hard success gate.
-- Cancellation checks run in preflight/callbacks, not at the top of every tool function body.
+- Authorization extraction from browser/proxy traffic is heuristic and may miss unusual record shapes.
+- The LLM auth agent depends on the configured model, the quality of page accessibility data, and the supplied operator instructions for unusual flows.
+- TOTP is supported through an explicit auth-agent tool; other out-of-band MFA methods require additional tooling or operator-specific instructions.
+- Cancellation checks run in preflight/callbacks and long subprocess boundaries, not at the top of every tool function body.
 - Kubernetes manifests do not include explicit LLM provider env wiring by default.
 
 ## Security Posture

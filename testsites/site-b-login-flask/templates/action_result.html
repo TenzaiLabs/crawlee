@@ -3,22 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Settings - Harbor Accounts</title>
-    <style>
-      body { font-family: "Trebuchet MS", sans-serif; margin: 2rem; background: #f4f8fb; color: #1b2b34; }
-      nav a { margin-right: 1rem; color: #1b2b34; }
-    </style>
+    <title>Action {{ action|title }} - Harbor Accounts</title>
   </head>
   <body>
     <nav>
       <a href="/dashboard">Dashboard</a>
-      <a href="/reports">Reports</a>
       <a href="/actions">Actions</a>
       <form method="post" action="/logout" style="display:inline;">
         <button type="submit">Logout</button>
       </form>
     </nav>
-    <h1>Settings</h1>
-    <p>Account tuning options live here.</p>
+    <h1>Action {{ action|title }}</h1>
+    <p>{{ summary }}</p>
+    <p>No persistent data was changed by this test site.</p>
   </body>
 </html>

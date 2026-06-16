@@ -55,6 +55,34 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/workspace.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/workspace/created.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/workspace/updated.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8001/workspace/deleted.html",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
     }
   ],
   "tree": {
@@ -65,18 +93,6 @@
           {
             "method": "GET",
             "url": "http://localhost:8001/about.html",
-            "status": 200,
-            "content_type": "text/html",
-            "timestamp": null
-          }
-        ]
-      },
-      "contact": {
-        "children": {},
-        "pages": [
-          {
-            "method": "GET",
-            "url": "http://localhost:8001/contact/",
             "status": 200,
             "content_type": "text/html",
             "timestamp": null
@@ -112,8 +128,49 @@
         },
         "pages": []
       },
+      "contact": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8001/contact/",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "news": {
+        "children": {
+          "2026.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/news/2026.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      },
       "library": {
         "children": {
+          "overview.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/library/overview.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          },
           "checklist": {
             "children": {
               "packing.html": {
@@ -130,30 +187,54 @@
               }
             },
             "pages": []
-          },
-          "overview.html": {
+          }
+        },
+        "pages": []
+      },
+      "workspace.html": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8001/workspace.html",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
+      },
+      "workspace": {
+        "children": {
+          "created.html": {
             "children": {},
             "pages": [
               {
                 "method": "GET",
-                "url": "http://localhost:8001/library/overview.html",
+                "url": "http://localhost:8001/workspace/created.html",
                 "status": 200,
                 "content_type": "text/html",
                 "timestamp": null
               }
             ]
-          }
-        },
-        "pages": []
-      },
-      "news": {
-        "children": {
-          "2026.html": {
+          },
+          "updated.html": {
             "children": {},
             "pages": [
               {
                 "method": "GET",
-                "url": "http://localhost:8001/news/2026.html",
+                "url": "http://localhost:8001/workspace/updated.html",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          },
+          "deleted.html": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8001/workspace/deleted.html",
                 "status": 200,
                 "content_type": "text/html",
                 "timestamp": null

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import cast
 
 import pytest
 
@@ -106,6 +107,143 @@ async def test_extract_page_state_formats_payload():
     assert "Buttons:" in state
     assert "Links:" in state
     assert "VisibleText:" in state
+
+
+@pytest.mark.asyncio
+async def test_build_tools_records_blocked_urls() -> None:
+    class FakePage:
+        url = "https://example.com/app/dashboard"
+
+    blocked_urls: list[str] = []
+    tools = auth_agent._build_tools(FakePage(), blocked_urls)
+    record_blocked_url = next(tool for tool in tools if tool.__name__ == "record_blocked_url")
+
+    assert await record_blocked_url("/logout", "sign out link") == "recorded blocked URL"
+    assert await record_blocked_url("delete", "destructive action") == "recorded blocked URL"
+    assert await record_blocked_url("/logout", "duplicate") == "blocked URL already recorded"
+    assert await record_blocked_url("", "empty") == "ignored empty blocked URL"
+
+    assert blocked_urls == [
+        "https://example.com/logout",
+        "https://example.com/app/delete",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_build_tools_generates_totp_from_credential_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeTotp:
+        def __init__(self, secret: str) -> None:
+            self.secret = secret
+
+        def now(self) -> str:
+            assert self.secret == "JBSWY3DPEHPK3PXP"
+            return "654321"
+
+    import pyotp
+
+    monkeypatch.setattr(pyotp, "TOTP", FakeTotp)
+
+    tools = auth_agent._build_tools(
+        object(),
+        credentials={"totp_secret": "JBSWY3DPEHPK3PXP"},
+    )
+    get_totp_code = next(tool for tool in tools if tool.__name__ == "get_totp_code")
+
+    assert await get_totp_code("totp_secret") == "TOTP code from totp_secret: 654321"
+
+
+@pytest.mark.asyncio
+async def test_verification_candidates_reject_public_root_for_credentialed_auth() -> None:
+    class FakeResponse:
+        status = 200
+
+    class FakePage:
+        def __init__(self, controller) -> None:
+            self.controller = controller
+
+        async def goto(self, url: str, *, wait_until: str):
+            self.controller.current_url = url
+            return FakeResponse()
+
+    class FakeController:
+        def __init__(self) -> None:
+            self.current_url = "https://example.com/"
+            self.active_page = FakePage(self)
+
+        async def _settle(self, page) -> None:
+            return None
+
+        async def collect_link_items(self) -> list[dict[str, str]]:
+            return [{"href": "https://example.com/about", "text": "About"}]
+
+    controller = FakeController()
+
+    candidates = await auth_agent._verification_candidates(
+        cast(auth_agent._AuthBrowserController, controller),
+        target_url="https://example.com/",
+        login_url="https://example.com/login",
+        requires_auth_evidence=True,
+    )
+
+    assert candidates == []
+
+
+@pytest.mark.asyncio
+async def test_verification_candidates_allow_public_root_for_no_auth_sanity() -> None:
+    class FakeController:
+        current_url = "https://example.com/"
+
+        async def collect_link_items(self) -> list[dict[str, str]]:
+            return []
+
+    candidates = await auth_agent._verification_candidates(
+        cast(auth_agent._AuthBrowserController, FakeController()),
+        target_url="https://example.com/",
+        login_url="https://example.com/",
+        requires_auth_evidence=False,
+    )
+
+    assert candidates == ["https://example.com/"]
+
+
+@pytest.mark.asyncio
+async def test_verification_candidates_discover_authenticated_links_after_target_visit() -> None:
+    class FakeResponse:
+        status = 200
+
+    class FakePage:
+        def __init__(self, controller) -> None:
+            self.controller = controller
+
+        async def goto(self, url: str, *, wait_until: str):
+            self.controller.current_url = url
+            return FakeResponse()
+
+    class FakeController:
+        def __init__(self) -> None:
+            self.current_url = "https://example.com/popup-login"
+            self.active_page = FakePage(self)
+
+        async def _settle(self, page) -> None:
+            return None
+
+        async def collect_link_items(self) -> list[dict[str, str]]:
+            if self.current_url == "https://example.com/":
+                return [{"href": "https://example.com/workspace", "text": "Workspace"}]
+            return []
+
+    controller = FakeController()
+
+    candidates = await auth_agent._verification_candidates(
+        cast(auth_agent._AuthBrowserController, controller),
+        target_url="https://example.com/",
+        login_url="https://example.com/login",
+        requires_auth_evidence=True,
+    )
+
+    assert candidates == ["https://example.com/workspace"]
 
 
 def test_resolve_model_and_api_key_default_openai(monkeypatch: pytest.MonkeyPatch):

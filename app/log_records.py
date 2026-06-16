@@ -118,6 +118,14 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _header_value_case_insensitive(headers: dict[str, Any], name: str) -> Any:
+    wanted = name.lower()
+    for key, value in headers.items():
+        if str(key).lower() == wanted:
+            return value
+    return None
+
+
 def extract_request_url(data: dict[str, Any]) -> str | None:
     request = _as_dict(data.get("request"))
     url = request.get("endpoint") or request.get("url") or data.get("url")
@@ -164,9 +172,10 @@ def normalize_request_record(data: dict[str, Any]) -> dict[str, Any] | None:
             if len(parts) >= 2 and parts[1].isdigit():
                 status = int(parts[1])
 
+    response_headers = response.get("headers")
     content_type = (
-        response.get("headers", {}).get("content-type")
-        if isinstance(response.get("headers"), dict)
+        _header_value_case_insensitive(response_headers, "content-type")
+        if isinstance(response_headers, dict)
         else None
     )
     if content_type is None:

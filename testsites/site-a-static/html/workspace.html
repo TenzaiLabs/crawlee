@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workspace - Static Field Notes</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Workspace Actions</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/docs/guide.html">Guide</a>
+        <a href="/library/overview.html">Library</a>
+      </nav>
+    </header>
+    <main>
+      <p>These static forms navigate to fixed confirmation pages and do not change persistent state.</p>
+      <form class="action-form" method="get" action="/workspace/created.html">
+        <label>Title <input name="title" value="New route note" /></label>
+        <label>Owner <input name="owner" value="field@example.test" /></label>
+        <button type="submit">Create entry</button>
+      </form>
+      <form class="action-form" method="get" action="/workspace/updated.html">
+        <label>Entry ID <input name="entry_id" value="field-note-001" /></label>
+        <label>Status
+          <select name="status">
+            <option>Active</option>
+            <option>Paused</option>
+            <option>Needs review</option>
+          </select>
+        </label>
+        <button type="submit">Update entry</button>
+      </form>
+      <form class="action-form" method="get" action="/workspace/deleted.html">
+        <label>Entry ID <input name="entry_id" value="field-note-001" /></label>
+        <button type="submit">Delete entry</button>
+      </form>
+    </main>
+  </body>
+</html>

@@ -48,10 +48,41 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8006/app/actions",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
     }
   ],
   "tree": {
     "children": {
+      "styles.css": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8006/styles.css",
+            "status": 200,
+            "content_type": "text/css",
+            "timestamp": null
+          }
+        ]
+      },
+      "app.js": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8006/app.js",
+            "status": 200,
+            "content_type": "text/javascript",
+            "timestamp": null
+          }
+        ]
+      },
       "api": {
         "children": {
           "links": {
@@ -111,33 +142,21 @@
               }
             },
             "pages": []
+          },
+          "actions": {
+            "children": {},
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8006/app/actions",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
           }
         },
         "pages": []
-      },
-      "app.js": {
-        "children": {},
-        "pages": [
-          {
-            "method": "GET",
-            "url": "http://localhost:8006/app.js",
-            "status": 200,
-            "content_type": "text/javascript",
-            "timestamp": null
-          }
-        ]
-      },
-      "styles.css": {
-        "children": {},
-        "pages": [
-          {
-            "method": "GET",
-            "url": "http://localhost:8006/styles.css",
-            "status": 200,
-            "content_type": "text/css",
-            "timestamp": null
-          }
-        ]
       }
     },
     "pages": [

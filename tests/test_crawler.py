@@ -45,6 +45,46 @@ def test_build_katana_command_overrides():
     assert "-H" in command
 
 
+def test_blocked_urls_to_exclude_patterns_normalizes_safe_same_scope_urls():
+    patterns = crawler.blocked_urls_to_exclude_patterns(
+        [
+            "https://example.com/logout?next=/",
+            "/account/delete/",
+            "/account/delete",
+            "javascript:alert(1)",
+            "mailto:test@example.com",
+            "https://evil.test/logout",
+            "https://example.com/#logout",
+        ],
+        target_url="https://example.com",
+        base_url="https://example.com/app/dashboard",
+    )
+
+    assert patterns == [
+        "/logout(?:$|[/?#])",
+        "/account/delete(?:$|[/?#])",
+    ]
+
+
+def test_build_katana_command_merges_dynamic_exclude_patterns():
+    config = crawler.CrawlConfig(
+        target_url="https://example.com",
+        scope_config={
+            "exclude_filters": ["/admin"],
+            "exclude_regex": "/danger-zone",
+        },
+        dynamic_exclude_patterns=["/account/delete(?:$|[/?#])", "/admin"],
+    )
+    command = crawler.build_katana_command(config)
+    exclusions = command[command.index("-crawl-out-scope") + 1]
+
+    assert "logout" in exclusions
+    assert "/admin" in exclusions
+    assert "/danger-zone" in exclusions
+    assert "/account/delete(?:$|[/?#])" in exclusions
+    assert exclusions.count("/admin") == 1
+
+
 def test_build_katana_command_headless_with_cdp_url():
     config = crawler.CrawlConfig(
         target_url="https://example.com",

@@ -48,39 +48,28 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8003/workspace",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
     }
   ],
   "tree": {
     "children": {
-      "blog": {
-        "children": {
-          "launch": {
-            "children": {
-              "faq": {
-                "children": {},
-                "pages": [
-                  {
-                    "method": "GET",
-                    "url": "http://localhost:8003/blog/launch/faq",
-                    "status": 200,
-                    "content_type": "text/html",
-                    "timestamp": null
-                  }
-                ]
-              }
-            },
-            "pages": [
-              {
-                "method": "GET",
-                "url": "http://localhost:8003/blog/launch",
-                "status": 200,
-                "content_type": "text/html",
-                "timestamp": null
-              }
-            ]
+      "register": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8003/register",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
           }
-        },
-        "pages": []
+        ]
       },
       "products": {
         "children": {
@@ -119,12 +108,42 @@
           }
         ]
       },
-      "register": {
+      "blog": {
+        "children": {
+          "launch": {
+            "children": {
+              "faq": {
+                "children": {},
+                "pages": [
+                  {
+                    "method": "GET",
+                    "url": "http://localhost:8003/blog/launch/faq",
+                    "status": 200,
+                    "content_type": "text/html",
+                    "timestamp": null
+                  }
+                ]
+              }
+            },
+            "pages": [
+              {
+                "method": "GET",
+                "url": "http://localhost:8003/blog/launch",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": null
+              }
+            ]
+          }
+        },
+        "pages": []
+      },
+      "workspace": {
         "children": {},
         "pages": [
           {
             "method": "GET",
-            "url": "http://localhost:8003/register",
+            "url": "http://localhost:8003/workspace",
             "status": 200,
             "content_type": "text/html",
             "timestamp": null

@@ -15,6 +15,10 @@ const pageCopy = {
     title: "Reports 2026",
     body: "Reports 2026 contains monthly coverage exports and audit-ready snapshots.",
   },
+  "/app/actions": {
+    title: "Actions",
+    body: "Create, update, and delete forms return mock confirmations in the SPA.",
+  },
 };
 
 function normalizePath(pathname) {
@@ -42,10 +46,77 @@ function renderRoute(pathname) {
   meta.textContent = `Current route: ${normalizedPath}`;
 
   panel.append(title, body, meta);
+  if (normalizedPath === "/app/actions") {
+    renderActionForms(panel);
+  }
 
   document.querySelectorAll("#link-panel a").forEach((anchor) => {
     anchor.classList.toggle("active-link", normalizePath(anchor.pathname) === normalizedPath);
   });
+}
+
+function actionForm(action, fields) {
+  const form = document.createElement("form");
+  form.className = "action-form";
+  form.dataset.action = action;
+  form.method = "post";
+  form.action = `/api/actions/${action.toLowerCase()}`;
+
+  fields.forEach((field) => {
+    const label = document.createElement("label");
+    label.textContent = `${field.label} `;
+    let input;
+    if (field.options) {
+      input = document.createElement("select");
+      field.options.forEach((option) => {
+        const item = document.createElement("option");
+        item.textContent = option;
+        input.appendChild(item);
+      });
+    } else {
+      input = document.createElement("input");
+      input.value = field.value;
+    }
+    input.name = field.name;
+    label.appendChild(input);
+    form.appendChild(label);
+  });
+
+  const button = document.createElement("button");
+  button.type = "submit";
+  button.textContent = `${action} entry`;
+  form.appendChild(button);
+  return form;
+}
+
+function renderActionForms(panel) {
+  const section = document.createElement("section");
+  section.setAttribute("aria-label", "Workspace actions");
+  section.appendChild(actionForm("Create", [
+    { label: "Title", name: "title", value: "New signal note" },
+    { label: "Owner", name: "owner", value: "ops@example.test" },
+  ]));
+  section.appendChild(actionForm("Update", [
+    { label: "Entry ID", name: "entry_id", value: "signal-001" },
+    { label: "Status", name: "status", options: ["Active", "Paused", "Needs review"] },
+  ]));
+  section.appendChild(actionForm("Delete", [
+    { label: "Entry ID", name: "entry_id", value: "signal-001" },
+  ]));
+  section.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const data = new FormData(form);
+    const entryId = data.get("entry_id") || data.get("title") || "entry";
+    const result = document.createElement("p");
+    result.className = "action-result";
+    result.textContent = `${form.dataset.action} accepted for ${entryId}. No persistent data was changed.`;
+    section.appendChild(result);
+  });
+  panel.appendChild(section);
 }
 
 function onNavClick(event) {
