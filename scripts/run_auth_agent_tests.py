@@ -19,6 +19,7 @@ class AuthAgentSiteCase:
     auth_config: dict[str, Any] | None
     probe_path: str
     mode: str
+    expected_blocked_paths: tuple[str, ...] = ()
 
 
 @dataclass
@@ -29,6 +30,7 @@ class AuthAgentSiteResult:
     status_code: int | None = None
     landing_url: str | None = None
     header_count: int = 0
+    blocked_url_count: int = 0
     error: str | None = None
 
 
@@ -181,6 +183,27 @@ def build_cases(*, gateway: bool = False) -> list[AuthAgentSiteCase]:
         ),
     ]
 
+    llm_cases.append(
+        AuthAgentSiteCase(
+            "auth-a-simple-form-dynamic-exclusion",
+            url("auth-a-simple-form"),
+            {
+                "login_url": urljoin(url("auth-a-simple-form"), "/login"),
+                "credentials": {
+                    "email": "auth-a-simple-form@auth.local",
+                    "password": "pa$$w0rd",
+                },
+                "instructions": (
+                    "After login, record /app/danger/close-account as a blocked URL "
+                    "because it closes the account. Do not click it."
+                ),
+            },
+            "/app/overview",
+            "llm",
+            ("/app/danger/close-account",),
+        )
+    )
+
     auth_patterns = [
         ("auth-a-simple-form", {}, ""),
         (
@@ -290,13 +313,27 @@ async def run_case(case: AuthAgentSiteCase, *, timeout: float) -> AuthAgentSiteR
         headers = _headers_from_lines(result.headers)
         async with httpx.AsyncClient(timeout=timeout) as client:
             status_code = await _probe(client, case, headers=headers)
+        blocked_urls = result.blocked_urls or []
+        missing_blocked_paths = [
+            path
+            for path in case.expected_blocked_paths
+            if not any(
+                urljoin(case.target_url, path) == blocked_url for blocked_url in blocked_urls
+            )
+        ]
         return AuthAgentSiteResult(
             name=case.name,
             mode=case.mode,
-            passed=200 <= status_code < 300,
+            passed=200 <= status_code < 300 and not missing_blocked_paths,
             status_code=status_code,
             landing_url=result.landing_url,
             header_count=len(result.headers),
+            blocked_url_count=len(blocked_urls),
+            error=(
+                f"missing blocked URL(s): {', '.join(missing_blocked_paths)}"
+                if missing_blocked_paths
+                else None
+            ),
         )
     except Exception as exc:
         return AuthAgentSiteResult(

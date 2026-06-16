@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -16,6 +17,14 @@ _job_tasks: dict[str, asyncio.Task[None]] = {}
 _cancel_events: dict[str, asyncio.Event] = {}
 _queue: asyncio.Queue[str] = asyncio.Queue()
 _drainer_task: asyncio.Task[None] | None = None
+
+
+@dataclass(frozen=True)
+class CrawlAuthContext:
+    headers: list[str]
+    landing_url: str | None = None
+    extra_seed_urls: list[str] = field(default_factory=list)
+    dynamic_exclude_patterns: list[str] = field(default_factory=list)
 
 
 def _now() -> str:
@@ -46,17 +55,15 @@ async def _run_auth_if_needed(
     target_url: str,
     auth_config: dict[str, Any],
     base_headers: list[str],
-    proxy_process: proxy.ProxyProcess,
+    should_auth: bool,
     cancel_event: asyncio.Event,
-) -> tuple[list[str], str | None, list[str]]:
+) -> CrawlAuthContext:
     merged_headers = list(base_headers)
-    if not auth_agent.needs_auth(auth_config):
-        return merged_headers, None, []
+    if not should_auth:
+        return CrawlAuthContext(headers=merged_headers)
 
     logger.info("Running authentication for job_id=%s", job_id)
     resolved_config = auth_agent.resolve_secrets(auth_config)
-    # Hand the Proxify log path to the auth agent without persisting it.
-    resolved_config["_proxify_log_path"] = proxy_process.log_path
     auth_result = await auth_agent.authenticate(target_url, resolved_config, cancel_event)
     merged_headers.extend(auth_result.headers)
     dynamic_exclude_patterns = crawler.blocked_urls_to_exclude_patterns(
@@ -69,7 +76,17 @@ async def _run_auth_if_needed(
             "Auth produced %d dynamic crawl exclusion pattern(s)",
             len(dynamic_exclude_patterns),
         )
-    return merged_headers, auth_result.landing_url, dynamic_exclude_patterns
+
+    extra_seed_urls: list[str] = []
+    if auth_result.landing_url and auth_result.landing_url != target_url:
+        extra_seed_urls.append(auth_result.landing_url)
+
+    return CrawlAuthContext(
+        headers=merged_headers,
+        landing_url=auth_result.landing_url,
+        extra_seed_urls=extra_seed_urls,
+        dynamic_exclude_patterns=dynamic_exclude_patterns,
+    )
 
 
 async def has_active_job() -> bool:
@@ -126,12 +143,12 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
 
         await proxy.check_target_connectivity(row["target_url"])
 
-        merged_headers, landing_url, dynamic_exclude_patterns = await _run_auth_if_needed(
+        auth_context = await _run_auth_if_needed(
             job_id,
             row["target_url"],
             auth_config,
             manual_headers,
-            proxy_process,
+            should_auth,
             cancel_event,
         )
         if await _cancel_if_requested(job_id, cancel_event):
@@ -141,24 +158,20 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
             logger.info("Job %s transitioning authenticating -> crawling", job_id)
             await update_job_status(job_id, JobStatus.crawling)
 
-        extra_seed_urls: list[str] | None = None
-        if landing_url and landing_url != row["target_url"]:
-            extra_seed_urls = [landing_url]
-
         logger.info(
             "Crawl config: headers=%d landing_url=%s extra_seeds=%s dynamic_exclusions=%d",
-            len(merged_headers),
-            landing_url,
-            extra_seed_urls,
-            len(dynamic_exclude_patterns),
+            len(auth_context.headers),
+            auth_context.landing_url,
+            auth_context.extra_seed_urls or None,
+            len(auth_context.dynamic_exclude_patterns),
         )
         await crawler.run_crawl(
             crawler.CrawlConfig(
                 target_url=row["target_url"],
                 scope_config=db.loads_json(row["scope_config"]),
-                headers=merged_headers or None,
-                extra_seed_urls=extra_seed_urls,
-                dynamic_exclude_patterns=dynamic_exclude_patterns or None,
+                headers=auth_context.headers or None,
+                extra_seed_urls=auth_context.extra_seed_urls or None,
+                dynamic_exclude_patterns=auth_context.dynamic_exclude_patterns or None,
             ),
             cancel_event=cancel_event,
             log_path=proxy_process.log_path,

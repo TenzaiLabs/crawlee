@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import logging
 from typing import cast
 
 import pytest
@@ -27,19 +25,17 @@ def test_prepare_auth_config_defaults_to_target_url():
     assert prepared.success_indicator is None
 
 
-def test_prepare_auth_config_coerces_max_steps_and_log_path():
+def test_prepare_auth_config_coerces_max_steps():
     prepared = auth_agent._prepare_auth_config(
         "https://example.com",
         {
             "login_url": "https://example.com/login",
             "max_steps": "12",
-            "_proxify_log_path": "/tmp/proxify.log",
         },
     )
 
     assert prepared.login_url == "https://example.com/login"
     assert prepared.max_steps == 12
-    assert prepared.proxify_log_path == "/tmp/proxify.log"
 
 
 def test_resolve_secrets_env(monkeypatch: pytest.MonkeyPatch):
@@ -283,66 +279,3 @@ def test_resolve_model_and_api_key_api_key_env_override(monkeypatch: pytest.Monk
     assert key == "custom-key"
     assert provider == "gemini"
     assert candidates == ("MY_CUSTOM_LLM_KEY",)
-
-
-@pytest.mark.asyncio
-async def test_extract_authorization_headers_logs_warning_when_not_found(
-    tmp_path, caplog: pytest.LogCaptureFixture
-):
-    log_path = tmp_path / "proxify.jsonl"
-    log_path.write_text(
-        "\n".join(
-            [
-                json.dumps(
-                    {"request": {"url": "https://example.com/home", "headers": {"X-Test": "1"}}}
-                ),
-                json.dumps(
-                    {
-                        "request": {
-                            "url": "https://example.com/profile",
-                            "headers": {"Accept": "*/*"},
-                        }
-                    }
-                ),
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    caplog.set_level(logging.DEBUG, logger="app.auth_agent")
-    headers = await auth_agent.extract_authorization_headers(str(log_path), "https://example.com")
-
-    assert headers == []
-    assert "Starting authorization header scan" in caplog.text
-    assert "Authorization scan completed with no headers found" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_extract_authorization_headers_logs_info_when_found(
-    tmp_path, caplog: pytest.LogCaptureFixture
-):
-    log_path = tmp_path / "proxify.jsonl"
-    log_path.write_text(
-        "\n".join(
-            [
-                json.dumps(
-                    {"request": {"url": "https://example.com/home", "headers": {"X-Test": "1"}}}
-                ),
-                json.dumps(
-                    {
-                        "request": {
-                            "url": "https://example.com/api/me",
-                            "headers": {"Authorization": "Bearer token123"},
-                        }
-                    }
-                ),
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    caplog.set_level(logging.DEBUG, logger="app.auth_agent")
-    headers = await auth_agent.extract_authorization_headers(str(log_path), "https://example.com")
-
-    assert headers == ["Authorization: Bearer token123"]
-    assert "Authorization scan found 1 header(s)" in caplog.text

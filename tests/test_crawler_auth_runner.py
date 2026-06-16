@@ -62,3 +62,44 @@ def test_validate_sitemap_allows_successful_same_origin_for_no_auth_sanity() -> 
     assert passed
     assert urls == ["http://localhost:8001/workspace.html"]
     assert error is None
+
+
+def test_validate_sitemap_rejects_crawled_expected_blocked_path() -> None:
+    case = SimpleNamespace(
+        mode="llm",
+        target_url="http://localhost:8101",
+        probe_path="/app/overview",
+        expected_blocked_paths=("/app/danger/close-account",),
+    )
+
+    passed, urls, error = run_crawler_auth_tests._validate_sitemap(
+        case,
+        {
+            "entries": [
+                {"url": "http://localhost:8101/app/overview", "status": 200},
+                {"url": "http://localhost:8101/app/danger/close-account", "status": 200},
+            ]
+        },
+    )
+
+    assert not passed
+    assert urls == ["http://localhost:8101/app/danger/close-account"]
+    assert error == "blocked URL was crawled: http://localhost:8101/app/danger/close-account"
+
+
+def test_validate_sitemap_passes_when_expected_blocked_path_is_absent() -> None:
+    case = SimpleNamespace(
+        mode="llm",
+        target_url="http://localhost:8101",
+        probe_path="/app/overview",
+        expected_blocked_paths=("/app/danger/close-account",),
+    )
+
+    passed, urls, error = run_crawler_auth_tests._validate_sitemap(
+        case,
+        {"entries": [{"url": "http://localhost:8101/app/overview", "status": 200}]},
+    )
+
+    assert passed
+    assert urls == ["http://localhost:8101/app/overview"]
+    assert error is None

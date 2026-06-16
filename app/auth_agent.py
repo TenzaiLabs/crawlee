@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
@@ -26,10 +26,10 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AuthResult:
-    cookies: list[dict]
     headers: list[str]
+    cookies: list[dict[str, Any]] = field(default_factory=list)
     landing_url: str | None = None
-    blocked_urls: list[str] | None = None
+    blocked_urls: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -39,7 +39,6 @@ class _PreparedAuthConfig:
     instructions: str | None
     success_indicator: str | None
     max_steps: int
-    proxify_log_path: str | None
 
 
 @dataclass
@@ -83,25 +82,6 @@ def _resolve_model_and_api_key(
     return auth_model.resolve_model_and_api_key(auth_config)
 
 
-async def extract_authorization_headers(
-    log_path: str | None,
-    target_url: str,
-    *,
-    max_bytes: int = 1_000_000,
-) -> list[str]:
-    logger.info("Starting authorization header scan")
-    headers = await auth_log_extract.extract_authorization_headers_from_log(
-        log_path,
-        target_url,
-        max_bytes=max_bytes,
-    )
-    if headers:
-        logger.info("Authorization scan found %d header(s)", len(headers))
-    else:
-        logger.warning("Authorization scan completed with no headers found")
-    return headers
-
-
 async def extract_page_state(page: Any, *, text_limit: int = 4000) -> str:
     return await auth_browser.extract_page_state(page, text_limit=text_limit)
 
@@ -139,17 +119,12 @@ def _prepare_auth_config(target_url: str, auth_config: dict[str, Any]) -> _Prepa
     if max_steps <= 0:
         max_steps = CRAWLER_AUTH_MAX_STEPS_DEFAULT
 
-    proxify_log_path = auth_config.get("_proxify_log_path") or auth_config.get("proxify_log_path")
-    if not isinstance(proxify_log_path, str):
-        proxify_log_path = None
-
     return _PreparedAuthConfig(
         login_url=login_url,
         credentials_payload=credentials_payload,
         instructions=instructions,
         success_indicator=success_indicator,
         max_steps=max_steps,
-        proxify_log_path=proxify_log_path,
     )
 
 
@@ -785,8 +760,6 @@ async def _collect_auth_result(
     page: Any,
     login_url: str,
     traffic_capture: auth_traffic.AuthTrafficCapture,
-    proxify_log_path: str | None,
-    target_url: str,
     blocked_urls: list[str] | None = None,
 ) -> AuthResult:
     cookies_raw = await context.cookies() if context is not None else []
@@ -803,8 +776,6 @@ async def _collect_auth_result(
         logger.info("Browser traffic capture found %d auth header(s)", len(browser_headers))
     headers.extend(browser_headers)
 
-    headers.extend(await extract_authorization_headers(proxify_log_path, target_url))
-
     if traffic_capture.redirect_chain:
         logger.debug(
             "Auth redirect chain (%d hops): %s",
@@ -820,8 +791,8 @@ async def _collect_auth_result(
         len(blocked_urls or []),
     )
     return AuthResult(
-        cookies=cookies,
         headers=_dedupe_headers(headers),
+        cookies=cookies,
         landing_url=landing_url,
         blocked_urls=blocked_urls or [],
     )
@@ -1169,8 +1140,6 @@ async def authenticate(
             page=controller.active_page,
             login_url=prepared.login_url,
             traffic_capture=traffic_capture,
-            proxify_log_path=prepared.proxify_log_path,
-            target_url=target_url,
             blocked_urls=blocked_urls,
         )
     finally:

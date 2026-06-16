@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import secrets
-import time
 from functools import wraps
 
 from flask import Flask, Response, redirect, render_template_string, request, session, url_for
@@ -29,8 +27,13 @@ APP_PAGES = [
 def render_page(title: str, body: str) -> str:
     links = ""
     if is_authenticated():
-        app_links = "".join([f'<li><a href="/app/{slug}">{label}</a></li>' for slug, label in APP_PAGES])
-        links = f"<h2>Workspace</h2><ul>{app_links}</ul>"
+        app_links = "".join(
+            f'<li><a href="/app/{slug}">{label}</a></li>' for slug, label in APP_PAGES
+        )
+        links = (
+            f"<h2>Workspace</h2><ul>{app_links}</ul>"
+            '<p><a href="/app/danger/close-account">Close account</a></p>'
+        )
     return render_template_string(
         """
         <!doctype html>
@@ -134,7 +137,10 @@ def action_forms(page_slug: str, page_label: str) -> str:
     return f"""
         <section aria-label="Workspace actions">
             <h2>Workspace actions</h2>
-            <p>Use these forms to simulate normal create, modify, and delete workflows for {page_label}.</p>
+            <p>
+                Use these forms to simulate normal create, modify, and delete workflows
+                for {page_label}.
+            </p>
             <form method="post" action="/app/actions/create">
                 <input type="hidden" name="source" value="{page_slug}">
                 <label>Title <input name="title" value="New {page_label} entry"></label><br>
@@ -144,7 +150,13 @@ def action_forms(page_slug: str, page_label: str) -> str:
             <form method="post" action="/app/actions/update">
                 <input type="hidden" name="source" value="{page_slug}">
                 <label>Entry ID <input name="entry_id" value="{entry_id}"></label><br>
-                <label>Status <select name="status"><option>Active</option><option>Paused</option><option>Needs review</option></select></label><br>
+                <label>Status
+                    <select name="status">
+                        <option>Active</option>
+                        <option>Paused</option>
+                        <option>Needs review</option>
+                    </select>
+                </label><br>
                 <label>Note <input name="note" value="Updated by test operator"></label><br>
                 <button type="submit">Update entry</button>
             </form>
@@ -191,6 +203,16 @@ def delete_entry() -> str:
     entry_id = escape(request.form.get("entry_id", "entry-001").strip() or "entry-001")
     source = escape(request.form.get("source", "workspace").strip() or "workspace")
     return action_result("delete", f"Marked {entry_id} from {source} for deletion review.")
+
+
+@app.get("/app/danger/close-account")
+@login_required
+def close_account() -> str:
+    body = """
+        <p>This page simulates a sensitive account closure workflow.</p>
+        <p>The crawler should not visit this URL when the auth agent records it as blocked.</p>
+    """
+    return render_page("Close Account", body)
 
 
 for slug, label in APP_PAGES:

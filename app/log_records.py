@@ -144,17 +144,6 @@ def extract_request_headers(data: dict[str, Any]) -> dict[str, Any]:
     return headers if isinstance(headers, dict) else {}
 
 
-def extract_authorization_headers(data: dict[str, Any]) -> list[str]:
-    results: list[str] = []
-    for key, value in extract_request_headers(data).items():
-        if str(key).lower() != "authorization":
-            continue
-        if value is None:
-            continue
-        results.append(f"Authorization: {value}")
-    return results
-
-
 def normalize_request_record(data: dict[str, Any]) -> dict[str, Any] | None:
     request = _as_dict(data.get("request"))
     response = _as_dict(data.get("response"))

@@ -126,6 +126,20 @@ def _entry_matches_probe(entry: dict[str, Any], target_url: str, probe_path: str
     return isinstance(status, int) and 200 <= status < 300
 
 
+def _entry_matches_path(entry: dict[str, Any], target_url: str, path: str) -> bool:
+    url = entry.get("url")
+    if not isinstance(url, str):
+        return False
+
+    expected_url = urljoin(target_url.rstrip("/") + "/", path.lstrip("/"))
+    if not _same_origin(url, expected_url):
+        return False
+
+    parsed_url = urlparse(url)
+    parsed_expected = urlparse(expected_url)
+    return parsed_url.path.rstrip("/") == parsed_expected.path.rstrip("/")
+
+
 def _entry_is_successful_same_origin(entry: dict[str, Any], target_url: str) -> bool:
     url = entry.get("url")
     status = entry.get("status")
@@ -144,6 +158,20 @@ def _validate_sitemap(
     entries = sitemap.get("entries", []) if isinstance(sitemap, dict) else []
     if not isinstance(entries, list):
         return False, [], "sitemap entries are missing or malformed"
+
+    excluded_paths = tuple(getattr(case, "expected_blocked_paths", ()))
+    crawled_excluded_urls = [
+        entry.get("url")
+        for entry in entries
+        if isinstance(entry, dict)
+        for excluded_path in excluded_paths
+        if _entry_matches_path(entry, case.target_url, excluded_path)
+    ]
+    crawled_excluded = [url for url in crawled_excluded_urls if isinstance(url, str)]
+    if crawled_excluded:
+        return False, crawled_excluded[:5], (
+            "blocked URL was crawled: " + ", ".join(crawled_excluded[:5])
+        )
 
     if case.mode == "llm_no_auth":
         matched = [
