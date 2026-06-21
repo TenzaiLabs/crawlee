@@ -15,6 +15,34 @@ The system is designed as a **single-user, standalone tool** that is deployable 
 
 **Artifacts:** `/data/traffic_{job_id}.jsonl` (Proxify logs), `/data/screenshots/`
 
+```mermaid
+flowchart TD
+      API[FastAPI routes<br/>app.main] --> Store[(Job store<br/>app.db)]
+      Store --> Orch[Orchestrator<br/>app.orchestrator]
+
+      Orch --> Auth{Auth required?}
+      Auth -->|credentials or login_url| AuthAgent[Auth Agent<br/>app.auth_agent]
+      Auth -->|manual headers or no auth| Safety[Scope and safety config]
+      AuthAgent --> Safety
+
+      Safety --> CrawlInput[Crawl input<br/>target, headers, seeds, exclusions]
+
+      CrawlInput --> Crawler[Crawler Adapter<br/>app.crawler]
+      Crawler --> Katana[Katana subprocess]
+      Crawler --> Process[Async subprocess wrapper<br/>app.process]
+
+      Orch --> Proxy[Proxy Adapter<br/>app.proxy]
+      Proxy --> Proxify[Proxify subprocess]
+
+      Katana --> Logs[Katana / Proxify logs]
+      Proxify --> Logs
+
+      Logs --> Parser[Parser<br/>app.parser + app.log_records]
+      Parser --> Sitemap[Sitemap result]
+      Sitemap --> Store
+      Store --> API
+```
+
 ### **Data Flow**
 
 #### **Phase 1: Submission & Initialization**
