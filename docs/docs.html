@@ -10,6 +10,8 @@
   <meta property="og:type" content="website" />
   <link rel="icon" href="assets/tenzai-favicon-48.png" type="image/png" sizes="48x48" />
   <link rel="stylesheet" href="assets/site.css" />
+  <script defer src="assets/vendor/mermaid-11.15.0.min.js"></script>
+  <script defer src="assets/architecture.js"></script>
 </head>
 <body>
   <nav class="site-nav" aria-label="Primary">
@@ -127,6 +129,39 @@ curl http://localhost:8000/jobs/&lt;job_id&gt;</pre>
 
       <section id="architecture">
         <h2>Architecture</h2>
+        <p>
+          The service boundary stays small: the orchestrator owns auth, proxy, and job state, while
+          crawler, proxy, process, and parser adapters keep external tooling isolated.
+        </p>
+        <div class="diagram-card" aria-label="Tenzai Crawler architecture flow">
+          <pre class="mermaid">
+flowchart TD
+      API[FastAPI routes<br/>app.main] --> Store[(Job store<br/>app.db)]
+      Store --> Orch[Orchestrator<br/>app.orchestrator]
+
+      Orch --> Auth{Auth required?}
+      Auth -->|credentials or login_url| AuthAgent[Auth Agent<br/>app.auth_agent]
+      Auth -->|manual headers or no auth| Safety[Scope and safety config]
+      AuthAgent --> Safety
+
+      Safety --> CrawlInput[Crawl input<br/>target, headers, seeds, exclusions]
+
+      CrawlInput --> Crawler[Crawler Adapter<br/>app.crawler]
+      Crawler --> Katana[Katana subprocess]
+      Crawler --> Process[Async subprocess wrapper<br/>app.process]
+
+      Orch --> Proxy[Proxy Adapter<br/>app.proxy]
+      Proxy --> Proxify[Proxify subprocess]
+
+      Katana --> Logs[Katana / Proxify logs]
+      Proxify --> Logs
+
+      Logs --> Parser[Parser<br/>app.parser + app.log_records]
+      Parser --> Sitemap[Sitemap result]
+      Sitemap --> Store
+      Store --> API
+          </pre>
+        </div>
         <ul>
           <li><strong>API:</strong> validates input and records jobs.</li>
           <li><strong>Orchestrator:</strong> owns status transitions and the single-job queue.</li>

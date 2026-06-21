@@ -303,6 +303,31 @@ pre .p {
   color: #88ffff;
 }
 
+.diagram-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 24px 0 30px;
+  overflow-x: auto;
+  padding: 18px;
+}
+
+.diagram-card .mermaid {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  min-width: 760px;
+  padding: 0;
+  text-align: center;
+}
+
+.diagram-card svg {
+  display: block;
+  height: auto;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
 .read-more {
   margin-top: 28px;
   text-align: center;
