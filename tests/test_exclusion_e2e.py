@@ -3,18 +3,19 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import signal
 import shutil
+import signal
 import socket
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import BaseServer
 from threading import Thread
-from typing import Iterator
 from urllib.parse import urlparse
 
 import pytest
@@ -43,14 +44,21 @@ class FullSiteExclusionCase:
 @contextmanager
 def static_site(root: Path) -> Iterator[str]:
     class Handler(QuietStaticHandler):
-        def __init__(self, *args: object, **kwargs: object) -> None:
-            super().__init__(*args, directory=str(root), **kwargs)
+        def __init__(
+            self,
+            request: socket.socket,
+            client_address: tuple[str, int],
+            server: BaseServer,
+        ) -> None:
+            super().__init__(request, client_address, server, directory=str(root))
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        host, port = server.server_address
+        server_address = server.server_address
+        host = str(server_address[0])
+        port = int(server_address[1])
         yield f"http://{host}:{port}"
     finally:
         server.shutdown()
