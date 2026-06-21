@@ -1,7 +1,7 @@
 [project]
-name = "crawler"
+name = "tenzai-crawler"
 version = "0.1.0"
-description = "Async-native AI-driven web crawler"
+description = "Tenzai async-native AI-driven web crawler"
 requires-python = ">=3.14"
 dependencies = [
   "fastapi",
@@ -28,6 +28,8 @@ packages = ["app"]
 [project.scripts]
 crawler = "app.cli:main"
 crawler-server = "app.main:cli"
+tenzai-crawler = "app.cli:main"
+tenzai-crawler-server = "app.main:cli"
 
 [tool.ruff]
 target-version = "py314"

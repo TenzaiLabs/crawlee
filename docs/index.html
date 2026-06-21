@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tenzai Crawler - authenticated application crawling</title>
+  <meta name="description" content="Tenzai Crawler is an async-native FastAPI service for authenticated application crawling with Katana, Proxify, and operator-controlled auth flows." />
+  <meta property="og:title" content="Tenzai Crawler" />
+  <meta property="og:description" content="Authenticated application crawling for operator-led reconnaissance." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="assets/tenzai-favicon-48.png" type="image/png" sizes="48x48" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <nav class="site-nav" aria-label="Primary">
+    <a class="brand" href="index.html">
+      <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+      <span>Tenzai Crawler</span>
+    </a>
+    <div class="links">
+      <a href="#quickstart">Quickstart</a>
+      <a href="#how">How it works</a>
+      <a href="#use-cases">What it is for</a>
+      <a href="docs.html">Docs</a>
+    </div>
+  </nav>
+
+  <header class="hero wrap">
+    <div class="mark">
+      <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+    </div>
+    <h1>Tenzai Crawler</h1>
+    <p class="tagline">Authenticated crawling for operator-led application reconnaissance.</p>
+    <p class="lede">
+      A single-job FastAPI service that runs pre-crawl authentication when needed, sends Katana
+      through Proxify, and turns captured traffic into a sitemap your team can inspect or feed into
+      the next testing step.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="docs.html">Read the docs</a>
+      <a class="btn btn-ghost" href="#quickstart">Start locally</a>
+    </div>
+  </header>
+
+  <section class="alt" id="quickstart">
+    <div class="wrap">
+      <h2>Quickstart</h2>
+      <p class="section-sub">
+        Install dependencies, run the API, and create a crawl job. The service drains one job at a
+        time because the proxy binds a fixed local port.
+      </p>
+      <div class="code-card">
+<pre><span class="c"># Install runtime dependencies</span>
+uv sync --extra test
+
+<span class="c"># Run the API</span>
+uv run tenzai-crawler-server
+
+<span class="c"># Create a crawl job</span>
+uv run tenzai-crawler create https://example.com
+
+<span class="c"># Check status and read the completed sitemap</span>
+uv run tenzai-crawler status &lt;job_id&gt;</pre>
+      </div>
+      <p class="read-more"><a href="docs.html#quickstart">Read more in the docs</a></p>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="section-sub">
+        The orchestrator owns job state. Authentication is optional, crawling stays auth-agnostic,
+        and logs are parsed only after the crawl finishes.
+      </p>
+      <div class="flow" aria-label="Crawler flow">
+        <div class="node">
+          <div class="k">POST /jobs</div>
+          <div class="d">Operator submits a target URL, scope options, and optional auth config.</div>
+        </div>
+        <div class="node">
+          <div class="k">Auth, if needed</div>
+          <div class="d">Credentials or a login URL trigger the Playwright-driven auth agent.</div>
+        </div>
+        <div class="node">
+          <div class="k">Katana crawl</div>
+          <div class="d">Katana receives headers, seed URLs, scope limits, and exclusion patterns.</div>
+        </div>
+        <div class="node">
+          <div class="k">Sitemap output</div>
+          <div class="d">Proxify and Katana logs become a normalized job result.</div>
+        </div>
+      </div>
+      <p class="read-more"><a href="docs.html#architecture">Read the architecture notes</a></p>
+    </div>
+  </section>
+
+  <section class="alt" id="use-cases">
+    <div class="wrap">
+      <h2>What it is for</h2>
+      <p class="section-sub">
+        Tenzai Crawler is focused on repeatable crawl capture for trusted operators, not broad
+        public exposure.
+      </p>
+      <div class="features">
+        <article class="feature">
+          <h3>Authenticated surfaces</h3>
+          <p>
+            Use manual headers when the operator already has a session, or run the auth agent when
+            credentials or a login URL are supplied.
+          </p>
+        </article>
+        <article class="feature">
+          <h3>Safety-aware crawling</h3>
+          <p>
+            Scope rules and blocked URL patterns keep destructive flows, logout routes, and unrelated
+            domains out of the crawl path.
+          </p>
+        </article>
+        <article class="feature">
+          <h3>Durable evidence</h3>
+          <p>
+            Job state lands in SQLite, request logs stay on disk, and completed jobs expose a
+            deduplicated sitemap through the API.
+          </p>
+        </article>
+      </div>
+      <p class="read-more"><a href="docs.html#auth">Read the auth guide</a></p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="made-by">
+        <span>Made by</span>
+        <a href="https://tenzai.com" aria-label="Tenzai">
+          <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+        </a>
+      </div>
+      <div class="small">Tenzai Crawler docs · <a href="docs.html">Docs</a></div>
+    </div>
+  </footer>
+</body>
+</html>

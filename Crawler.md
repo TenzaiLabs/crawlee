@@ -1,6 +1,6 @@
-### **Architecture: AI-Driven, Async Web Crawler**
+### **Architecture: Tenzai AI-Driven, Async Web Crawler**
 
-This project is an **Async-Native Web Crawler** designed to solve two critical failures in existing tools:
+Tenzai Crawler is an **Async-Native Web Crawler** designed to solve two critical failures in existing tools:
 
 1. **Authentication:** Uses an AI Agent (LLM \+ Playwright) to handle complex logins, not humans.  
 2. **Safety ("Do No Harm"):** Enforces strict scoping rules and regex-based exclusions to prevent destructive actions during crawling.

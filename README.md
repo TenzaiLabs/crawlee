@@ -1,6 +1,6 @@
-# Crawler
+# Tenzai Crawler
 
-Crawler is an async-native FastAPI service for crawling websites with Katana and Proxify. It stores job state in SQLite, writes request logs to disk, and can perform pre-crawl authentication with either operator-supplied headers or a Playwright-driven LLM auth agent.
+Tenzai Crawler is an async-native FastAPI service for crawling websites with Katana and Proxify. It stores job state in SQLite, writes request logs to disk, and can perform pre-crawl authentication with either operator-supplied headers or a Playwright-driven LLM auth agent.
 
 The service runs as a single-job worker. Jobs are accepted through the API, stored as queued records, and drained serially because Proxify binds the fixed local proxy address `127.0.0.1:8888`.
 
@@ -30,7 +30,7 @@ uv sync --extra test
 Run the API:
 
 ```bash
-uv run crawler-server
+uv run tenzai-crawler-server
 ```
 
 The server binds `0.0.0.0:8000` by default. Override with `CRAWLER_HOST` and `CRAWLER_PORT`.
@@ -95,11 +95,22 @@ The CLI is a wrapper over the same API endpoints.
 Basic commands:
 
 ```bash
-uv run crawler create https://example.com
-uv run crawler list
-uv run crawler status <job_id>
-uv run crawler cancel <job_id>
+uv run tenzai-crawler create https://example.com
+uv run tenzai-crawler list
+uv run tenzai-crawler status <job_id>
+uv run tenzai-crawler cancel <job_id>
 ```
+
+The previous `crawler` and `crawler-server` entry points remain available as compatibility aliases.
+
+## Docs Website
+
+The static docs website lives in `docs/`:
+
+- `docs/index.html` — one-page overview.
+- `docs/docs.html` — simple usage and architecture docs.
+
+The GitHub Pages workflow publishes that directory from `main`; after Pages is enabled for the repository, the site is available at `https://tenzailabs.github.io/crawlee/`.
 
 Global options:
 
@@ -246,4 +257,4 @@ kubectl apply -f k8s/service.yaml
 
 ## Security Posture
 
-Crawler is designed for trusted operators. If exposed broadly, add API authentication/authorization and egress controls.
+Tenzai Crawler is designed for trusted operators. If exposed broadly, add API authentication/authorization and egress controls.

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192px" height="48px" viewBox="0 0 192 48" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>tenzai-full-logo-blue-white</title>
+    <defs>
+        <radialGradient cx="50%" cy="50%" fx="50%" fy="50%" r="60.1985575%" gradientTransform="translate(0.5, 0.5), scale(1, 0.825), rotate(-90), translate(-0.5, -0.5)" id="radialGradient-1">
+            <stop stop-color="#00A8BF" offset="0%"></stop>
+            <stop stop-color="#88FFFF" offset="100%"></stop>
+        </radialGradient>
+    </defs>
+    <g id="tenzai-full-logo-blue-white" stroke="none" fill="none" fill-rule="evenodd">
+        <path d="M54,17 L54,11 L76,11 L76,17 L68,17 L68,37 L62,37 L62,17 L54,17 Z M79,11 L98,11 L98,17 L85,17 L85,21 L97,21 L97,27 L85,27 L85,31 L98,31 L98,37 L79,37 L79,11 Z M138,17 L127,17 L127,11 L146,11 L146,17 L135,31 L146,31 L146,37 L127,37 L127,31 L138,17 Z M155,37 L148,37 L156,11 L165,11 L173,37 L166,37 L164.385,31 L156.615,31 L155,37 Z M160.5,16.572 L158.231,25 L162.769,25 L160.5,16.572 Z M123,37 L117,37 L108,22 L108,37 L102,37 L102,11 L108,11 L117,26 L117,11 L123,11 L123,37 Z M175,11 L181,11 L181,37 L175,37 L175,11 Z" id="Shape" fill="#FFFFFF"></path>
+        <g id="tenzai-symbol-black" transform="translate(-8, -8)">
+            <path d="M40.2417576,35.999 L46.8492424,42.6066017 L42.6066017,46.8492424 L35.9997576,40.242 L36,36 L40.2417576,35.999 Z M23.7567576,35.999 L28,36 L27.9997576,40.242 L21.3933983,46.8492424 L17.1507576,42.6066017 L23.7567576,35.999 Z M35,14 L35,24.756 L42.6066017,17.1507576 L46.8492424,21.3933983 L40.2437576,27.999 L23.7577576,27.999 L17.1507576,21.3933983 L21.3933983,17.1507576 L29,24.756 L29,14 L35,14 Z" id="Shape" fill="url(#radialGradient-1)"></path>
+            <polygon id="Path" fill="#88FFFF" points="50 29 50 35 35 35 35 50 29 50 29 35 14 35 14 29"></polygon>
+        </g>
+    </g>
+</svg>

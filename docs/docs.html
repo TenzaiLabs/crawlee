@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Docs - Tenzai Crawler</title>
+  <meta name="description" content="Setup, API usage, authentication modes, deployment notes, and output format for Tenzai Crawler." />
+  <meta property="og:title" content="Tenzai Crawler Docs" />
+  <meta property="og:description" content="Setup, API usage, authentication modes, deployment notes, and output format." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="assets/tenzai-favicon-48.png" type="image/png" sizes="48x48" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <nav class="site-nav" aria-label="Primary">
+    <a class="brand" href="index.html">
+      <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+      <span>Tenzai Crawler</span>
+    </a>
+    <div class="links">
+      <a href="index.html">Overview</a>
+      <a class="active" href="docs.html">Docs</a>
+      <a href="#api">API</a>
+      <a href="#auth">Auth</a>
+    </div>
+  </nav>
+
+  <main class="doc-shell wrap">
+    <aside class="toc" aria-label="Docs sections">
+      <a href="#overview">Overview</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#api">API</a>
+      <a href="#auth">Authentication</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#deployment">Deployment</a>
+      <a href="#output">Output</a>
+    </aside>
+
+    <article class="doc-content">
+      <h1>Tenzai Crawler docs</h1>
+      <p>
+        Tenzai Crawler is an async-native FastAPI service for trusted operators who need
+        repeatable crawl capture across public and authenticated application surfaces.
+      </p>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>
+          The service accepts crawl jobs through an API, stores job state in SQLite, runs work
+          serially, captures traffic through Proxify, and returns a normalized sitemap when the
+          job completes.
+        </p>
+        <div class="doc-callout">
+          The crawler stays auth-agnostic. The orchestrator decides whether authentication is
+          required and passes only headers, cookies, seed URLs, and exclusion patterns into the
+          crawl step.
+        </div>
+      </section>
+
+      <section id="quickstart">
+        <h2>Quickstart</h2>
+        <p>Install dependencies and run the API from the repository root.</p>
+<pre><span class="c"># Install dependencies</span>
+uv sync --extra test
+
+<span class="c"># Start the API server</span>
+uv run tenzai-crawler-server</pre>
+
+        <p>Create a job from the CLI.</p>
+<pre>uv run tenzai-crawler create https://example.com
+uv run tenzai-crawler list
+uv run tenzai-crawler status &lt;job_id&gt;
+uv run tenzai-crawler cancel &lt;job_id&gt;</pre>
+      </section>
+
+      <section id="api">
+        <h2>API</h2>
+        <p>
+          The API exposes a small job lifecycle: create, list, inspect, and cancel. The generated
+          FastAPI reference is available at <code>/docs</code> when the service is running.
+        </p>
+<pre><span class="c"># Create a crawl job</span>
+curl -X POST http://localhost:8000/jobs \
+  -H 'Content-Type: application/json' \
+  -d '{"target_url":"https://example.com"}'
+
+<span class="c"># Read job status or completed sitemap</span>
+curl http://localhost:8000/jobs/&lt;job_id&gt;</pre>
+      </section>
+
+      <section id="auth">
+        <h2>Authentication</h2>
+        <p>
+          Authentication is optional. Header-only configuration is manual-header mode and goes
+          directly to the crawl. Credentials or a login URL run the auth agent before crawling.
+        </p>
+
+        <h3>Manual-header mode</h3>
+<pre>{
+  "target_url": "https://example.com",
+  "auth_config": {
+    "headers": [
+      "Authorization: Bearer $TOKEN",
+      "Cookie: session=abc"
+    ]
+  }
+}</pre>
+
+        <h3>AI-auth mode</h3>
+<pre>{
+  "target_url": "https://example.com",
+  "auth_config": {
+    "login_url": "https://example.com/login",
+    "credentials": {
+      "email": "{{env:APP_EMAIL}}",
+      "password": "{{env:APP_PASSWORD}}"
+    },
+    "instructions": "Login and stop once the dashboard is visible.",
+    "success_indicator": "Dashboard"
+  }
+}</pre>
+        <p>
+          Secret templates are resolved in memory before authentication. Do not submit plaintext
+          secrets in job payloads.
+        </p>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture</h2>
+        <ul>
+          <li><strong>API:</strong> validates input and records jobs.</li>
+          <li><strong>Orchestrator:</strong> owns status transitions and the single-job queue.</li>
+          <li><strong>Auth agent:</strong> uses Playwright browser controls when login is required.</li>
+          <li><strong>Proxy:</strong> captures traffic through a fixed local listener.</li>
+          <li><strong>Crawler:</strong> runs Katana with target, scope, headers, and exclusions.</li>
+          <li><strong>Parser:</strong> turns logs into the completed job sitemap.</li>
+        </ul>
+      </section>
+
+      <section id="deployment">
+        <h2>Deployment</h2>
+        <p>
+          Kubernetes manifests are provided for a single-replica StatefulSet with persistent
+          storage mounted at the service data path.
+        </p>
+<pre>kubectl apply -f k8s/statefulset.yaml
+kubectl apply -f k8s/service.yaml</pre>
+      </section>
+
+      <section id="output">
+        <h2>Output</h2>
+        <p>
+          Completed jobs expose a <code>sitemap</code> object with a flat list of observed request
+          entries and a path tree for UI rendering. Log artifacts remain on disk for later review.
+        </p>
+<pre>{
+  "job_id": "6b1a...",
+  "status": "completed",
+  "target_url": "https://example.com",
+  "sitemap": {
+    "entries": [],
+    "tree": {
+      "children": {},
+      "pages": []
+    }
+  }
+}</pre>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="made-by">
+        <span>Made by</span>
+        <a href="https://tenzai.com" aria-label="Tenzai">
+          <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+        </a>
+      </div>
+      <div class="small">Tenzai Crawler docs · <a href="index.html">Overview</a></div>
+    </div>
+  </footer>
+</body>
+</html>

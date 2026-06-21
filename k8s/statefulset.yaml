@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: crawler
+  name: tenzai-crawler
 spec:
-  serviceName: crawler
+  serviceName: tenzai-crawler
   replicas: 1
   selector:
     matchLabels:
-      app: crawler
+      app: tenzai-crawler
   template:
     metadata:
       labels:
-        app: crawler
+        app: tenzai-crawler
     spec:
       containers:
-        - name: crawler
-          image: crawler:latest
+        - name: tenzai-crawler
+          image: tenzai-crawler:latest
           ports:
             - containerPort: 8000
           volumeMounts:

@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: crawler
+  name: tenzai-crawler
 spec:
   type: ClusterIP
   selector:
-    app: crawler
+    app: tenzai-crawler
   ports:
     - port: 8000
       targetPort: 8000

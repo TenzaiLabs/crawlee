@@ -12,10 +12,15 @@ import traceback
 import uuid
 from collections import OrderedDict
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, status
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
@@ -41,6 +46,17 @@ from .settings import (  # noqa: E402
 )
 
 logger = logging.getLogger(__name__)
+
+APP_TITLE = "Tenzai Crawler"
+APP_DESCRIPTION = (
+    "Async-native Tenzai crawling service for operator-led application reconnaissance, "
+    "authenticated crawl setup, and sitemap extraction."
+)
+APP_VERSION = "0.1.0"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+OPENAPI_URL = "/openapi.json"
+FAVICON_URL = "/static/tenzai-favicon-48.png"
+LOGO_URL = "/static/tenzai-logo.svg"
 
 _completed_sitemap_cache: OrderedDict[tuple[str, str | None], dict[str, Any]] = OrderedDict()
 _completed_sitemap_cache_lock = asyncio.Lock()
@@ -121,7 +137,102 @@ async def lifespan(_: FastAPI):
     logger.info("Shutting down crawler service lifespan")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title=APP_TITLE,
+    description=APP_DESCRIPTION,
+    version=APP_VERSION,
+    openapi_url=OPENAPI_URL,
+    docs_url=None,
+    redoc_url=None,
+)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+def custom_openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=APP_TITLE,
+        version=APP_VERSION,
+        description=APP_DESCRIPTION,
+        routes=app.routes,
+    )
+    schema["info"]["x-logo"] = {"url": LOGO_URL, "altText": "Tenzai"}
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi  # type: ignore[method-assign]
+
+
+def _with_tenzai_docs_brand(response: HTMLResponse, product_label: str) -> HTMLResponse:
+    body = bytes(response.body).decode("utf-8")
+    style = """
+    <style>
+      .tenzai-docs-header {
+        align-items: center;
+        background: #232325;
+        border-bottom: 1px solid #3a3a3d;
+        box-sizing: border-box;
+        color: #ffffff;
+        display: flex;
+        gap: 18px;
+        min-height: 64px;
+        padding: 14px 32px;
+      }
+      .tenzai-docs-header img {
+        height: 32px;
+        width: auto;
+      }
+      .tenzai-docs-header span {
+        border-left: 1px solid #686868;
+        color: #88ffff;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1;
+        padding-left: 18px;
+      }
+      @media (max-width: 640px) {
+        .tenzai-docs-header {
+          padding: 12px 18px;
+        }
+        .tenzai-docs-header span {
+          font-size: 13px;
+        }
+      }
+    </style>
+    """
+    header = (
+        '<header class="tenzai-docs-header">'
+        f'<img src="{LOGO_URL}" alt="Tenzai logo">'
+        f"<span>{product_label}</span>"
+        "</header>"
+    )
+    body = body.replace("</head>", f"{style}</head>")
+    body = body.replace("<body>", f"<body>{header}", 1)
+    return HTMLResponse(content=body, status_code=response.status_code)
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html() -> HTMLResponse:
+    response = get_swagger_ui_html(
+        openapi_url=OPENAPI_URL,
+        title=f"{APP_TITLE} API docs",
+        swagger_favicon_url=FAVICON_URL,
+    )
+    return _with_tenzai_docs_brand(response, "Crawler API")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def custom_redoc_html() -> HTMLResponse:
+    response = get_redoc_html(
+        openapi_url=OPENAPI_URL,
+        title=f"{APP_TITLE} ReDoc",
+        redoc_favicon_url=FAVICON_URL,
+    )
+    return _with_tenzai_docs_brand(response, "Crawler API")
 
 
 if os.getenv("CRAWLER_ENABLE_DEBUG_ENDPOINTS") == "1":

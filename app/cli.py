@@ -151,14 +151,14 @@ async def cancel_job(client: httpx.AsyncClient, job_id: str) -> dict[str, Any]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Crawler CLI",
+        description="Tenzai Crawler CLI",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  uv run python -m app.cli create https://example.com\n"
-            "  uv run python -m app.cli status <job_id>\n"
-            "  uv run python -m app.cli cancel <job_id>\n"
-            "  uv run python -m app.cli --base-url http://host:8000 status <job_id>"
+            "  uv run tenzai-crawler create https://example.com\n"
+            "  uv run tenzai-crawler status <job_id>\n"
+            "  uv run tenzai-crawler cancel <job_id>\n"
+            "  uv run tenzai-crawler --base-url http://host:8000 status <job_id>"
         ),
     )
     parser.add_argument(

@@ -1,9 +1,38 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import pytest
 
 from app import cli, main
+
+
+@pytest.mark.asyncio
+async def test_api_docs_are_tenzai_branded():
+    transport = httpx.ASGITransport(app=main.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        schema_response = await client.get("/openapi.json")
+        docs_response = await client.get("/docs")
+        redoc_response = await client.get("/redoc")
+
+    assert schema_response.status_code == 200
+    schema = schema_response.json()
+    assert schema["info"]["title"] == "Tenzai Crawler"
+    assert schema["info"]["x-logo"] == {"url": "/static/tenzai-logo.svg", "altText": "Tenzai"}
+
+    assert docs_response.status_code == 200
+    assert "Tenzai Crawler API docs" in docs_response.text
+    assert "/static/tenzai-favicon-48.png" in docs_response.text
+    assert "/static/tenzai-logo.svg" in docs_response.text
+
+    assert redoc_response.status_code == 200
+    assert "Tenzai Crawler ReDoc" in redoc_response.text
+    assert "/static/tenzai-favicon-48.png" in redoc_response.text
+    assert "/static/tenzai-logo.svg" in redoc_response.text
+
+    assert (Path(main.STATIC_DIR) / "tenzai-favicon-48.png").is_file()
+    assert (Path(main.STATIC_DIR) / "tenzai-logo.svg").is_file()
 
 
 @pytest.mark.asyncio
