@@ -258,9 +258,7 @@ def build_cases(*, gateway: bool = False) -> list[AuthAgentSiteCase]:
         }
         if instructions:
             config["instructions"] = instructions
-        llm_cases.append(
-            AuthAgentSiteCase(name, url(name), config, "/app/overview", "llm")
-        )
+        llm_cases.append(AuthAgentSiteCase(name, url(name), config, "/app/overview", "llm"))
 
     return public_cases + llm_no_auth_cases + manual_cases + llm_cases
 

@@ -400,6 +400,36 @@ pre .p {
   padding: 18px 20px;
 }
 
+.threat-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 22px 0 4px;
+}
+
+.threat-grid article {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px 18px 16px;
+}
+
+.threat-grid h4 {
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+
+.threat-grid ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.threat-grid li {
+  margin: 7px 0;
+}
+
 footer {
   border-top: 1px solid var(--line);
   color: var(--ink-soft);
@@ -449,6 +479,7 @@ footer {
 
   .flow,
   .features,
+  .threat-grid,
   .doc-shell {
     grid-template-columns: 1fr;
   }

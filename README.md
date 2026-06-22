@@ -1,5 +1,12 @@
 # Tenzai Crawler
 
+[![CI](https://github.com/TenzaiLabs/crawlee/actions/workflows/ci.yml/badge.svg)](https://github.com/TenzaiLabs/crawlee/actions/workflows/ci.yml)
+[![Pages](https://github.com/TenzaiLabs/crawlee/actions/workflows/pages.yml/badge.svg)](https://github.com/TenzaiLabs/crawlee/actions/workflows/pages.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-00a8bf)](https://tenzailabs.github.io/crawlee/)
+[![Python](https://img.shields.io/badge/python-3.14-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-see%20LICENSE.md-lightgrey)](LICENSE.md)
+[![Security](https://img.shields.io/badge/security-policy-00a8bf)](SECURITY.md)
+
 Tenzai Crawler is an async-native FastAPI service for crawling websites with Katana and Proxify. It stores job state in SQLite, writes request logs to disk, and can perform pre-crawl authentication with either operator-supplied headers or a Playwright-driven LLM auth agent.
 
 The service runs as a single-job worker. Jobs are accepted through the API, stored as queued records, and drained serially because Proxify binds the fixed local proxy address `127.0.0.1:8888`.
@@ -48,11 +55,14 @@ uv sync --extra test --extra dev
 Run checks:
 
 ```bash
+uv run pre-commit run -a
 uv run pytest -q
 uv run ruff check app tests scripts --fix
 uv run ruff format app tests scripts
 uv run ty check
 ```
+
+Install the commit hooks locally with `uv run pre-commit install`.
 
 Optional E2E scenario:
 
@@ -111,6 +121,11 @@ The static docs website lives in `docs/`:
 - `docs/docs.html` — simple usage and architecture docs.
 
 The GitHub Pages workflow publishes that directory from `main`; after Pages is enabled for the repository, the site is available at `https://tenzailabs.github.io/crawlee/`.
+
+## Project Policies
+
+- See `SECURITY.md` for vulnerability reporting, security boundaries, and disclosure expectations.
+- See `CONTRIBUTING.md` for local development, test, docs, and pull request expectations.
 
 Global options:
 

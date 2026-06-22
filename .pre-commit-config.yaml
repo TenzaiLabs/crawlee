@@ -1,4 +1,18 @@
+exclude: ^(\.agents/|docs/assets/vendor/)
+
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.14
     hooks:
@@ -9,6 +23,24 @@ repos:
   # ty does not yet ship an official pre-commit hook.
   - repo: local
     hooks:
+      - id: docs-links
+        name: docs-links
+        entry: python scripts/check_docs_links.py
+        language: system
+        pass_filenames: false
+        files: ^docs/
+      - id: github-actions-pins
+        name: github-actions-pins
+        entry: python scripts/check_github_actions_pins.py
+        language: system
+        pass_filenames: false
+        files: ^\.github/workflows/
+      - id: forbid-generated-comparison-artifacts
+        name: forbid-generated-comparison-artifacts
+        entry: bash -c 'if git diff --cached --name-only -- docs/testsite-comparison-report.md docs/testsite-comparison-results.json | grep -q .; then echo "Do not commit generated testsite comparison report/result artifacts unless explicitly requested."; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: ty-check
         name: ty-check
         entry: uv run ty check

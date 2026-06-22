@@ -20,6 +20,7 @@ async def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     importlib.reload(main)
     monkeypatch.setattr(main.orchestrator, "enqueue_job", lambda job_id: None)
     monkeypatch.setattr(main.orchestrator, "start_drainer", lambda: None)
+    monkeypatch.setattr(main.shutil, "which", lambda binary: f"/usr/bin/{binary}")
 
     async with main.lifespan(main.app):
         await main.db.execute("DELETE FROM jobs")
@@ -36,6 +37,7 @@ async def app_with_orchestrator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
     importlib.reload(db)
     importlib.reload(main)
+    monkeypatch.setattr(main.shutil, "which", lambda binary: f"/usr/bin/{binary}")
     async with main.lifespan(main.app):
         await main.db.execute("DELETE FROM jobs")
         yield main.app

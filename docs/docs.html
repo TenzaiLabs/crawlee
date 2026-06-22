@@ -170,6 +170,70 @@ flowchart TD
           <li><strong>Crawler:</strong> runs Katana with target, scope, headers, and exclusions.</li>
           <li><strong>Parser:</strong> turns logs into the completed job sitemap.</li>
         </ul>
+
+        <h3>Threat model</h3>
+        <p>
+          Tenzai Crawler assumes a trusted operator, a trusted deployment boundary, and untrusted
+          target websites. If that operator boundary changes, API authentication, authorization, and
+          network egress policy become deployment requirements rather than optional hardening.
+        </p>
+        <div class="threat-grid">
+          <article>
+            <h4>Assets</h4>
+            <ul>
+              <li>Job records and target history in SQLite.</li>
+              <li>Auth config references and resolved in-memory secrets.</li>
+              <li>Captured cookies, headers, request logs, and completed sitemaps.</li>
+              <li>Proxy, browser, Katana, and subprocess control surfaces.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>Trust boundaries</h4>
+            <ul>
+              <li>Operator to API payloads.</li>
+              <li>API/orchestrator to Playwright, Katana, and Proxify subprocesses.</li>
+              <li>Internal service network to arbitrary target sites.</li>
+              <li>Persistent `/data` storage to generated API responses and docs artifacts.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>Attacker capabilities</h4>
+            <ul>
+              <li>A malicious target can return hostile HTML, redirects, links, and forms.</li>
+              <li>A misconfigured caller can submit broad scope, sensitive URLs, or plaintext auth.</li>
+              <li>A compromised dependency or workflow action could run inside CI.</li>
+              <li>A broadly exposed deployment could let untrusted users start crawl jobs.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>Primary risks</h4>
+            <ul>
+              <li>Secret leakage through stored payloads, logs, screenshots, or debug endpoints.</li>
+              <li>SSRF or unwanted egress through target URLs, login URLs, redirects, or seed URLs.</li>
+              <li>Unsafe crawl actions against logout, delete, unsubscribe, or destructive paths.</li>
+              <li>Subprocess leaks that leave browsers, Katana, or Proxify running after cancel.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>Mitigations in the service</h4>
+            <ul>
+              <li>Orchestrator-owned auth decisions and status transitions.</li>
+              <li>Header-only auth mode that never invokes AI auth.</li>
+              <li>Scope validation, default dangerous-path exclusions, and auth-recorded blocked URLs.</li>
+              <li>Cancellation checks and async subprocess cleanup.</li>
+              <li>Debug endpoints disabled by default.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>Deployment controls</h4>
+            <ul>
+              <li>Place the API behind trusted access controls before shared use.</li>
+              <li>Apply Kubernetes/network egress restrictions for crawl destinations.</li>
+              <li>Provide secrets through environment references, not plaintext job payloads.</li>
+              <li>Keep GitHub Actions least-privilege and pinned to immutable action SHAs.</li>
+            </ul>
+          </article>
+        </div>
       </section>
 
       <section id="deployment">

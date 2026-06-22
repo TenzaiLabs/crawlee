@@ -87,9 +87,10 @@ def sanitize_log_file(log_path: str) -> None:
     tmp_path = log_path + ".tmp"
     changed = 0
     try:
-        with open(log_path, encoding="utf-8", errors="replace") as infile, open(
-            tmp_path, "w", encoding="utf-8"
-        ) as outfile:
+        with (
+            open(log_path, encoding="utf-8", errors="replace") as infile,
+            open(tmp_path, "w", encoding="utf-8") as outfile,
+        ):
             for line in infile:
                 stripped = line.strip()
                 if not stripped:

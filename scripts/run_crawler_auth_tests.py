@@ -163,7 +163,7 @@ def _blocked_paths_for_case(case: Any) -> tuple[str, ...]:
     sitemap_path = TESTSITES_DIR / site_name / "sitemap.json"
     try:
         data = json.loads(sitemap_path.read_text())
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return ()
 
     paths: list[str] = []
@@ -213,8 +213,10 @@ def _validate_sitemap(
     ]
     crawled_excluded = [url for url in crawled_excluded_urls if isinstance(url, str)]
     if crawled_excluded:
-        return False, crawled_excluded[:5], (
-            "blocked URL was crawled: " + ", ".join(crawled_excluded[:5])
+        return (
+            False,
+            crawled_excluded[:5],
+            ("blocked URL was crawled: " + ", ".join(crawled_excluded[:5])),
         )
 
     if case.mode == "llm_no_auth":
@@ -487,8 +489,7 @@ async def async_main() -> int:
         if args.json:
             print(json.dumps([result.__dict__ for result in results], indent=2, sort_keys=True))
         print(
-            f"crawler-auth-test summary: {len(results) - len(failed)} passed, "
-            f"{len(failed)} failed"
+            f"crawler-auth-test summary: {len(results) - len(failed)} passed, {len(failed)} failed"
         )
         return 1 if failed else 0
     finally:

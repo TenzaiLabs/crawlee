@@ -14,7 +14,7 @@ If the bug is present the body will be empty.
 """
 
 import sys
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 class DebugHandler(BaseHTTPRequestHandler):

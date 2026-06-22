@@ -272,7 +272,7 @@ async def _safe_visible_text(page: Any, *, limit: int = 8000) -> str:
             "(limit) => (document.body ? document.body.innerText : '').slice(0, limit)",
             limit,
         )
-    except (PlaywrightTimeoutError, PlaywrightError):
+    except PlaywrightTimeoutError, PlaywrightError:
         return ""
     return text if isinstance(text, str) else ""
 
@@ -443,7 +443,7 @@ class _AuthBrowserController:
                     "textLimit": text_limit,
                 },
             )
-        except (PlaywrightTimeoutError, PlaywrightError):
+        except PlaywrightTimeoutError, PlaywrightError:
             return None
         return payload if isinstance(payload, dict) else None
 
@@ -505,7 +505,7 @@ class _AuthBrowserController:
         selected_value = str(value)
         try:
             await locator.select_option(value=selected_value, timeout=10_000)
-        except (PlaywrightTimeoutError, PlaywrightError):
+        except PlaywrightTimeoutError, PlaywrightError:
             await locator.select_option(label=selected_value, timeout=10_000)
         self._set_active_page(page)
         await self._settle(page)

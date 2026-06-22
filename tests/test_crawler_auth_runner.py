@@ -131,6 +131,4 @@ def test_validate_sitemap_rejects_sitemap_blocked_entries() -> None:
 def test_blocked_paths_for_case_uses_base_site_name() -> None:
     case = SimpleNamespace(name="site-a-static-llm-no-auth")
 
-    assert run_crawler_auth_tests._blocked_paths_for_case(case) == (
-        "/workspace/deleted.html",
-    )
+    assert run_crawler_auth_tests._blocked_paths_for_case(case) == ("/workspace/deleted.html",)
