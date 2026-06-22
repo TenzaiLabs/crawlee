@@ -344,6 +344,7 @@ async def list_jobs() -> JobListResponse:
             error=row["error"],
             created_at=row["created_at"],
             finished_at=row["finished_at"],
+            generated_exclusions=db.loads_json(row["generated_exclusions"]),
         )
         for row in rows
     ]
@@ -372,6 +373,7 @@ async def get_job(job_id: str) -> JobResponse:
         error=row["error"],
         created_at=row["created_at"],
         finished_at=row["finished_at"],
+        generated_exclusions=db.loads_json(row["generated_exclusions"]),
         sitemap=sitemap,
     )
 

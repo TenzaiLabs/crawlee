@@ -46,10 +46,16 @@ async def init_db() -> None:
                 auth_config TEXT,
                 error TEXT,
                 created_at TEXT NOT NULL,
-                finished_at TEXT
+                finished_at TEXT,
+                generated_exclusions TEXT
             );
             """
         )
+        cursor = await conn.execute("PRAGMA table_info(jobs)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        await cursor.close()
+        if "generated_exclusions" not in columns:
+            await conn.execute("ALTER TABLE jobs ADD COLUMN generated_exclusions TEXT")
         await conn.commit()
     logger.info("Database schema initialization complete")
 

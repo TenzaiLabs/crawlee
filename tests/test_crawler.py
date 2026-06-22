@@ -85,6 +85,28 @@ def test_build_katana_command_merges_dynamic_exclude_patterns():
     assert exclusions.count("/admin") == 1
 
 
+def test_build_exclusion_patterns_matches_katana_out_of_scope_filters():
+    config = crawler.CrawlConfig(
+        target_url="https://example.com",
+        scope_config={
+            "exclude_filters": ["/admin"],
+            "exclude_regex": "/danger-zone",
+        },
+        dynamic_exclude_patterns=["/account/delete(?:$|[/?#])", "/admin"],
+    )
+
+    patterns = crawler.build_exclusion_patterns(config)
+    command = crawler.build_katana_command(config)
+
+    assert patterns == [
+        *crawler.DEFAULT_EXCLUSION_PATTERNS,
+        "/admin",
+        "/danger-zone",
+        "/account/delete(?:$|[/?#])",
+    ]
+    assert command[command.index("-crawl-out-scope") + 1] == "|".join(patterns)
+
+
 def test_build_katana_command_headless_with_cdp_url():
     config = crawler.CrawlConfig(
         target_url="https://example.com",

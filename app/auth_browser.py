@@ -24,6 +24,8 @@ URL from the page or instructions, pass it as probe_url. Call done() only when
 verification succeeds. If verification says "not verified", continue from the
 current browser state instead of assuming login worked. For pages with no auth
 screen and no credentials, verifying the already-accessible target page is valid.
+After verification succeeds, call get_page_state once more on the verified page
+and inspect visible links before calling done().
 For TOTP/MFA prompts, use get_totp_code with the credential key that contains
 the seed, for example get_totp_code("totp_secret"), then type the returned code
 into the MFA/TOTP field.
@@ -35,6 +37,9 @@ Safety rules:
   out, signs out, deletes, removes, unsubscribes, deactivates, closes an
   account, or performs a similarly destructive action, call
   record_blocked_url(url, reason) for that URL.
+- If the verified page has account, profile, admin, console, settings, or menu
+  links, inspect them from get_page_state and record any unsafe URLs before
+  calling done(). Do not click unsafe links.
 
 Call done() when you believe authentication is complete.
 """.strip()
@@ -47,6 +52,7 @@ def build_user_prompt(
     credentials: dict[str, Any],
     instructions: str | None,
     success_indicator: str | None,
+    probe_url: str | None = None,
 ) -> str:
     lines: list[str] = [
         "Current page state:",
@@ -65,6 +71,9 @@ def build_user_prompt(
     if success_indicator:
         lines.append("")
         lines.append(f"Success indicator (CSS selector or text): {success_indicator}")
+    if probe_url:
+        lines.append("")
+        lines.append(f"Protected probe URL for verification: {probe_url}")
     return "\n".join(lines).strip()
 
 

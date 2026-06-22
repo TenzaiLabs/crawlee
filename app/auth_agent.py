@@ -6,7 +6,7 @@ import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
 
 import llm
 from playwright.async_api import Error as PlaywrightError
@@ -30,6 +30,7 @@ class AuthResult:
     cookies: list[dict[str, Any]] = field(default_factory=list)
     landing_url: str | None = None
     blocked_urls: list[str] = field(default_factory=list)
+    discovered_urls: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -38,6 +39,7 @@ class _PreparedAuthConfig:
     credentials_payload: dict[str, Any]
     instructions: str | None
     success_indicator: str | None
+    probe_url: str | None
     max_steps: int
 
 
@@ -52,6 +54,12 @@ class _VerificationResult:
     success: bool
     landing_url: str | None = None
     reason: str | None = None
+
+
+@dataclass
+class _VerificationMemory:
+    probe_url: str | None = None
+    result: _VerificationResult | None = None
 
 
 class AuthenticationError(RuntimeError):
@@ -115,6 +123,12 @@ def _prepare_auth_config(target_url: str, auth_config: dict[str, Any]) -> _Prepa
     if not isinstance(success_indicator, str):
         success_indicator = None
 
+    probe_url = auth_config.get("probe_url")
+    if not isinstance(probe_url, str) or not probe_url.strip():
+        probe_url = None
+    else:
+        probe_url = probe_url.strip()
+
     max_steps = coerce_int(auth_config.get("max_steps"), CRAWLER_AUTH_MAX_STEPS_DEFAULT)
     if max_steps <= 0:
         max_steps = CRAWLER_AUTH_MAX_STEPS_DEFAULT
@@ -124,6 +138,7 @@ def _prepare_auth_config(target_url: str, auth_config: dict[str, Any]) -> _Prepa
         credentials_payload=credentials_payload,
         instructions=instructions,
         success_indicator=success_indicator,
+        probe_url=probe_url,
         max_steps=max_steps,
     )
 
@@ -195,6 +210,7 @@ _AUTHENTICATED_LINK_MARKERS = (
     "workspace",
 )
 _AUTH_UNSAFE_LINK_MARKERS = (
+    "close-account",
     "delete",
     "disable",
     "logout",
@@ -203,6 +219,7 @@ _AUTH_UNSAFE_LINK_MARKERS = (
     "sign-out",
     "unsubscribe",
 )
+_MAX_AUTH_DISCOVERED_URLS = 50
 
 
 def _url_origin(url: str) -> str | None:
@@ -256,6 +273,133 @@ def _dedupe_urls(urls: Iterable[str]) -> list[str]:
         seen.add(clean_url)
         deduped.append(clean_url)
     return deduped
+
+
+def _strip_fragment(url: str) -> str:
+    parsed = urlparse(url)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, parsed.query, ""))
+
+
+def _with_trailing_slash_variant(url: str) -> list[str]:
+    parsed = urlparse(url)
+    variants = [url]
+    if parsed.scheme in {"http", "https"} and parsed.netloc and parsed.path and not parsed.query:
+        path = parsed.path
+        if not path.endswith("/"):
+            variants.append(
+                urlunparse(
+                    (
+                        parsed.scheme,
+                        parsed.netloc,
+                        f"{path}/",
+                        parsed.params,
+                        parsed.query,
+                        "",
+                    )
+                )
+            )
+    return variants
+
+
+def _as_directory_base(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return url
+    path = parsed.path or "/"
+    if not path.endswith("/"):
+        path = f"{path}/"
+    return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
+
+
+def _origin_base(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return url
+    return urlunparse((parsed.scheme, parsed.netloc, "/", "", "", ""))
+
+
+def _same_normalized_url(left: str, right: str) -> bool:
+    left_parsed = urlparse(_strip_fragment(left))
+    right_parsed = urlparse(_strip_fragment(right))
+    return (
+        left_parsed.scheme.lower(),
+        left_parsed.netloc.lower(),
+        left_parsed.path.rstrip("/") or "/",
+        left_parsed.params,
+        left_parsed.query,
+    ) == (
+        right_parsed.scheme.lower(),
+        right_parsed.netloc.lower(),
+        right_parsed.path.rstrip("/") or "/",
+        right_parsed.params,
+        right_parsed.query,
+    )
+
+
+def _explicit_probe_candidates(
+    probe_url: str | None,
+    *,
+    target_url: str,
+    login_url: str,
+    current_url: str,
+) -> list[str]:
+    probe_text = str(probe_url or "").strip()
+    if not probe_text:
+        return []
+
+    parsed_probe = urlparse(probe_text)
+    if parsed_probe.scheme in {"http", "https"} and parsed_probe.netloc:
+        bases_and_paths = [probe_text]
+    elif probe_text.startswith("/"):
+        bases_and_paths = [urljoin(_origin_base(target_url), probe_text)]
+    else:
+        bases_and_paths = [
+            urljoin(_origin_base(target_url), probe_text),
+            urljoin(_as_directory_base(login_url), probe_text),
+        ]
+        if current_url:
+            bases_and_paths.append(urljoin(_as_directory_base(current_url), probe_text))
+
+    candidates: list[str] = []
+    for candidate in bases_and_paths:
+        for variant in _with_trailing_slash_variant(_strip_fragment(candidate)):
+            parsed = urlparse(variant)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                continue
+            if not _is_same_origin(variant, target_url):
+                continue
+            if _is_unsafe_auth_url(variant):
+                continue
+            candidates.append(variant)
+    return _dedupe_urls(candidates)
+
+
+def _discovered_url_candidate(url: str, target_url: str) -> str | None:
+    href = str(url).strip()
+    if not href:
+        return None
+    resolved_url = _strip_fragment(urljoin(target_url, href))
+    parsed = urlparse(resolved_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    if not _is_same_origin(resolved_url, target_url):
+        return None
+    if _is_login_like_url(resolved_url) or _is_unsafe_auth_url(resolved_url):
+        return None
+    return resolved_url
+
+
+async def _discovered_urls_from_open_pages(
+    controller: _AuthBrowserController,
+    *,
+    target_url: str,
+) -> list[str]:
+    candidates: list[str] = []
+    for item in await controller.collect_link_items():
+        candidate = _discovered_url_candidate(item.get("href", ""), target_url)
+        if candidate:
+            candidates.append(candidate)
+    return _dedupe_urls(candidates)[:_MAX_AUTH_DISCOVERED_URLS]
 
 
 def _totp_from_secret(secret: str) -> str:
@@ -662,15 +806,14 @@ async def _verification_candidates(
     candidates: list[str] = []
 
     if probe_url:
-        resolved_probe_url = urljoin(controller.current_url or target_url, probe_url)
-        probe_candidate = _strong_current_url_candidate(
-            resolved_probe_url,
-            target_url=target_url,
-            login_url=login_url,
-            requires_auth_evidence=requires_auth_evidence,
+        candidates.extend(
+            _explicit_probe_candidates(
+                probe_url,
+                target_url=target_url,
+                login_url=login_url,
+                current_url=controller.current_url,
+            )
         )
-        if probe_candidate:
-            candidates.append(probe_candidate)
 
     login_query = parse_qs(urlparse(login_url).query)
     for value in login_query.get("next", []):
@@ -710,6 +853,12 @@ async def _verify_authenticated(
     if success_indicator and await _success_indicator_matches(controller, success_indicator):
         return _VerificationResult(success=True, landing_url=controller.current_url)
 
+    explicit_probe_candidates = _explicit_probe_candidates(
+        probe_url,
+        target_url=target_url,
+        login_url=login_url,
+        current_url=controller.current_url,
+    )
     candidates = await _verification_candidates(
         controller,
         target_url=target_url,
@@ -734,7 +883,11 @@ async def _verify_authenticated(
         if status in {401, 403} or (status is not None and status >= 400):
             failures.append(f"{candidate}: status={status} final={final_url}")
             continue
-        if _is_login_like_url(final_url):
+        is_explicit_probe_url = any(
+            _same_normalized_url(final_url, probe_candidate)
+            for probe_candidate in explicit_probe_candidates
+        )
+        if _is_login_like_url(final_url) and not is_explicit_probe_url:
             failures.append(f"{candidate}: redirected to login final={final_url}")
             continue
         if not _is_same_origin(final_url, target_url):
@@ -761,6 +914,7 @@ async def _collect_auth_result(
     login_url: str,
     traffic_capture: auth_traffic.AuthTrafficCapture,
     blocked_urls: list[str] | None = None,
+    discovered_urls: list[str] | None = None,
 ) -> AuthResult:
     cookies_raw = await context.cookies() if context is not None else []
     cookies = [dict(cookie) for cookie in cookies_raw]
@@ -785,16 +939,18 @@ async def _collect_auth_result(
 
     landing_url = _extract_landing_url(page, login_url)
     logger.info(
-        "Auth result: %d header(s), landing_url=%s blocked_urls=%d",
+        "Auth result: %d header(s), landing_url=%s blocked_urls=%d discovered_urls=%d",
         len(headers),
         landing_url,
         len(blocked_urls or []),
+        len(discovered_urls or []),
     )
     return AuthResult(
         headers=_dedupe_headers(headers),
         cookies=cookies,
         landing_url=landing_url,
         blocked_urls=blocked_urls or [],
+        discovered_urls=discovered_urls or [],
     )
 
 
@@ -829,7 +985,9 @@ def _build_tools(
     target_url: str | None = None,
     login_url: str | None = None,
     success_indicator: str | None = None,
+    configured_probe_url: str | None = None,
     credentials: dict[str, Any] | None = None,
+    verification_memory: _VerificationMemory | None = None,
 ) -> list[Any]:
     blocked_url_sink = blocked_urls if blocked_urls is not None else []
     seen_blocked_urls: set[str] = set(blocked_url_sink)
@@ -920,15 +1078,19 @@ def _build_tools(
         """Probe whether the current browser context can access authenticated content."""
         if controller is None or not target_url or not login_url:
             return "verification unavailable"
+        requested_probe_url = str(probe_url).strip() or configured_probe_url
         result = await _verify_authenticated(
             controller,
             target_url=target_url,
             login_url=login_url,
             success_indicator=success_indicator,
             requires_auth_evidence=bool(credential_values),
-            probe_url=str(probe_url).strip() or None,
+            probe_url=requested_probe_url,
         )
         if result.success:
+            if verification_memory is not None:
+                verification_memory.probe_url = requested_probe_url or result.landing_url
+                verification_memory.result = result
             return f"verified: authenticated landing_url={result.landing_url}"
         return f"not verified: {result.reason or 'authentication did not reach protected content'}"
 
@@ -1099,6 +1261,7 @@ async def authenticate(
             credentials=prepared.credentials_payload,
             instructions=prepared.instructions,
             success_indicator=prepared.success_indicator,
+            probe_url=prepared.probe_url,
         )
 
         before_call, after_call = _build_tool_hooks(
@@ -1106,13 +1269,16 @@ async def authenticate(
             max_steps=prepared.max_steps,
         )
         blocked_urls: list[str] = []
+        verification_memory = _VerificationMemory()
         tools = _build_tools(
             controller,
             blocked_urls,
             target_url=target_url,
             login_url=prepared.login_url,
             success_indicator=prepared.success_indicator,
+            configured_probe_url=prepared.probe_url,
             credentials=prepared.credentials_payload,
+            verification_memory=verification_memory,
         )
         await _run_auth_with_retries(
             model=configured_model.model,
@@ -1129,18 +1295,37 @@ async def authenticate(
             login_url=prepared.login_url,
             success_indicator=prepared.success_indicator,
             requires_auth_evidence=bool(prepared.credentials_payload),
+            probe_url=prepared.probe_url or verification_memory.probe_url,
         )
+        if (
+            not verification.success
+            and verification_memory.probe_url
+            and verification_memory.probe_url != prepared.probe_url
+        ):
+            verification = await _verify_authenticated(
+                controller,
+                target_url=target_url,
+                login_url=prepared.login_url,
+                success_indicator=prepared.success_indicator,
+                requires_auth_evidence=bool(prepared.credentials_payload),
+                probe_url=verification_memory.probe_url,
+            )
         if not verification.success:
             raise AuthenticationError(
                 "Authentication verification failed: "
                 f"{verification.reason or 'protected content was not reachable'}"
             )
+        discovered_urls = await _discovered_urls_from_open_pages(
+            controller,
+            target_url=target_url,
+        )
         return await _collect_auth_result(
             context=context,
             page=controller.active_page,
             login_url=prepared.login_url,
             traffic_capture=traffic_capture,
             blocked_urls=blocked_urls,
+            discovered_urls=discovered_urls,
         )
     finally:
         with contextlib.suppress(Exception):

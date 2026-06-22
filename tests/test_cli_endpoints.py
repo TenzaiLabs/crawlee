@@ -202,3 +202,52 @@ async def test_get_job_uses_completed_sitemap_cache(app, monkeypatch: pytest.Mon
     assert first.json()["sitemap"]["entries"][0]["url"] == "https://example.com"
     assert second.json()["sitemap"]["entries"][0]["url"] == "https://example.com"
     assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_job_returns_generated_exclusions(app, monkeypatch: pytest.MonkeyPatch):
+    exclusions = {
+        "auth_blocked_url_count": 1,
+        "auth_applied_blocked_url_count": 1,
+        "auth_ignored_blocked_url_count": 0,
+        "auth_dynamic_patterns": ["/logout(?:$|[/?#])"],
+        "auth_discovered_url_count": 1,
+        "auth_discovered_urls": ["https://example.com/app/dashboard"],
+        "extra_seed_urls": ["https://example.com/app/dashboard"],
+        "effective_patterns": ["logout", "/logout(?:$|[/?#])"],
+    }
+    await main.db.execute(
+        """
+        INSERT INTO jobs (
+            job_id,
+            status,
+            target_url,
+            scope_config,
+            auth_config,
+            error,
+            created_at,
+            finished_at,
+            generated_exclusions
+        )
+        VALUES (?, 'completed', ?, NULL, NULL, NULL, datetime('now'), ?, ?)
+        """,
+        (
+            "job-exclusions-1",
+            "https://example.com",
+            "2026-02-23T12:00:00+00:00",
+            main.db.dumps_json(exclusions),
+        ),
+    )
+
+    monkeypatch.setattr(
+        main.parser,
+        "parse_log",
+        lambda job_id, target_url: {"entries": [], "tree": {"children": {}, "pages": []}},
+    )
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/jobs/job-exclusions-1")
+
+    assert response.status_code == 200
+    assert response.json()["generated_exclusions"] == exclusions

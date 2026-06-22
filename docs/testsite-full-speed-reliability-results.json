@@ -1,0 +1,2020 @@
+{
+  "config": {
+    "crawl_duration": "25s",
+    "gateway": false,
+    "headless": false,
+    "manual_headers_retained_without_auth_agent": true,
+    "max_depth": 3,
+    "max_pages": 80,
+    "runs": 5,
+    "variants": [
+      "full"
+    ]
+  },
+  "generated_at": "2026-06-21T23:36:05+03:00",
+  "reliability": {
+    "full": {
+      "incomplete_sites": [],
+      "reliability_percent": 95.0,
+      "runs": 5,
+      "sites": 20,
+      "stable_sites": 19,
+      "unstable_sites": [
+        "auth-m-totp-mfa"
+      ]
+    }
+  },
+  "results": [
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-a-simple-form-dynamic-exclusion",
+      "elapsed_seconds": 69.69997146000969,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "afc73bbe-8197-4058-8ef7-398ab7678101",
+      "matched_urls": [
+        "http://localhost:8101/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-a-simple-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-b-http-basic",
+      "elapsed_seconds": 35.78875706199324,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "f80c635c-eed2-41e9-b14d-0843957b567e",
+      "matched_urls": [
+        "http://localhost:8102/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-b-http-basic",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-c-complex-form",
+      "elapsed_seconds": 58.474877728003776,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "49b04b18-ebac-419a-9c17-98c260d6eb89",
+      "matched_urls": [
+        "http://localhost:8103/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-c-complex-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-d-interactive-captcha",
+      "elapsed_seconds": 56.45693284299341,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "e222ebfa-0682-42ca-99db-827e78f81a58",
+      "matched_urls": [
+        "http://localhost:8104/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-d-interactive-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-e-delay-login",
+      "elapsed_seconds": 56.469243496016134,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "2eea209a-b47b-4240-aa32-62c9954c68e7",
+      "matched_urls": [
+        "http://localhost:8105/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-e-delay-login",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-f-ocr-captcha",
+      "elapsed_seconds": 56.52227000502171,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "c50efca6-d37b-4b69-9b4e-8aae72664e2a",
+      "matched_urls": [
+        "http://localhost:8106/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-f-ocr-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-g-multi-step",
+      "elapsed_seconds": 65.06094376801047,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "0458546a-1186-4521-ae78-905d4aaf882f",
+      "matched_urls": [
+        "http://localhost:8107/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-g-multi-step",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-h-new-window",
+      "elapsed_seconds": 63.0338682809961,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "d34382d7-241e-4434-8059-b973ba20ab1b",
+      "matched_urls": [
+        "http://localhost:8108/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-h-new-window",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-i-iframe",
+      "elapsed_seconds": 55.46608641100465,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "26927ce5-0bbc-43b6-8d93-e251d2c742d8",
+      "matched_urls": [
+        "http://localhost:8109/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-i-iframe",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-j-xsrf-token",
+      "elapsed_seconds": 58.19330368199735,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "e05d4025-b351-4c19-ba41-d8dd1c2cbc75",
+      "matched_urls": [
+        "http://localhost:8110/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-j-xsrf-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-k-dynamic-fields",
+      "elapsed_seconds": 54.45335230600904,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "3005faa3-d687-4f3b-9e94-43bcb00d57f0",
+      "matched_urls": [
+        "http://localhost:8111/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-k-dynamic-fields",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-l-security-question",
+      "elapsed_seconds": 58.49804832399241,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "9037d1ed-1a40-4b5e-9e3d-b2484d1b4431",
+      "matched_urls": [
+        "http://localhost:8112/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-l-security-question",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": false,
+      "blocked_hits": [],
+      "case_name": "auth-m-totp-mfa",
+      "elapsed_seconds": 187.00613241599058,
+      "entry_count": 0,
+      "error": "timed out after 180.0s",
+      "job_id": "2c5ce1d2-d48b-4b18-acb1-91bb719c2819",
+      "matched_urls": [],
+      "original_mode": "llm",
+      "passed": false,
+      "run": 1,
+      "safe_ok": false,
+      "site": "auth-m-totp-mfa",
+      "status": "cancelled",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-o-bearer-token",
+      "elapsed_seconds": 36.29222503199708,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "1406c726-ac6b-40b1-b1fa-c53d7321ea31",
+      "matched_urls": [
+        "http://localhost:8115/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "auth-o-bearer-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-a-static",
+      "elapsed_seconds": 35.79240271699382,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "e91874a6-cc5e-4184-99c9-946fc219e544",
+      "matched_urls": [
+        "http://localhost:8001/",
+        "http://localhost:8001/library/overview.html",
+        "http://localhost:8001/contact/",
+        "http://localhost:8001/",
+        "http://localhost:8001/library/checklist/packing.html"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "site-a-static",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-b-login-flask",
+      "elapsed_seconds": 52.41754884299007,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "13d1cb57-f13b-4710-8518-e78a46dfc5f4",
+      "matched_urls": [
+        "http://localhost:8002/dashboard"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "site-b-login-flask",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-c-registration-express",
+      "elapsed_seconds": 35.79056882899022,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "9a492b84-7124-4fd8-91b4-0ba0eac7f8e9",
+      "matched_urls": [
+        "http://localhost:8003/",
+        "http://localhost:8003/",
+        "http://localhost:8003/register",
+        "http://localhost:8003/workspace",
+        "http://localhost:8003/products"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "site-c-registration-express",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-d-complex-auth-go",
+      "elapsed_seconds": 55.04525637597544,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "4d545a6f-c52b-4e8f-8041-2a5257ae0964",
+      "matched_urls": [
+        "http://localhost:8004/app"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "site-d-complex-auth-go",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-e-crawl-trap-ruby",
+      "elapsed_seconds": 37.01519879201078,
+      "entry_count": 13,
+      "error": null,
+      "job_id": "7042a7f3-a1fd-46a5-9609-6cdd14b87887",
+      "matched_urls": [
+        "http://localhost:8005/",
+        "http://localhost:8005/calendar/2025/12/30",
+        "http://localhost:8005/",
+        "http://localhost:8005/workspace",
+        "http://localhost:8005/about"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "site-e-crawl-trap-ruby",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-f-spa-deno",
+      "elapsed_seconds": 35.76996466697892,
+      "entry_count": 4,
+      "error": null,
+      "job_id": "343d69b1-059b-4b7f-975e-a7ddd8c45804",
+      "matched_urls": [
+        "http://localhost:8006/",
+        "http://localhost:8006/",
+        "http://localhost:8006/styles.css",
+        "http://localhost:8006/app.js"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 1,
+      "safe_ok": true,
+      "site": "site-f-spa-deno",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-a-simple-form-dynamic-exclusion",
+      "elapsed_seconds": 66.5336874499917,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "5dbfd2d9-8d72-443b-b293-878fbedcd0be",
+      "matched_urls": [
+        "http://localhost:8101/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-a-simple-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-b-http-basic",
+      "elapsed_seconds": 35.79356486501638,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "cff0b855-490a-4fc8-8ce0-f591d5152b97",
+      "matched_urls": [
+        "http://localhost:8102/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-b-http-basic",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-c-complex-form",
+      "elapsed_seconds": 56.95614192300127,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "48880e65-4df1-4300-a3df-da6389d951e0",
+      "matched_urls": [
+        "http://localhost:8103/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-c-complex-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-d-interactive-captcha",
+      "elapsed_seconds": 56.49854472000152,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "c48dd157-a4b5-4c84-b98a-897f62f6c577",
+      "matched_urls": [
+        "http://localhost:8104/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-d-interactive-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-e-delay-login",
+      "elapsed_seconds": 54.47105100398767,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "f1993428-976c-4ef0-b1cf-d0b4d880ab80",
+      "matched_urls": [
+        "http://localhost:8105/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-e-delay-login",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-f-ocr-captcha",
+      "elapsed_seconds": 56.019814422004856,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "557a62c7-99a0-4ae9-b3ec-a44767dc144d",
+      "matched_urls": [
+        "http://localhost:8106/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-f-ocr-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-g-multi-step",
+      "elapsed_seconds": 61.52714659599587,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "0fd53194-2d31-44c3-81ae-223cde1ec8d2",
+      "matched_urls": [
+        "http://localhost:8107/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-g-multi-step",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-h-new-window",
+      "elapsed_seconds": 58.971162485016976,
+      "entry_count": 12,
+      "error": null,
+      "job_id": "0b61bed5-9683-40a8-8c26-8e8872fa334c",
+      "matched_urls": [
+        "http://localhost:8108/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-h-new-window",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-i-iframe",
+      "elapsed_seconds": 54.9514039530186,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "ff1e7a88-37b3-40a2-904d-545514491af3",
+      "matched_urls": [
+        "http://localhost:8109/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-i-iframe",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-j-xsrf-token",
+      "elapsed_seconds": 54.93593707200489,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "2c3af3af-f268-44f8-84e0-8b10c8d66437",
+      "matched_urls": [
+        "http://localhost:8110/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-j-xsrf-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-k-dynamic-fields",
+      "elapsed_seconds": 54.94479517498985,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "a85318b8-167f-4004-ae38-a58411190f6d",
+      "matched_urls": [
+        "http://localhost:8111/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-k-dynamic-fields",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-l-security-question",
+      "elapsed_seconds": 57.00628592999419,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "7c917188-4062-4e80-bcf9-e3cfc021cab6",
+      "matched_urls": [
+        "http://localhost:8112/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-l-security-question",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-m-totp-mfa",
+      "elapsed_seconds": 84.21159391797846,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "298b0c84-b65a-4f6b-b810-3efde4844848",
+      "matched_urls": [
+        "http://localhost:8113/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-m-totp-mfa",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-o-bearer-token",
+      "elapsed_seconds": 36.460008405003464,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "d2c5f071-cc09-43ad-9116-411f13bcba98",
+      "matched_urls": [
+        "http://localhost:8115/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "auth-o-bearer-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-a-static",
+      "elapsed_seconds": 35.935142419009935,
+      "entry_count": 12,
+      "error": null,
+      "job_id": "c71c0c0f-9e45-4a61-86ac-1a904dcac4c9",
+      "matched_urls": [
+        "http://localhost:8001/",
+        "http://localhost:8001/robots.txt",
+        "http://localhost:8001/",
+        "http://localhost:8001/library/checklist/packing.html",
+        "http://localhost:8001/workspace.html"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "site-a-static",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-b-login-flask",
+      "elapsed_seconds": 57.242026535997866,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "29b56a71-972e-4489-a453-e725bcb7f617",
+      "matched_urls": [
+        "http://localhost:8002/dashboard"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "site-b-login-flask",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-c-registration-express",
+      "elapsed_seconds": 35.90964883400011,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "87798272-65ab-49ab-91a6-4adf4fcc9d59",
+      "matched_urls": [
+        "http://localhost:8003/",
+        "http://localhost:8003/workspace",
+        "http://localhost:8003/blog/launch",
+        "http://localhost:8003/",
+        "http://localhost:8003/register"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "site-c-registration-express",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-d-complex-auth-go",
+      "elapsed_seconds": 55.20717399701243,
+      "entry_count": 7,
+      "error": null,
+      "job_id": "03af94bc-3473-4f0e-8cae-2ad9ed46312a",
+      "matched_urls": [
+        "http://localhost:8004/app"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "site-d-complex-auth-go",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-e-crawl-trap-ruby",
+      "elapsed_seconds": 36.93760543098324,
+      "entry_count": 14,
+      "error": null,
+      "job_id": "6abeea51-3909-473b-84d3-dfce08e8795d",
+      "matched_urls": [
+        "http://localhost:8005/",
+        "http://localhost:8005/",
+        "http://localhost:8005/calendar/2026/01/01",
+        "http://localhost:8005/limits",
+        "http://localhost:8005/workspace"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "site-e-crawl-trap-ruby",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-f-spa-deno",
+      "elapsed_seconds": 35.94715548999375,
+      "entry_count": 5,
+      "error": null,
+      "job_id": "c06c5fbe-9358-401a-8d59-9f4be59fe93e",
+      "matched_urls": [
+        "http://localhost:8006/",
+        "http://localhost:8006/",
+        "http://localhost:8006/app.js",
+        "http://localhost:8006/styles.css"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 2,
+      "safe_ok": true,
+      "site": "site-f-spa-deno",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-a-simple-form-dynamic-exclusion",
+      "elapsed_seconds": 59.239705840998795,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "b87ce40b-8ecf-4a24-a7aa-488da7ea7bac",
+      "matched_urls": [
+        "http://localhost:8101/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-a-simple-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-b-http-basic",
+      "elapsed_seconds": 35.926580973988166,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "3fe0a293-8939-45d0-8adf-283e9ae9eaf0",
+      "matched_urls": [
+        "http://localhost:8102/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-b-http-basic",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-c-complex-form",
+      "elapsed_seconds": 65.4008744279854,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "e7931274-214b-4cb7-91da-b2200564df85",
+      "matched_urls": [
+        "http://localhost:8103/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-c-complex-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-d-interactive-captcha",
+      "elapsed_seconds": 58.39193290701951,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "1d5c719f-0540-4961-ab98-f71000edfcf5",
+      "matched_urls": [
+        "http://localhost:8104/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-d-interactive-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-e-delay-login",
+      "elapsed_seconds": 58.90996492700651,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "f1ad0142-7143-4aa3-a77e-5cec6317f70e",
+      "matched_urls": [
+        "http://localhost:8105/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-e-delay-login",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-f-ocr-captcha",
+      "elapsed_seconds": 57.418131736980285,
+      "entry_count": 12,
+      "error": null,
+      "job_id": "df3f388e-d92a-40b7-b654-202d03861fe4",
+      "matched_urls": [
+        "http://localhost:8106/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-f-ocr-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-g-multi-step",
+      "elapsed_seconds": 61.07356627000263,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "c770311b-c416-4735-b444-5848f24975a5",
+      "matched_urls": [
+        "http://localhost:8107/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-g-multi-step",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-h-new-window",
+      "elapsed_seconds": 58.73151358298492,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "e3931590-91d0-4b28-a7c8-86e9637fa316",
+      "matched_urls": [
+        "http://localhost:8108/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-h-new-window",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-i-iframe",
+      "elapsed_seconds": 57.74891305199708,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "e79b00ab-d152-4d72-bd56-e11dd359ec9b",
+      "matched_urls": [
+        "http://localhost:8109/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-i-iframe",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-j-xsrf-token",
+      "elapsed_seconds": 55.9381004050083,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "e913f750-5185-457e-8fa3-8034428ee4b6",
+      "matched_urls": [
+        "http://localhost:8110/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-j-xsrf-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-k-dynamic-fields",
+      "elapsed_seconds": 56.273648740985664,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "ee8ae51c-7688-4466-9225-8248780f8e24",
+      "matched_urls": [
+        "http://localhost:8111/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-k-dynamic-fields",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-l-security-question",
+      "elapsed_seconds": 56.66425608901773,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "cc25d2bc-19b7-413d-9fe2-5d7e1aaafd0c",
+      "matched_urls": [
+        "http://localhost:8112/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-l-security-question",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": false,
+      "blocked_hits": [],
+      "case_name": "auth-m-totp-mfa",
+      "elapsed_seconds": 181.09409100102494,
+      "entry_count": 0,
+      "error": "timed out after 180.0s",
+      "job_id": "ec5c6823-19b0-4707-90a9-8bb08cb2c144",
+      "matched_urls": [],
+      "original_mode": "llm",
+      "passed": false,
+      "run": 3,
+      "safe_ok": false,
+      "site": "auth-m-totp-mfa",
+      "status": "cancelled",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-o-bearer-token",
+      "elapsed_seconds": 36.45394091401249,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "3fc20e7c-5030-45d5-bc19-0440463915eb",
+      "matched_urls": [
+        "http://localhost:8115/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "auth-o-bearer-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-a-static",
+      "elapsed_seconds": 35.956635112990625,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "5f2ee4f0-6a67-4d9c-8b39-b0cad28ea73e",
+      "matched_urls": [
+        "http://localhost:8001/",
+        "http://localhost:8001/",
+        "http://localhost:8001/news/2026.html",
+        "http://localhost:8001/styles.css",
+        "http://localhost:8001/about.html"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "site-a-static",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-b-login-flask",
+      "elapsed_seconds": 58.329838623001706,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "7b88625c-e4e9-4f7f-95ee-4736ad4506f2",
+      "matched_urls": [
+        "http://localhost:8002/dashboard"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "site-b-login-flask",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-c-registration-express",
+      "elapsed_seconds": 36.05172579700593,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "58b7660c-8e0b-4ecb-a55f-fbcf96bcc412",
+      "matched_urls": [
+        "http://localhost:8003/",
+        "http://localhost:8003/workspace",
+        "http://localhost:8003/blog/launch/faq",
+        "http://localhost:8003/",
+        "http://localhost:8003/register"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "site-c-registration-express",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-d-complex-auth-go",
+      "elapsed_seconds": 55.82503619699855,
+      "entry_count": 7,
+      "error": null,
+      "job_id": "aa60d381-a892-4e64-84e3-9b60c68162ed",
+      "matched_urls": [
+        "http://localhost:8004/app"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "site-d-complex-auth-go",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-e-crawl-trap-ruby",
+      "elapsed_seconds": 36.93721920598182,
+      "entry_count": 14,
+      "error": null,
+      "job_id": "5d751388-04ef-4807-ae6f-cdd0c5e821ca",
+      "matched_urls": [
+        "http://localhost:8005/",
+        "http://localhost:8005/limits",
+        "http://localhost:8005/workspace",
+        "http://localhost:8005/",
+        "http://localhost:8005/about"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "site-e-crawl-trap-ruby",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-f-spa-deno",
+      "elapsed_seconds": 36.55028726099408,
+      "entry_count": 5,
+      "error": null,
+      "job_id": "edf3f512-b572-4f23-8588-b41e232a8136",
+      "matched_urls": [
+        "http://localhost:8006/",
+        "http://localhost:8006/",
+        "http://localhost:8006/styles.css",
+        "http://localhost:8006/app.js"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 3,
+      "safe_ok": true,
+      "site": "site-f-spa-deno",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-a-simple-form-dynamic-exclusion",
+      "elapsed_seconds": 63.881539064022945,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "1a339e72-1f7f-41f3-b4ec-e09b1a0ae197",
+      "matched_urls": [
+        "http://localhost:8101/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-a-simple-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-b-http-basic",
+      "elapsed_seconds": 36.62050592000014,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "9495f819-1db5-4ea3-8a8c-9e76813b9036",
+      "matched_urls": [
+        "http://localhost:8102/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-b-http-basic",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-c-complex-form",
+      "elapsed_seconds": 60.352093166002305,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "0f520728-dee6-4c1b-9adc-b107b08b6798",
+      "matched_urls": [
+        "http://localhost:8103/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-c-complex-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-d-interactive-captcha",
+      "elapsed_seconds": 57.50892545300303,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "d9dc734c-f12c-48dc-8ec8-04e6372f76ee",
+      "matched_urls": [
+        "http://localhost:8104/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-d-interactive-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-e-delay-login",
+      "elapsed_seconds": 58.28576888900716,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "f1cdfce0-a46f-46b1-a21f-5882711865b5",
+      "matched_urls": [
+        "http://localhost:8105/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-e-delay-login",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-f-ocr-captcha",
+      "elapsed_seconds": 56.74287145998096,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "cccc0a9c-07fc-43ae-8eee-be338ea91bae",
+      "matched_urls": [
+        "http://localhost:8106/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-f-ocr-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-g-multi-step",
+      "elapsed_seconds": 62.079170350014465,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "bf71cc5f-f646-41fc-8c5f-344d9dad6ae0",
+      "matched_urls": [
+        "http://localhost:8107/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-g-multi-step",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-h-new-window",
+      "elapsed_seconds": 58.46872656198684,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "d9170ace-e0fa-4652-af04-20b5083bd9ca",
+      "matched_urls": [
+        "http://localhost:8108/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-h-new-window",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-i-iframe",
+      "elapsed_seconds": 54.46313983600703,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "0323b765-9ef7-4481-92df-ce7f46b1046f",
+      "matched_urls": [
+        "http://localhost:8109/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-i-iframe",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-j-xsrf-token",
+      "elapsed_seconds": 53.948107040981995,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "6d486317-3bfe-4a36-8e2a-2e681cfc9e4a",
+      "matched_urls": [
+        "http://localhost:8110/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-j-xsrf-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-k-dynamic-fields",
+      "elapsed_seconds": 53.152151207992574,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "e0fff145-adc3-4374-98b0-2084988956dd",
+      "matched_urls": [
+        "http://localhost:8111/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-k-dynamic-fields",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-l-security-question",
+      "elapsed_seconds": 59.00274170000921,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "39762ab0-80d6-495d-b520-a50024ebfa8c",
+      "matched_urls": [
+        "http://localhost:8112/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-l-security-question",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-m-totp-mfa",
+      "elapsed_seconds": 87.1923041419941,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "8507cfc8-31fc-4764-a911-966407206ac3",
+      "matched_urls": [
+        "http://localhost:8113/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-m-totp-mfa",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-o-bearer-token",
+      "elapsed_seconds": 36.292606333998265,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "f8ab6af9-d401-481c-bf8d-4394d5bcb2c3",
+      "matched_urls": [
+        "http://localhost:8115/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "auth-o-bearer-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-a-static",
+      "elapsed_seconds": 35.819293259992264,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "9e219140-5f71-4c65-8b5e-a0b3751aefb3",
+      "matched_urls": [
+        "http://localhost:8001/",
+        "http://localhost:8001/",
+        "http://localhost:8001/library/overview.html",
+        "http://localhost:8001/about.html",
+        "http://localhost:8001/news/2026.html"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "site-a-static",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-b-login-flask",
+      "elapsed_seconds": 55.0206865099899,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "ae453f49-4aff-4119-a4df-bd8351b2ba26",
+      "matched_urls": [
+        "http://localhost:8002/dashboard"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "site-b-login-flask",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-c-registration-express",
+      "elapsed_seconds": 35.93640078298631,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "be3d0b1f-4347-4371-845f-c0ddc0e6fd66",
+      "matched_urls": [
+        "http://localhost:8003/",
+        "http://localhost:8003/",
+        "http://localhost:8003/workspace",
+        "http://localhost:8003/register",
+        "http://localhost:8003/products"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "site-c-registration-express",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-d-complex-auth-go",
+      "elapsed_seconds": 55.00109680098831,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "cbe3b8c5-89bf-4f80-9eb1-4219b31d8d83",
+      "matched_urls": [
+        "http://localhost:8004/app"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "site-d-complex-auth-go",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-e-crawl-trap-ruby",
+      "elapsed_seconds": 36.862633484008256,
+      "entry_count": 13,
+      "error": null,
+      "job_id": "ca53986c-c60c-4354-b0a4-142c4de13b0f",
+      "matched_urls": [
+        "http://localhost:8005/",
+        "http://localhost:8005/",
+        "http://localhost:8005/calendar/2026/01/01",
+        "http://localhost:8005/workspace",
+        "http://localhost:8005/about"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "site-e-crawl-trap-ruby",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-f-spa-deno",
+      "elapsed_seconds": 35.861165648006136,
+      "entry_count": 4,
+      "error": null,
+      "job_id": "890cdcbe-1573-401f-8795-687e365c0aa7",
+      "matched_urls": [
+        "http://localhost:8006/",
+        "http://localhost:8006/",
+        "http://localhost:8006/styles.css",
+        "http://localhost:8006/app.js"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 4,
+      "safe_ok": true,
+      "site": "site-f-spa-deno",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-a-simple-form-dynamic-exclusion",
+      "elapsed_seconds": 61.235828931006836,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "96f9f4ed-e2e4-4dd0-a799-21a596299a6c",
+      "matched_urls": [
+        "http://localhost:8101/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-a-simple-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-b-http-basic",
+      "elapsed_seconds": 35.85211644199444,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "70834bd5-b2ce-4b40-9fd8-2a6dc6c1bd67",
+      "matched_urls": [
+        "http://localhost:8102/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-b-http-basic",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-c-complex-form",
+      "elapsed_seconds": 62.35981100299978,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "e875b9ec-8a73-4e63-9af1-b473e70e5d67",
+      "matched_urls": [
+        "http://localhost:8103/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-c-complex-form",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-d-interactive-captcha",
+      "elapsed_seconds": 54.462537120009074,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "cb177f46-c024-4416-a413-08d175c3a9b7",
+      "matched_urls": [
+        "http://localhost:8104/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-d-interactive-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-e-delay-login",
+      "elapsed_seconds": 56.01989718302502,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "bf17415a-793e-485f-ab7f-90be00797840",
+      "matched_urls": [
+        "http://localhost:8105/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-e-delay-login",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-f-ocr-captcha",
+      "elapsed_seconds": 57.24071457399987,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "53b39c06-ceef-499e-93db-d4d92b3eab37",
+      "matched_urls": [
+        "http://localhost:8106/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-f-ocr-captcha",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-g-multi-step",
+      "elapsed_seconds": 61.003836029995,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "cfb76cb4-5fc5-4eaf-a697-373b8242f7b0",
+      "matched_urls": [
+        "http://localhost:8107/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-g-multi-step",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-h-new-window",
+      "elapsed_seconds": 62.564210896991426,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "02b3cb83-2296-4eb3-a7bc-a67bdcc23a7f",
+      "matched_urls": [
+        "http://localhost:8108/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-h-new-window",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-i-iframe",
+      "elapsed_seconds": 53.04862941900501,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "507446f2-e05a-45db-916d-54ce6ac533e5",
+      "matched_urls": [
+        "http://localhost:8109/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-i-iframe",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-j-xsrf-token",
+      "elapsed_seconds": 57.85344896299648,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "49756f63-a707-4507-8219-2831c7c7fde6",
+      "matched_urls": [
+        "http://localhost:8110/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-j-xsrf-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-k-dynamic-fields",
+      "elapsed_seconds": 53.996399575000396,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "8ccf1bf9-603a-41b7-bcbf-074214d4eee4",
+      "matched_urls": [
+        "http://localhost:8111/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-k-dynamic-fields",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-l-security-question",
+      "elapsed_seconds": 59.00337555501028,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "fec2e6d5-c73f-4f8d-bf8d-a90d27728102",
+      "matched_urls": [
+        "http://localhost:8112/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-l-security-question",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-m-totp-mfa",
+      "elapsed_seconds": 82.71076202800032,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "a2ee880d-9c3b-4abf-8036-8af3f42b86c0",
+      "matched_urls": [
+        "http://localhost:8113/app/overview"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-m-totp-mfa",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "auth-o-bearer-token",
+      "elapsed_seconds": 35.96247512398986,
+      "entry_count": 8,
+      "error": null,
+      "job_id": "bc0050c4-e4d9-4ba2-9906-dd59d6d5b0c3",
+      "matched_urls": [
+        "http://localhost:8115/app/overview"
+      ],
+      "original_mode": "manual_headers",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "auth-o-bearer-token",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-a-static",
+      "elapsed_seconds": 35.37563270298415,
+      "entry_count": 11,
+      "error": null,
+      "job_id": "1b61490e-c68c-466a-a157-2eef294d3807",
+      "matched_urls": [
+        "http://localhost:8001/",
+        "http://localhost:8001/styles.css",
+        "http://localhost:8001/",
+        "http://localhost:8001/about.html",
+        "http://localhost:8001/news/2026.html"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "site-a-static",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-b-login-flask",
+      "elapsed_seconds": 55.47654566200799,
+      "entry_count": 9,
+      "error": null,
+      "job_id": "346cf199-b4fa-4fdd-9b04-4776a06f5b48",
+      "matched_urls": [
+        "http://localhost:8002/dashboard"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "site-b-login-flask",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-c-registration-express",
+      "elapsed_seconds": 35.79768983600661,
+      "entry_count": 10,
+      "error": null,
+      "job_id": "a4f0a68d-bd87-4cbb-8be6-a258d76e11c2",
+      "matched_urls": [
+        "http://localhost:8003/",
+        "http://localhost:8003/",
+        "http://localhost:8003/workspace",
+        "http://localhost:8003/register",
+        "http://localhost:8003/blog/launch"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "site-c-registration-express",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-d-complex-auth-go",
+      "elapsed_seconds": 53.452615629998036,
+      "entry_count": 7,
+      "error": null,
+      "job_id": "289649d7-dbaf-4ea4-b862-7ec98f406019",
+      "matched_urls": [
+        "http://localhost:8004/app"
+      ],
+      "original_mode": "llm",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "site-d-complex-auth-go",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-e-crawl-trap-ruby",
+      "elapsed_seconds": 36.810941439005546,
+      "entry_count": 13,
+      "error": null,
+      "job_id": "95702e6e-4733-4065-ae1d-fb8ea36f3fe9",
+      "matched_urls": [
+        "http://localhost:8005/",
+        "http://localhost:8005/calendar/2026/01/01",
+        "http://localhost:8005/workspace",
+        "http://localhost:8005/",
+        "http://localhost:8005/about"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "site-e-crawl-trap-ruby",
+      "status": "completed",
+      "variant": "full"
+    },
+    {
+      "access_ok": true,
+      "blocked_hits": [],
+      "case_name": "site-f-spa-deno",
+      "elapsed_seconds": 35.80461935600033,
+      "entry_count": 4,
+      "error": null,
+      "job_id": "815b7d27-2d80-46f1-974e-7196dd05b585",
+      "matched_urls": [
+        "http://localhost:8006/",
+        "http://localhost:8006/",
+        "http://localhost:8006/app.js",
+        "http://localhost:8006/styles.css"
+      ],
+      "original_mode": "public",
+      "passed": true,
+      "run": 5,
+      "safe_ok": true,
+      "site": "site-f-spa-deno",
+      "status": "completed",
+      "variant": "full"
+    }
+  ],
+  "speed": {
+    "full": {
+      "avg_seconds": 54.67146821809962,
+      "jobs": 100,
+      "max_seconds": 187.00613241599058,
+      "median_seconds": 55.881568301003426,
+      "min_seconds": 35.37563270298415
+    }
+  },
+  "summary": {
+    "full": {
+      "access_ok": 98,
+      "failed_jobs": 2,
+      "jobs": 100,
+      "no_access": 0,
+      "passed": 98,
+      "safe_ok": 98,
+      "unsafe": 0
+    }
+  }
+}

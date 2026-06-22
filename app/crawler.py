@@ -78,6 +78,23 @@ def blocked_urls_to_exclude_patterns(
     return _unique_patterns(patterns)
 
 
+def build_exclusion_patterns(config: CrawlConfig) -> list[str]:
+    scope_config = config.scope_config or {}
+    extra_filters = scope_config.get("exclude_filters")
+    filters: list[str] = DEFAULT_EXCLUSION_PATTERNS.copy()
+    if isinstance(extra_filters, list):
+        filters.extend(str(item) for item in extra_filters if item)
+
+    exclude_regex = scope_config.get("exclude_regex")
+    if exclude_regex:
+        filters.append(str(exclude_regex))
+
+    if config.dynamic_exclude_patterns:
+        filters.extend(str(pattern) for pattern in config.dynamic_exclude_patterns if pattern)
+
+    return _unique_patterns(filters)
+
+
 def build_katana_command(
     config: CrawlConfig,
     proxy_url: str = "http://127.0.0.1:8888",
@@ -129,16 +146,7 @@ def build_katana_command(
     if crawl_scope:
         command.extend(["-cs", str(crawl_scope)])
 
-    extra_filters = scope_config.get("exclude_filters")
-    filters: list[str] = DEFAULT_EXCLUSION_PATTERNS.copy()
-    if isinstance(extra_filters, list):
-        filters.extend(str(item) for item in extra_filters if item)
-    exclude_regex = scope_config.get("exclude_regex")
-    if exclude_regex:
-        filters.append(str(exclude_regex))
-    if config.dynamic_exclude_patterns:
-        filters.extend(str(pattern) for pattern in config.dynamic_exclude_patterns if pattern)
-    filters = _unique_patterns(filters)
+    filters = build_exclusion_patterns(config)
     if filters:
         command.extend(["-crawl-out-scope", "|".join(filters)])
 

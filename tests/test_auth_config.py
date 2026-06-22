@@ -39,3 +39,28 @@ def test_validate_auth_config_accepts_secret_templates() -> None:
             },
         }
     )
+
+
+def test_validate_auth_config_accepts_probe_url() -> None:
+    validate_auth_config(
+        {
+            "login_url": "https://example.com/login",
+            "probe_url": "/app/dashboard",
+        }
+    )
+    validate_auth_config(
+        {
+            "login_url": "https://example.com/login",
+            "probe_url": "https://example.com/app/dashboard",
+        }
+    )
+
+
+def test_validate_auth_config_rejects_invalid_probe_url_scheme() -> None:
+    with pytest.raises(AuthConfigValidationError, match="probe_url"):
+        validate_auth_config(
+            {
+                "login_url": "https://example.com/login",
+                "probe_url": "javascript:alert(1)",
+            }
+        )

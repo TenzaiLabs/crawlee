@@ -33,6 +33,7 @@ class JobResponse(BaseModel):
     error: str | None = None
     created_at: str
     finished_at: str | None = None
+    generated_exclusions: dict[str, Any] | None = None
     sitemap: dict[str, Any] | None = None
 
 

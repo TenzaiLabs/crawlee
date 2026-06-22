@@ -10,6 +10,7 @@ _ALLOWED_AUTH_CONFIG_KEYS = {
     "credentials",
     "instructions",
     "success_indicator",
+    "probe_url",
     "max_steps",
     "provider",
     "api_key_env",
@@ -82,6 +83,17 @@ def _validate_string_field(value: Any, field_name: str, *, max_len: int) -> None
         )
 
 
+def _validate_probe_url(value: Any) -> None:
+    if value is None:
+        return
+    _validate_string_field(value, "probe_url", max_len=2048)
+    parsed = urlparse(value.strip())
+    if parsed.scheme and parsed.scheme not in {"http", "https"}:
+        raise AuthConfigValidationError("`auth_config.probe_url` must be relative or http(s)")
+    if parsed.netloc and parsed.scheme not in {"http", "https"}:
+        raise AuthConfigValidationError("`auth_config.probe_url` must be relative or http(s)")
+
+
 def _validate_max_steps(value: Any) -> None:
     if value is None:
         return
@@ -126,6 +138,7 @@ def validate_auth_config(auth_config: dict[str, Any] | None) -> None:
     _validate_credentials(auth_config.get("credentials"))
     _validate_string_field(auth_config.get("instructions"), "instructions", max_len=8000)
     _validate_string_field(auth_config.get("success_indicator"), "success_indicator", max_len=2048)
+    _validate_probe_url(auth_config.get("probe_url"))
     _validate_max_steps(auth_config.get("max_steps"))
     _validate_string_field(auth_config.get("provider"), "provider", max_len=64)
     _validate_api_key_env(auth_config.get("api_key_env"))

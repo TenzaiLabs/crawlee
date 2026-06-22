@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from app import auth_agent
+from app import auth_agent, auth_browser
 
 
 def test_needs_auth():
@@ -23,6 +23,7 @@ def test_prepare_auth_config_defaults_to_target_url():
     assert prepared.credentials_payload == {"u": "a"}
     assert prepared.instructions is None
     assert prepared.success_indicator is None
+    assert prepared.probe_url is None
 
 
 def test_prepare_auth_config_coerces_max_steps():
@@ -36,6 +37,74 @@ def test_prepare_auth_config_coerces_max_steps():
 
     assert prepared.login_url == "https://example.com/login"
     assert prepared.max_steps == 12
+
+
+def test_prepare_auth_config_accepts_probe_url():
+    prepared = auth_agent._prepare_auth_config(
+        "https://example.com",
+        {
+            "login_url": "https://example.com/login",
+            "probe_url": " /app/dashboard ",
+        },
+    )
+
+    assert prepared.probe_url == "/app/dashboard"
+
+
+def test_auth_prompt_includes_probe_url() -> None:
+    prompt = auth_browser.build_user_prompt(
+        page_state="Login form",
+        target_url="https://example.com",
+        credentials={},
+        instructions=None,
+        success_indicator=None,
+        probe_url="/app/dashboard",
+    )
+
+    assert "Protected probe URL for verification: /app/dashboard" in prompt
+
+
+def test_explicit_probe_candidates_cover_target_login_current_and_trailing_slash() -> None:
+    assert auth_agent._explicit_probe_candidates(
+        "dashboard",
+        target_url="https://example.com/",
+        login_url="https://example.com/login",
+        current_url="https://example.com/app/current",
+    ) == [
+        "https://example.com/dashboard",
+        "https://example.com/dashboard/",
+        "https://example.com/login/dashboard",
+        "https://example.com/login/dashboard/",
+        "https://example.com/app/current/dashboard",
+        "https://example.com/app/current/dashboard/",
+    ]
+
+
+def test_explicit_probe_candidates_keep_absolute_and_root_relative_same_origin() -> None:
+    assert auth_agent._explicit_probe_candidates(
+        "/dashboard",
+        target_url="https://example.com/base",
+        login_url="https://example.com/login",
+        current_url="https://example.com/login",
+    ) == [
+        "https://example.com/dashboard",
+        "https://example.com/dashboard/",
+    ]
+    assert auth_agent._explicit_probe_candidates(
+        "https://example.com/app/dashboard?tab=home#section",
+        target_url="https://example.com/",
+        login_url="https://example.com/login",
+        current_url="https://example.com/login",
+    ) == ["https://example.com/app/dashboard?tab=home"]
+    assert (
+        auth_agent._explicit_probe_candidates(
+            "https://evil.example.com/dashboard",
+            target_url="https://example.com/",
+            login_url="https://example.com/login",
+            current_url="https://example.com/login",
+        )
+        == []
+    )
 
 
 def test_resolve_secrets_env(monkeypatch: pytest.MonkeyPatch):
@@ -125,6 +194,40 @@ async def test_build_tools_records_blocked_urls() -> None:
     ]
 
 
+def test_discovered_url_candidate_filters_unsafe_and_cross_origin_links() -> None:
+    assert (
+        auth_agent._discovered_url_candidate("/conference/2026#top", "https://example.com/")
+        == "https://example.com/conference/2026"
+    )
+    assert auth_agent._discovered_url_candidate("/User/Login", "https://example.com/") is None
+    assert auth_agent._discovered_url_candidate("/logout", "https://example.com/") is None
+    assert (
+        auth_agent._discovered_url_candidate(
+            "https://other.example.com/app", "https://example.com/"
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_discovered_urls_from_open_pages_returns_safe_same_origin_links() -> None:
+    class FakeController:
+        async def collect_link_items(self) -> list[dict[str, str]]:
+            return [
+                {"href": "https://example.com/projects/alpha", "text": "Project Alpha"},
+                {"href": "https://example.com/projects/alpha#section", "text": "duplicate"},
+                {"href": "https://example.com/User/Logout", "text": "Logout"},
+                {"href": "https://docs.example.com/help", "text": "External Docs"},
+            ]
+
+    urls = await auth_agent._discovered_urls_from_open_pages(
+        cast(auth_agent._AuthBrowserController, FakeController()),
+        target_url="https://example.com/",
+    )
+
+    assert urls == ["https://example.com/projects/alpha"]
+
+
 @pytest.mark.asyncio
 async def test_build_tools_generates_totp_from_credential_key(
     monkeypatch: pytest.MonkeyPatch,
@@ -148,6 +251,41 @@ async def test_build_tools_generates_totp_from_credential_key(
     get_totp_code = next(tool for tool in tools if tool.__name__ == "get_totp_code")
 
     assert await get_totp_code("totp_secret") == "TOTP code from totp_secret: 654321"
+
+
+@pytest.mark.asyncio
+async def test_build_tools_remembers_successful_configured_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakePage:
+        url = "https://example.com/app"
+
+    async def fake_verify(*args, **kwargs):
+        assert kwargs["probe_url"] == "/app/dashboard"
+        return auth_agent._VerificationResult(
+            success=True,
+            landing_url="https://example.com/app/dashboard",
+        )
+
+    monkeypatch.setattr(auth_agent, "_verify_authenticated", fake_verify)
+    memory = auth_agent._VerificationMemory()
+    controller = auth_agent._AuthBrowserController(None, FakePage(), "https://example.com/")
+    tools = auth_agent._build_tools(
+        controller,
+        target_url="https://example.com/",
+        login_url="https://example.com/login",
+        configured_probe_url="/app/dashboard",
+        credentials={"email": "user@example.com"},
+        verification_memory=memory,
+    )
+    verify_authentication = next(tool for tool in tools if tool.__name__ == "verify_authentication")
+
+    assert await verify_authentication() == (
+        "verified: authenticated landing_url=https://example.com/app/dashboard"
+    )
+    assert memory.probe_url == "/app/dashboard"
+    assert memory.result is not None
+    assert memory.result.landing_url == "https://example.com/app/dashboard"
 
 
 @pytest.mark.asyncio

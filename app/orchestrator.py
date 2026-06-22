@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from . import auth_agent, crawler, db, parser, proxy
 from .job_status import ACTIVE_JOB_STATUSES, TERMINAL_JOB_STATUSES
@@ -24,7 +25,11 @@ class CrawlAuthContext:
     headers: list[str]
     landing_url: str | None = None
     extra_seed_urls: list[str] = field(default_factory=list)
+    discovered_urls: list[str] = field(default_factory=list)
     dynamic_exclude_patterns: list[str] = field(default_factory=list)
+    auth_blocked_url_count: int = 0
+    auth_applied_blocked_url_count: int = 0
+    auth_ignored_blocked_url_count: int = 0
 
 
 def _now() -> str:
@@ -41,6 +46,45 @@ def _extract_manual_headers(auth_config: dict[str, Any]) -> list[str]:
     if not isinstance(headers, list):
         return []
     return [str(header) for header in headers]
+
+
+def _same_url(left: str, right: str) -> bool:
+    left_parsed = urlparse(left)
+    right_parsed = urlparse(right)
+    left_path = left_parsed.path.rstrip("/") or "/"
+    right_path = right_parsed.path.rstrip("/") or "/"
+    return (
+        left_parsed.scheme.lower(),
+        left_parsed.netloc.lower(),
+        left_path,
+        left_parsed.query,
+    ) == (
+        right_parsed.scheme.lower(),
+        right_parsed.netloc.lower(),
+        right_path,
+        right_parsed.query,
+    )
+
+
+def _merge_extra_seed_urls(
+    *,
+    target_url: str,
+    landing_url: str | None,
+    discovered_urls: list[str],
+) -> list[str]:
+    candidates: list[str] = []
+    if landing_url:
+        candidates.append(landing_url)
+    candidates.extend(discovered_urls)
+    seeds: list[str] = []
+    for candidate in candidates:
+        url = str(candidate).strip()
+        if not url or _same_url(url, target_url):
+            continue
+        if any(_same_url(url, existing) for existing in seeds):
+            continue
+        seeds.append(url)
+    return seeds
 
 
 async def _cancel_if_requested(job_id: str, cancel_event: asyncio.Event) -> bool:
@@ -76,16 +120,33 @@ async def _run_auth_if_needed(
             "Auth produced %d dynamic crawl exclusion pattern(s)",
             len(dynamic_exclude_patterns),
         )
+    auth_blocked_url_count = len(auth_result.blocked_urls)
+    auth_applied_blocked_url_count = len(dynamic_exclude_patterns)
+    auth_ignored_blocked_url_count = max(
+        0,
+        auth_blocked_url_count - auth_applied_blocked_url_count,
+    )
 
-    extra_seed_urls: list[str] = []
-    if auth_result.landing_url and auth_result.landing_url != target_url:
-        extra_seed_urls.append(auth_result.landing_url)
+    extra_seed_urls = _merge_extra_seed_urls(
+        target_url=target_url,
+        landing_url=auth_result.landing_url,
+        discovered_urls=auth_result.discovered_urls,
+    )
+    if auth_result.discovered_urls:
+        logger.info(
+            "Auth discovered %d same-origin crawl seed URL(s)",
+            len(auth_result.discovered_urls),
+        )
 
     return CrawlAuthContext(
         headers=merged_headers,
         landing_url=auth_result.landing_url,
         extra_seed_urls=extra_seed_urls,
+        discovered_urls=auth_result.discovered_urls,
         dynamic_exclude_patterns=dynamic_exclude_patterns,
+        auth_blocked_url_count=auth_blocked_url_count,
+        auth_applied_blocked_url_count=auth_applied_blocked_url_count,
+        auth_ignored_blocked_url_count=auth_ignored_blocked_url_count,
     )
 
 
@@ -107,6 +168,34 @@ async def update_job_status(job_id: str, status: JobStatus, error: str | None = 
         WHERE job_id = ?
         """,
         (status.value, error, finished_at, job_id),
+    )
+
+
+def build_generated_exclusions_payload(
+    config: crawler.CrawlConfig,
+    auth_context: CrawlAuthContext,
+) -> dict[str, Any]:
+    return {
+        "auth_blocked_url_count": auth_context.auth_blocked_url_count,
+        "auth_applied_blocked_url_count": auth_context.auth_applied_blocked_url_count,
+        "auth_ignored_blocked_url_count": auth_context.auth_ignored_blocked_url_count,
+        "auth_dynamic_patterns": list(auth_context.dynamic_exclude_patterns),
+        "auth_discovered_url_count": len(auth_context.discovered_urls),
+        "auth_discovered_urls": list(auth_context.discovered_urls),
+        "extra_seed_urls": list(auth_context.extra_seed_urls),
+        "effective_patterns": crawler.build_exclusion_patterns(config),
+    }
+
+
+async def update_job_generated_exclusions(job_id: str, exclusions: dict[str, Any]) -> None:
+    logger.info("Persisting generated exclusions job_id=%s", job_id)
+    await db.execute(
+        """
+        UPDATE jobs
+        SET generated_exclusions = ?
+        WHERE job_id = ?
+        """,
+        (db.dumps_json(exclusions), job_id),
     )
 
 
@@ -165,14 +254,19 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
             auth_context.extra_seed_urls or None,
             len(auth_context.dynamic_exclude_patterns),
         )
+        crawl_config = crawler.CrawlConfig(
+            target_url=row["target_url"],
+            scope_config=db.loads_json(row["scope_config"]),
+            headers=auth_context.headers or None,
+            extra_seed_urls=auth_context.extra_seed_urls or None,
+            dynamic_exclude_patterns=auth_context.dynamic_exclude_patterns or None,
+        )
+        await update_job_generated_exclusions(
+            job_id,
+            build_generated_exclusions_payload(crawl_config, auth_context),
+        )
         await crawler.run_crawl(
-            crawler.CrawlConfig(
-                target_url=row["target_url"],
-                scope_config=db.loads_json(row["scope_config"]),
-                headers=auth_context.headers or None,
-                extra_seed_urls=auth_context.extra_seed_urls or None,
-                dynamic_exclude_patterns=auth_context.dynamic_exclude_patterns or None,
-            ),
+            crawl_config,
             cancel_event=cancel_event,
             log_path=proxy_process.log_path,
         )
