@@ -15,6 +15,8 @@ def test_build_katana_command_defaults():
     assert "-proxy" in command
     assert "http://127.0.0.1:8888" in command
     assert command[command.index("-known-files") + 1] == "all"
+    assert "-jc" in command
+    assert "-jsl" in command
     assert "-no-color" in command
     assert "-verbose" in command
     assert "-fs" in command
@@ -43,6 +45,19 @@ def test_build_katana_command_overrides():
     assert command[command.index("-rl") + 1] == "5"
     assert command[command.index("-cs") + 1] == "app"
     assert "-H" in command
+
+
+def test_build_katana_command_js_parsing_is_always_enabled_without_headless():
+    config = crawler.CrawlConfig(
+        target_url="https://example.com",
+        scope_config={"headless": False},
+    )
+
+    command = crawler.build_katana_command(config)
+
+    assert "-jc" in command
+    assert "-jsl" in command
+    assert "-hybrid" not in command
 
 
 def test_blocked_urls_to_exclude_patterns_normalizes_safe_same_scope_urls():

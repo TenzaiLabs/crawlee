@@ -118,6 +118,8 @@ def build_katana_command(
         "-jsonl",
         "-known-files",
         "all",
+        "-jc",
+        "-jsl",
         "-no-color",
         "-verbose",
         "-fs",
@@ -171,7 +173,6 @@ def build_katana_command(
 
     if headless:
         command.append("-hybrid")
-        command.append("-jc")
         command.extend(
             [
                 "-headless-options",
