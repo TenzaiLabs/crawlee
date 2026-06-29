@@ -21,4 +21,7 @@ proxify_logs.jsonl
 # Vendored dependencies (testsites)
 testsites/.venv/
 testsites/site-c-registration-express/node_modules/
+testsites/site-c-registration-express/package-lock.json
+testsites/site-e-crawl-trap-ruby/Gemfile.lock
+testsites/site-e-crawl-trap-ruby/Gemfile.bak
 testsites/site-e-crawl-trap-ruby/vendor/

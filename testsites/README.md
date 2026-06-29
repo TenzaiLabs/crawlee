@@ -36,6 +36,11 @@ python verify_sites.py
 The verifier uses direct ports. The Docker Compose gateway also exposes the
 same sites on the `910x` and `920x` port ranges.
 
+Fixture dependency lockfiles and vendored dependency directories are
+intentionally not committed. Docker builds install runtime dependencies from the
+small source manifests, and keeping generated dependency artifacts out of the
+repo prevents `testsites/` fixtures from creating Dependabot alert noise.
+
 In each `sitemap.json`, `entries` are URLs that should be reachable.
 `blocked_entries` are destructive or session-ending URLs that may be visible in
 links, forms, or controls but should not appear in crawler results.
