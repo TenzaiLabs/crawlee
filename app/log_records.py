@@ -21,6 +21,19 @@ _TEXTUAL_PREFIXES = (
 )
 
 _BODY_PLACEHOLDER = "[non-text body removed]"
+_SECRET_PLACEHOLDER = "[redacted]"
+_SENSITIVE_HEADER_NAMES = {
+    "authorization",
+    "proxy-authorization",
+    "cookie",
+    "set-cookie",
+    "x-csrf-token",
+    "x-xsrf-token",
+    "csrf-token",
+    "x-api-key",
+    "api-key",
+    "x-auth-token",
+}
 
 
 def _is_textual_content_type(content_type: str | None) -> bool:
@@ -60,16 +73,67 @@ def _strip_body_from_raw(raw: str) -> str:
     return raw
 
 
+def _redact_headers(headers: dict[str, Any]) -> dict[str, Any]:
+    redacted = dict(headers)
+    for name in list(redacted):
+        if str(name).lower() in _SENSITIVE_HEADER_NAMES:
+            redacted[name] = _SECRET_PLACEHOLDER
+    return redacted
+
+
+def _split_line_ending(line: str) -> tuple[str, str]:
+    if line.endswith("\r\n"):
+        return line[:-2], "\r\n"
+    if line.endswith("\n"):
+        return line[:-1], "\n"
+    return line, ""
+
+
+def _redact_raw_headers(raw: str) -> str:
+    lines: list[str] = []
+    in_headers = True
+    for line in raw.splitlines(keepends=True):
+        content, ending = _split_line_ending(line)
+        if in_headers:
+            if not content:
+                in_headers = False
+            elif ":" in content:
+                name, _value = content.split(":", 1)
+                if name.strip().lower() in _SENSITIVE_HEADER_NAMES:
+                    line = f"{name}: {_SECRET_PLACEHOLDER}{ending}"
+        lines.append(line)
+    return "".join(lines)
+
+
+def _redact_section_secrets(section: dict[str, Any]) -> dict[str, Any]:
+    redacted = dict(section)
+    changed = False
+    for key in ("headers", "header"):
+        headers = redacted.get(key)
+        if isinstance(headers, dict):
+            sanitized_headers = _redact_headers(headers)
+            if sanitized_headers != headers:
+                redacted[key] = sanitized_headers
+                changed = True
+    raw = redacted.get("raw")
+    if isinstance(raw, str):
+        sanitized_raw = _redact_raw_headers(raw)
+        if sanitized_raw != raw:
+            redacted["raw"] = sanitized_raw
+            changed = True
+    return redacted if changed else section
+
+
 def _sanitize_section(section: dict[str, Any]) -> dict[str, Any]:
     ct = _content_type_from_headers(section)
     if _is_textual_content_type(ct):
-        return section
+        return _redact_section_secrets(section)
     section = dict(section)
     if "body" in section:
         section["body"] = _BODY_PLACEHOLDER
     if "raw" in section:
         section["raw"] = _strip_body_from_raw(section["raw"])
-    return section
+    return _redact_section_secrets(section)
 
 
 def sanitize_record(data: dict[str, Any]) -> dict[str, Any]:

@@ -89,6 +89,14 @@ def test_build_generated_exclusions_payload() -> None:
     }
 
 
+def test_extract_manual_headers_resolves_env_templates(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_COOKIE", "session=abc")
+
+    assert orchestrator._extract_manual_headers(
+        {"headers": ["Cookie: {{env:APP_COOKIE}}"]}
+    ) == ["Cookie: session=abc"]
+
+
 @pytest.mark.asyncio
 async def test_run_auth_if_needed_returns_manual_header_context() -> None:
     auth_context = await orchestrator._run_auth_if_needed(

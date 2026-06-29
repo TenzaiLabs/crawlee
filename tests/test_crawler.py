@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app import crawler
+from app.process import SubprocessResult
 
 
 def test_build_katana_command_defaults():
@@ -137,6 +140,20 @@ def test_build_katana_command_headless_with_cdp_url():
     assert "-system-chrome" not in command
 
 
+def test_build_katana_command_headless_with_no_incognito():
+    config = crawler.CrawlConfig(
+        target_url="https://example.com",
+        scope_config={
+            "headless": True,
+            "no_incognito": True,
+        },
+    )
+
+    command = crawler.build_katana_command(config)
+    assert "-hybrid" in command
+    assert "-no-incognito" in command
+
+
 def test_build_katana_command_headless_with_system_chrome():
     config = crawler.CrawlConfig(
         target_url="https://example.com",
@@ -177,3 +194,54 @@ def test_build_katana_command_cdp_url_mutually_exclusive_with_system_chrome():
     )
     with pytest.raises(ValueError, match="mutually exclusive"):
         crawler.build_katana_command(config)
+
+
+@pytest.mark.asyncio
+async def test_run_crawl_redacts_sensitive_headers_in_katana_sidecar(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_run_safe_subprocess(
+        _cmd,
+        *,
+        timeout,
+        on_output=None,
+        cancel_event=None,
+        stop_event=None,
+        env=None,
+        stderr_path=None,
+    ):
+        assert on_output is not None
+        await on_output(
+            json.dumps(
+                {
+                    "request": {
+                        "method": "GET",
+                        "endpoint": "https://example.com/",
+                        "raw": (
+                            "GET / HTTP/1.1\r\n"
+                            "Host: example.com\r\n"
+                            "Cookie: session=abc\r\n"
+                            "\r\n"
+                        ),
+                    },
+                    "response": {"status_code": 200, "headers": {}, "body": "ok"},
+                }
+            )
+        )
+        return SubprocessResult(exit_code=0, output="")
+
+    monkeypatch.setattr(crawler, "run_safe_subprocess", fake_run_safe_subprocess)
+    log_path = tmp_path / "job.jsonl"
+
+    await crawler.run_crawl(
+        crawler.CrawlConfig(
+            target_url="https://example.com",
+            scope_config={"headless": False},
+        ),
+        log_path=str(log_path),
+    )
+
+    sidecar = log_path.with_name(log_path.name + ".katana").read_text()
+    assert "Cookie: [redacted]" in sidecar
+    assert "session=abc" not in sidecar

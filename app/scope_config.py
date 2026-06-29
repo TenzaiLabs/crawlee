@@ -21,6 +21,7 @@ _ALLOWED_SCOPE_CONFIG_KEYS = {
     "headless",
     "cdp_url",
     "chrome_ws_url",
+    "no_incognito",
     "system_chrome",
     "system_chrome_path",
 }
@@ -104,7 +105,7 @@ def _validate_scope_config_shape(scope_config: dict[str, Any]) -> None:
     _require_int_in_range(scope_config, "parallelism", minimum=1, maximum=2000)
     _require_int_in_range(scope_config, "timeout", minimum=1, maximum=3600)
 
-    for key in ("headless", "system_chrome"):
+    for key in ("headless", "system_chrome", "no_incognito"):
         value = scope_config.get(key)
         if value is None:
             continue

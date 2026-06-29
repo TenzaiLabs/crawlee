@@ -45,7 +45,11 @@ def _extract_manual_headers(auth_config: dict[str, Any]) -> list[str]:
     headers = auth_config.get("headers")
     if not isinstance(headers, list):
         return []
-    return [str(header) for header in headers]
+    resolved = auth_agent.resolve_secrets({"headers": headers})
+    resolved_headers = resolved.get("headers")
+    if not isinstance(resolved_headers, list):
+        return []
+    return [str(header) for header in resolved_headers]
 
 
 def _same_url(left: str, right: str) -> bool:
@@ -292,6 +296,7 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
         if proxy_process is not None:
             await proxy.stop_proxy(proxy_process)
             await asyncio.to_thread(sanitize_log_file, proxy_process.log_path)
+            await asyncio.to_thread(sanitize_log_file, proxy_process.log_path + ".katana")
         logger.debug("Job runner cleanup finished for job_id=%s", job_id)
 
 

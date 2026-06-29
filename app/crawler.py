@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import json
 import logging
 import re
 from collections import deque
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
 from .common import coerce_int, is_host_in_scope, open_text_writer
+from .log_records import sanitize_record
 from .process import run_safe_subprocess
 from .scope_config import _coerce_bool, validate_scope_config
 from .settings import CRAWLER_SUBPROCESS_TIMEOUT_SECONDS
@@ -173,6 +175,8 @@ def build_katana_command(
 
     if headless:
         command.append("-hybrid")
+        if _coerce_bool(scope_config.get("no_incognito")):
+            command.append("-no-incognito")
         command.extend(
             [
                 "-headless-options",
@@ -217,7 +221,14 @@ async def run_crawl(
         stripped = line.strip()
         recent_output.append(stripped)
         if log_file and stripped.startswith("{"):
-            log_file.write(stripped + "\n")
+            try:
+                record = json.loads(stripped)
+            except json.JSONDecodeError:
+                log_file.write(stripped + "\n")
+            else:
+                if isinstance(record, dict):
+                    stripped = json.dumps(sanitize_record(record))
+                log_file.write(stripped + "\n")
             log_file.flush()
         if stop_event is None:
             return

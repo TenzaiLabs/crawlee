@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.log_records import (
     _BODY_PLACEHOLDER,
+    _SECRET_PLACEHOLDER,
     sanitize_log_file,
     sanitize_record,
 )
@@ -72,6 +73,44 @@ def test_request_body_stripped_for_non_textual():
     }
     result = sanitize_record(rec)
     assert result["request"]["body"] == _BODY_PLACEHOLDER
+
+
+def test_sensitive_headers_redacted_from_header_maps_and_raw_blocks():
+    rec = {
+        "request": {
+            "method": "GET",
+            "url": "http://example.com",
+            "header": {
+                "Cookie": "session=abc",
+                "Authorization": "Bearer secret",
+                "Accept": "text/html",
+            },
+            "raw": (
+                "GET / HTTP/1.1\r\n"
+                "Host: example.com\r\n"
+                "Cookie: session=abc\r\n"
+                "Authorization: Bearer secret\r\n"
+                "\r\n"
+            ),
+        },
+        "response": {
+            "header": {"Set-Cookie": "next=secret", "Content-Type": "text/html"},
+            "body": "ok",
+            "raw": "HTTP/1.1 200 OK\r\nSet-Cookie: next=secret\r\n\r\nok",
+        },
+    }
+
+    result = sanitize_record(rec)
+
+    assert result["request"]["header"]["Cookie"] == _SECRET_PLACEHOLDER
+    assert result["request"]["header"]["Authorization"] == _SECRET_PLACEHOLDER
+    assert result["request"]["header"]["Accept"] == "text/html"
+    assert "Cookie: [redacted]" in result["request"]["raw"]
+    assert "Authorization: [redacted]" in result["request"]["raw"]
+    assert "session=abc" not in result["request"]["raw"]
+    assert result["response"]["header"]["Set-Cookie"] == _SECRET_PLACEHOLDER
+    assert "Set-Cookie: [redacted]" in result["response"]["raw"]
+    assert "next=secret" not in result["response"]["raw"]
 
 
 def test_sanitize_log_file(tmp_path: Path):
