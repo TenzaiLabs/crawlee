@@ -1,0 +1,4 @@
+name: Tenzai Crawler CodeQL config
+
+paths-ignore:
+  - testsites/**

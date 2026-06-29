@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    exclude-paths:
+      - testsites/**
     schedule:
       interval: weekly
     groups:
@@ -11,6 +13,8 @@ updates:
 
   - package-ecosystem: pre-commit
     directory: /
+    exclude-paths:
+      - testsites/**
     schedule:
       interval: weekly
     groups:
@@ -20,6 +24,8 @@ updates:
 
   - package-ecosystem: uv
     directory: /
+    exclude-paths:
+      - testsites/**
     schedule:
       interval: weekly
     groups:
