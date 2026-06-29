@@ -92,9 +92,9 @@ def test_build_generated_exclusions_payload() -> None:
 def test_extract_manual_headers_resolves_env_templates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_COOKIE", "session=abc")
 
-    assert orchestrator._extract_manual_headers(
-        {"headers": ["Cookie: {{env:APP_COOKIE}}"]}
-    ) == ["Cookie: session=abc"]
+    assert orchestrator._extract_manual_headers({"headers": ["Cookie: {{env:APP_COOKIE}}"]}) == [
+        "Cookie: session=abc"
+    ]
 
 
 @pytest.mark.asyncio

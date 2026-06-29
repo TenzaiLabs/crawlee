@@ -411,9 +411,7 @@ def write_json(path: Path, results: list[ExternalResult], args: argparse.Namespa
             "log_dir": getattr(args, "log_dir", None),
             "cdp_url": args.cdp_url,
             "manual_cookie_from_cdp": args.manual_cookie_from_cdp,
-            "manual_cookie_env": args.manual_cookie_env
-            if args.manual_cookie_from_cdp
-            else None,
+            "manual_cookie_env": args.manual_cookie_env if args.manual_cookie_from_cdp else None,
             "manual_auth_header_count": len(args.manual_auth_header or []),
             "no_incognito": args.no_incognito,
         },
