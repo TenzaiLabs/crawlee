@@ -39,6 +39,11 @@ _SECRET_KV_PATTERN = re.compile(r"(?i)\b(api[_-]?key|token|password|secret)(\s*[
 _HEADER_PATTERN = re.compile(r"(?i)^(authorization|cookie):\s*(.+)$")
 
 
+def sanitize_log_value(value: object) -> str:
+    text = redact_sensitive_text(str(value))
+    return text.replace("\r\n", "\\r\\n").replace("\r", "\\r").replace("\n", "\\n")
+
+
 def redact_sensitive_text(value: str) -> str:
     def _replace_match(match: re.Match[str]) -> str:
         return f"{match.group(1)}{match.group(2)}[REDACTED]"
