@@ -84,7 +84,7 @@ async def run_safe_subprocess(
                 # oversized chunk so the pipe doesn't block the subprocess.
                 logger.warning("Subprocess output line exceeded buffer limit, draining")
                 try:
-                    await stream.read(len(stream._buffer))  # type: ignore[attr-defined]
+                    await stream.read(64 * 1024)
                 except Exception:
                     pass
                 last_output = time.monotonic()

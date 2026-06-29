@@ -164,7 +164,7 @@ def custom_openapi() -> dict[str, Any]:
     return app.openapi_schema
 
 
-app.openapi = custom_openapi  # type: ignore[method-assign]
+app.__dict__["openapi"] = custom_openapi
 
 
 def _with_tenzai_docs_brand(response: HTMLResponse, product_label: str) -> HTMLResponse:
