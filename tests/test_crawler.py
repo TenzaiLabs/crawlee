@@ -219,10 +219,7 @@ async def test_run_crawl_redacts_sensitive_headers_in_katana_sidecar(
                         "method": "GET",
                         "endpoint": "https://example.com/",
                         "raw": (
-                            "GET / HTTP/1.1\r\n"
-                            "Host: example.com\r\n"
-                            "Cookie: session=abc\r\n"
-                            "\r\n"
+                            "GET / HTTP/1.1\r\nHost: example.com\r\nCookie: session=abc\r\n\r\n"
                         ),
                     },
                     "response": {"status_code": 200, "headers": {}, "body": "ok"},

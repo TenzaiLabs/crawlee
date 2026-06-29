@@ -26,6 +26,7 @@ load_dotenv()
 
 from . import db, orchestrator, parser  # noqa: E402
 from .auth_config import AuthConfigValidationError, validate_auth_config  # noqa: E402
+from .common import sanitize_log_value  # noqa: E402
 from .job_status import (  # noqa: E402
     ACTIVE_JOB_STATUSES,
     INTERRUPTED_JOB_STATUSES,
@@ -75,7 +76,7 @@ async def _read_completed_sitemap(
         cached = _completed_sitemap_cache.get(cache_key)
         if cached is not None:
             _completed_sitemap_cache.move_to_end(cache_key)
-            logger.debug("Sitemap cache hit for completed job_id=%s", job_id)
+            logger.debug("Sitemap cache hit for completed job_id=%s", sanitize_log_value(job_id))
             return copy.deepcopy(cached)
 
     sitemap = await asyncio.to_thread(parser.parse_log, job_id, target_url)
@@ -281,19 +282,28 @@ if os.getenv("CRAWLER_ENABLE_DEBUG_ENDPOINTS") == "1":
 
 @app.post("/jobs", response_model=JobCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(payload: JobCreateRequest) -> JobCreateResponse:
-    logger.info("Received create job request for target_url=%s", payload.target_url)
+    logger.info(
+        "Received create job request for target_url=%s",
+        sanitize_log_value(payload.target_url),
+    )
 
     try:
         validate_scope_config(payload.scope_config)
         validate_auth_config(payload.auth_config)
     except ScopeConfigValidationError as exc:
-        logger.warning("Rejected job creation with invalid scope_config: %s", exc)
+        logger.warning(
+            "Rejected job creation with invalid scope_config: %s",
+            sanitize_log_value(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
     except AuthConfigValidationError as exc:
-        logger.warning("Rejected job creation with invalid auth_config: %s", exc)
+        logger.warning(
+            "Rejected job creation with invalid auth_config: %s",
+            sanitize_log_value(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
@@ -353,15 +363,16 @@ async def list_jobs() -> JobListResponse:
 
 @app.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: str) -> JobResponse:
-    logger.debug("Fetching job status for job_id=%s", job_id)
+    log_job_id = sanitize_log_value(job_id)
+    logger.debug("Fetching job status for job_id=%s", log_job_id)
     row = await db.fetch_one("SELECT * FROM jobs WHERE job_id = ?", (job_id,))
     if row is None:
-        logger.warning("Job lookup failed, not found: job_id=%s", job_id)
+        logger.warning("Job lookup failed, not found: job_id=%s", log_job_id)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     sitemap = None
     if row["status"] == JobStatus.completed.value:
-        logger.debug("Job %s is completed, reading sitemap", job_id)
+        logger.debug("Job %s is completed, reading sitemap", log_job_id)
         sitemap = await _read_completed_sitemap(job_id, row["target_url"], row["finished_at"])
 
     return JobResponse(
@@ -380,10 +391,11 @@ async def get_job(job_id: str) -> JobResponse:
 
 @app.post("/jobs/{job_id}/cancel", response_model=JobCancelResponse)
 async def cancel_job(job_id: str) -> JobCancelResponse:
-    logger.info("Received cancel request for job_id=%s", job_id)
+    log_job_id = sanitize_log_value(job_id)
+    logger.info("Received cancel request for job_id=%s", log_job_id)
     row = await db.fetch_one("SELECT status FROM jobs WHERE job_id = ?", (job_id,))
     if row is None:
-        logger.warning("Cancel request failed, job not found: job_id=%s", job_id)
+        logger.warning("Cancel request failed, job not found: job_id=%s", log_job_id)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     status_value = row["status"]
@@ -392,7 +404,11 @@ async def cancel_job(job_id: str) -> JobCancelResponse:
 
     if status_value in {JobStatus.queued.value, JobStatus.pending.value}:
         await orchestrator.update_job_status(job_id, JobStatus.cancelled)
-        logger.info("Cancelled %s job job_id=%s", status_value, job_id)
+        logger.info(
+            "Cancelled %s job job_id=%s",
+            sanitize_log_value(status_value),
+            log_job_id,
+        )
         return JobCancelResponse(job_id=job_id, status=JobStatus.cancelled)
 
     requested = await orchestrator.request_cancel(job_id)
@@ -400,7 +416,7 @@ async def cancel_job(job_id: str) -> JobCancelResponse:
         await orchestrator.update_job_status(job_id, JobStatus.cancelled)
         logger.warning(
             "Cancel request had no in-memory event, force-marked cancelled for job_id=%s",
-            job_id,
+            log_job_id,
         )
         return JobCancelResponse(job_id=job_id, status=JobStatus.cancelled)
 
