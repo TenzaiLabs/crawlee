@@ -54,6 +54,7 @@ OPENAPI_URL = "/openapi.json"
 FAVICON_URL = "/static/tenzai-favicon-48.png"
 LOGO_URL = "/static/tenzai-logo.svg"
 
+
 def _result_metadata(row: Any) -> JobResultMetadata | None:
     entry_count = row["result_entry_count"]
     size_bytes = row["result_size_bytes"]

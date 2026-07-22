@@ -125,7 +125,9 @@ def parse_log(
         raise CrawlArtifactsCorruptError(f"Crawl artifacts for job {job_id} contain no valid JSON")
 
     entries = list(deduped.values())
-    return validate_sitemap({
-        "entries": entries,
-        "tree": _build_tree(entries),
-    })
+    return validate_sitemap(
+        {
+            "entries": entries,
+            "tree": _build_tree(entries),
+        }
+    )

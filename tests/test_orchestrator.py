@@ -220,9 +220,7 @@ async def test_queued_cancellation_prevents_runner_claim(app) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_job_persists_parsed_sitemap_once(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_run_job_persists_parsed_sitemap_once(app, monkeypatch: pytest.MonkeyPatch) -> None:
     await orchestrator.db.execute(
         """
         INSERT INTO jobs (job_id, status, target_url, created_at)
