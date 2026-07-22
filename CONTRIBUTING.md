@@ -81,11 +81,12 @@ Auth guardrails:
 The `testsites/` fixtures are deterministic coverage for crawler behavior. Prefer fixture-backed
 tests over tiny ad hoc servers when the existing fixtures can prove the behavior.
 
-Generated comparison outputs should not be committed unless the change explicitly asks for report
-artifacts:
+Generated comparison outputs should not be committed unless the change explicitly asks for them.
+They are ignored under these patterns:
 
-- `docs/testsite-comparison-report.md`
-- `docs/testsite-comparison-results.json`
+- `docs/external-*-report.md` and `docs/external-*-results.json`
+- `docs/cmt-*-comparison-report.md`
+- `docs/testsite-*-report.md` and `docs/testsite-*-results.json`
 
 ## Docs Site
 

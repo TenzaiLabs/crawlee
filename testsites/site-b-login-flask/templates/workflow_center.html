@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workflow Center - Harbor Accounts</title>
+    <style>
+      body { font-family: "Trebuchet MS", sans-serif; margin: 2rem; background: #f4f8fb; color: #1b2b34; }
+      nav a { margin-right: 1rem; }
+      .panel { background: white; padding: 1rem; margin: 1rem 0; max-width: 680px; }
+      label { display: block; margin: 0.8rem 0; }
+      [hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <form method="post" action="/logout" style="display:inline;"><button type="submit">Logout</button></form>
+    </nav>
+    <h1>Workflow Center</h1>
+    <p>Validate safe drafts without applying account changes.</p>
+    <button id="toggle-tools" type="button">Show workflow tools</button>
+    <section id="tools" class="panel" hidden>
+      <div role="tablist" aria-label="Workflow tools">
+        <button type="button" role="tab" data-panel="onboarding">Onboarding</button>
+        <button type="button" role="tab" data-panel="settings">Settings validation</button>
+        <button type="button" role="tab" data-panel="danger">Account operations</button>
+      </div>
+      <div id="workflow-panel"></div>
+    </section>
+    <script>
+      const endpoint = (...parts) => ["", "api", ...parts].join("/");
+      const tools = document.getElementById("tools");
+      const panel = document.getElementById("workflow-panel");
+      document.getElementById("toggle-tools").addEventListener("click", () => {
+        tools.hidden = !tools.hidden;
+      });
+
+      function onboarding() {
+        panel.innerHTML = `<form id="onboarding-form">
+          <h2>Onboarding draft</h2>
+          <label>Team <select name="team"><option>Platform</option></select></label>
+          <label>Region <select name="region"><option>EU West</option></select></label>
+          <button type="submit">Validate onboarding</button>
+        </form>`;
+        document.getElementById("onboarding-form").addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const response = await fetch(endpoint("onboarding", "validate"), { method: "POST" });
+          const data = await response.json();
+          if (data.valid) {
+            panel.innerHTML = `<h2>Draft preview</h2><p>No invitation will be sent.</p><button id="preview-draft" type="button">Preview onboarding draft</button><p id="preview-result"></p>`;
+            document.getElementById("preview-draft").addEventListener("click", async () => {
+              const preview = await fetch(endpoint("onboarding", "preview"), { method: "POST" });
+              const result = await preview.json();
+              document.getElementById("preview-result").textContent = `${result.draft_id}: ${result.state}`;
+            });
+          }
+        });
+      }
+
+      function settings() {
+        panel.innerHTML = `<form id="settings-form"><h2>Settings validation</h2><label>Timezone <select name="timezone"><option>UTC</option></select></label><button type="submit">Validate settings</button><p id="settings-result"></p></form>`;
+        document.getElementById("settings-form").addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const response = await fetch(endpoint("settings", "validate"), { method: "POST" });
+          const data = await response.json();
+          document.getElementById("settings-result").textContent = data.valid ? "Settings are valid and were not saved." : "Invalid settings.";
+        });
+      }
+
+      function danger() {
+        panel.innerHTML = `<h2>Restricted account operations</h2>
+          <form method="post" action="/api/invitations/send"><button type="submit">Send invitation</button></form>
+          <form method="post" action="/api/security/password"><button type="submit">Change password</button></form>
+          <form method="post" action="/api/account/close"><button type="submit">Close account</button></form>`;
+      }
+
+      document.querySelector('[role="tablist"]').addEventListener("click", (event) => {
+        if (!(event.target instanceof HTMLButtonElement)) return;
+        ({ onboarding, settings, danger })[event.target.dataset.panel]();
+      });
+    </script>
+  </body>
+</html>

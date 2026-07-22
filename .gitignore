@@ -18,6 +18,13 @@ build/
 proxify_logs/
 proxify_logs.jsonl
 
+# Generated crawl comparisons
+docs/external-*-report.md
+docs/external-*-results.json
+docs/cmt-*-comparison-report.md
+docs/testsite-*-report.md
+docs/testsite-*-results.json
+
 # Vendored dependencies (testsites)
 testsites/.venv/
 testsites/site-c-registration-express/node_modules/

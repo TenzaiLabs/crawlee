@@ -24,7 +24,7 @@ The service runs as a single-job worker. Jobs are accepted through the API, stor
 
 - Python `3.14`
 - `uv`
-- `katana` and `proxify` in `PATH`
+- Katana `v1.6.1` and `proxify` in `PATH`
 
 ## Setup For Usage
 
@@ -80,10 +80,16 @@ curl -X POST http://localhost:8000/jobs \
   -d '{"target_url":"https://example.com"}'
 ```
 
-List active and queued jobs:
+List current and previously completed jobs (newest first):
 
 ```bash
 curl http://localhost:8000/jobs
+```
+
+Filter or paginate job history:
+
+```bash
+curl 'http://localhost:8000/jobs?status=completed&limit=25&offset=0'
 ```
 
 Get job status/result:
@@ -107,6 +113,7 @@ Basic commands:
 ```bash
 uv run tenzai-crawler create https://example.com
 uv run tenzai-crawler list
+uv run tenzai-crawler list --status completed --limit 25
 uv run tenzai-crawler status <job_id>
 uv run tenzai-crawler cancel <job_id>
 ```
@@ -133,6 +140,9 @@ Global options:
 - `--timeout` (default `30` seconds)
 
 Pass `scope_config` via `--scope-config-json` / `--scope-config-file`, or use shorthand flags like `--headless` and `--cdp-url`. When combined, flags override matching keys.
+
+Katana crawls for up to `5m` by default. Set `scope_config.crawl_duration` to override the
+budget for an individual job.
 
 ## Authentication Usage
 
@@ -216,7 +226,7 @@ uv run python -m scripts.run_auth_agent_tests --timeout 30
 Run full crawler jobs against the auth fixtures:
 
 ```bash
-uv run python -m scripts.run_crawler_auth_tests --crawl-duration 25s --job-timeout 180
+uv run python -m scripts.run_crawler_auth_tests --crawl-duration 5m --job-timeout 600
 ```
 
 Stop the fixtures:
@@ -239,7 +249,8 @@ The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `-
 | `CRAWLER_AUTH_MODEL` | `gpt-5.4-nano` | LLM model for AI auth |
 | `CRAWLER_AUTH_ATTEMPTS` | `3` | Auth retry attempts |
 | `CRAWLER_AUTH_MAX_STEPS` | `85` | Default max tool-calling steps for auth |
-| `CRAWLER_SUBPROCESS_TIMEOUT` | `60` | Subprocess timeout (seconds) |
+| `CRAWLER_AUTH_TIMEOUT_SECONDS` | `180` | Total AI-auth deadline, including retries and verification |
+| `CRAWLER_SUBPROCESS_TIMEOUT` | `360` | Subprocess timeout (seconds) |
 | `CRAWLER_ENABLE_DEBUG_ENDPOINTS` | off | Set `1` to enable debug routes |
 
 ## Output
@@ -252,6 +263,10 @@ Completed jobs expose a `sitemap` on `GET /jobs/<job_id>` with:
 Log artifacts are written to `$CRAWLER_LOG_DIR`: `{job_id}.jsonl` (Proxify) and `{job_id}.jsonl.katana` (Katana sidecar).
 
 Katana can emit both response-bearing records and request-only records for the same URL. Completed sitemaps preserve response status and content type when duplicate records are normalized.
+
+The normalized sitemap and its entry-count/size metadata are persisted atomically with the
+`completed` status. Raw log artifacts remain available for diagnostics, but completed job reads do
+not depend on reparsing them. Older completed jobs are backfilled from their artifacts on first read.
 
 ## Deployment
 

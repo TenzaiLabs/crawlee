@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 class DebugHandler(BaseHTTPRequestHandler):
-    def _handle(self):
+    def _handle(self) -> None:
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length) if content_length else b""
 
@@ -49,4 +49,10 @@ class DebugHandler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     addr = ("127.0.0.1", 9999)
     print(f"Listening on {addr[0]}:{addr[1]} ...")
-    HTTPServer(addr, DebugHandler).serve_forever()
+    server = HTTPServer(addr, DebugHandler)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()

@@ -145,6 +145,53 @@
       "method": "POST",
       "url": "http://localhost:8002/actions/delete",
       "reason": "destructive or session-ending action that normal crawls must not hit"
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:8002/api/invitations/send",
+      "reason": "sending invitations is outside safe discovery authority"
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:8002/api/security/password",
+      "reason": "security-setting changes are outside safe discovery authority"
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:8002/api/account/close",
+      "reason": "account closure is destructive"
     }
-  ]
+  ],
+  "browser_discovery": {
+    "browser_only_entries": [
+      {"method": "GET", "path": "/workflow-center"},
+      {"method": "POST", "path": "/api/onboarding/validate"},
+      {"method": "POST", "path": "/api/onboarding/preview"},
+      {"method": "POST", "path": "/api/settings/validate"}
+    ],
+    "required_interactions": [
+      "open the workflow center from the dashboard button",
+      "reveal the workflow tools",
+      "validate and preview an onboarding draft",
+      "validate settings without saving them"
+    ],
+    "expected_workflows": ["onboarding-draft-preview", "settings-validation"],
+    "required_request_sequences": [
+      ["POST /api/onboarding/validate", "POST /api/onboarding/preview"],
+      ["POST /api/settings/validate"]
+    ],
+    "terminal_criteria": ["draft state is preview", "settings state is not-saved"],
+    "allowed_action_variants": ["button", "tab", "select", "safe-form-submit"],
+    "expected_policy_blocks": ["logout", "send invitation", "change password", "close account"],
+    "forbidden_server_routes": [
+      "POST /logout",
+      "POST /actions/delete",
+      "POST /api/invitations/send",
+      "POST /api/security/password",
+      "POST /api/account/close"
+    ],
+    "acceptable_partial_reasons": [],
+    "budgets": {"max_steps": 24, "max_states": 18, "max_duration_seconds": 90},
+    "reset_procedure": "POST /_test/reset with the per-run harness token"
+  }
 }

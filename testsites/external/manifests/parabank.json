@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "id": "parabank",
+  "name": "ParaBank",
+  "seed_url": "http://127.0.0.1:18080/parabank/",
+  "health_probe": {"method": "GET", "url": "http://127.0.0.1:18080/parabank/", "expect_status": 200},
+  "reset_operation": {"command": "./scripts/reset-parabank.sh", "timeout_seconds": 120},
+  "auth_reference": {
+    "type": "credentials",
+    "username": "{{env:PARABANK_USERNAME}}",
+    "password": "{{env:PARABANK_PASSWORD}}"
+  },
+  "allowed_origins": ["http://127.0.0.1:18080", "http://parabank:8080"],
+  "allowed_ports": [18080, 8080],
+  "baseline_exclusions": ["/parabank/admin.htm", "/parabank/services/bank/cleanDB", "/parabank/services/bank/initializeDB", "/parabank/logout.htm"],
+  "expected_deterministic_surface": {
+    "required_routes": ["GET /parabank/", "GET /parabank/index.htm", "GET /parabank/about.htm", "GET /parabank/services.htm"]
+  },
+  "target_version": {
+    "application_version": "5.0.0-SNAPSHOT",
+    "image_channel_at_audit": "baseline",
+    "image_version_label": "24.04",
+    "image_manifest_digest": "sha256:1b8d2fd47c5f11d65d4ef5445d354cf541895aa6f327be2dd69ae95c92fee942"
+  }
+}

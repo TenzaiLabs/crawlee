@@ -1,4 +1,4 @@
-FROM python:3.14-rc-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
@@ -8,23 +8,27 @@ RUN apt-get update \
 
 RUN python -m pip install --no-cache-dir uv
 
-COPY pyproject.toml /app/pyproject.toml
+COPY pyproject.toml uv.lock /app/
 
-RUN uv pip install --system fastapi uvicorn aiosqlite playwright llm
+RUN uv sync --frozen --no-dev --no-install-project
 
-RUN python -m playwright install --with-deps chromium
+ENV PATH="/app/.venv/bin:$PATH"
 
-ARG KATANA_VERSION=1.1.0
-ARG PROXIFY_VERSION=1.0.0
+RUN .venv/bin/playwright install --with-deps chromium
+
+ARG KATANA_VERSION=1.6.1
+ARG KATANA_SHA256=503754f1bd370c3ef287df6998e317baed2dd75bdd13ea64034f09b80ca393f3
+ARG PROXIFY_VERSION=0.0.16
 
 RUN curl -fsSL -o /tmp/katana.zip \
       "https://github.com/projectdiscovery/katana/releases/download/v${KATANA_VERSION}/katana_${KATANA_VERSION}_linux_amd64.zip" \
-    && unzip /tmp/katana.zip -d /usr/local/bin \
+    && echo "${KATANA_SHA256}  /tmp/katana.zip" | sha256sum -c - \
+    && unzip -q /tmp/katana.zip katana -d /usr/local/bin \
     && rm /tmp/katana.zip
 
 RUN curl -fsSL -o /tmp/proxify.zip \
       "https://github.com/projectdiscovery/proxify/releases/download/v${PROXIFY_VERSION}/proxify_${PROXIFY_VERSION}_linux_amd64.zip" \
-    && unzip /tmp/proxify.zip -d /usr/local/bin \
+    && unzip -q /tmp/proxify.zip proxify replay mitmrelay -d /usr/local/bin \
     && rm /tmp/proxify.zip
 
 COPY app /app/app

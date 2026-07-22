@@ -59,3 +59,38 @@ a {
 .action-result {
   font-weight: 700;
 }
+
+.filter-drawer,
+.wizard,
+.discovery-workspace {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 2px solid rgba(148, 46, 46, 0.25);
+  border-radius: 10px;
+}
+
+.filter-drawer label,
+.wizard label {
+  display: block;
+  margin: 0.75rem 0;
+}
+
+table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.65rem;
+  border-bottom: 1px solid #d9a4a4;
+  text-align: left;
+}
+
+dialog {
+  max-width: 32rem;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 1rem 3rem rgba(60, 31, 31, 0.35);
+}

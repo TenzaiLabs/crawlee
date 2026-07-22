@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "crawlground": {
+    "upstream": "https://github.com/zaproxy/crawlground",
+    "commit": "9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e",
+    "source_archive_sha256": "c16f8484cc33c4471d733259c7b256fbc980d32cc1423fc57c2f4944f44d526b",
+    "base_image": "node:26-alpine@sha256:e88a35be04478413b7c71c455cd9865de9b9360e1f43456be5951032d7ac1a66",
+    "application_version": "0.1.0"
+  },
+  "juice_shop": {
+    "image": "bkimminich/juice-shop:v20.1.1@sha256:cd58d79c5cb4d82f22fbaf616f9ff43bbd04ba630cd6b448a9ed99cf652fcebf",
+    "manifest_digest": "sha256:cd58d79c5cb4d82f22fbaf616f9ff43bbd04ba630cd6b448a9ed99cf652fcebf",
+    "source_tag_commit": "f915bddd82790d0f3018902d36ae9b4241a5f51f",
+    "application_version": "20.1.1"
+  },
+  "parabank": {
+    "image": "parasoft/parabank@sha256:1b8d2fd47c5f11d65d4ef5445d354cf541895aa6f327be2dd69ae95c92fee942",
+    "manifest_digest": "sha256:1b8d2fd47c5f11d65d4ef5445d354cf541895aa6f327be2dd69ae95c92fee942",
+    "image_channel_at_audit": "baseline",
+    "application_version": "5.0.0-SNAPSHOT",
+    "image_version_label": "24.04"
+  }
+}

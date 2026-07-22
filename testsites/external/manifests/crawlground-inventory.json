@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "target_commit": "9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e",
+  "controls": [
+    "buttons/01-html-button", "buttons/02-div-onclick",
+    "dynamic-content/01-fetch-injected", "dynamic-content/02-fetch-injected", "dynamic-content/03-intersection-observer", "dynamic-content/04-details-toggle", "dynamic-content/05-sse-injected", "dynamic-content/06-websocket-injected", "dynamic-content/07-load-more", "dynamic-content/08-template-element", "dynamic-content/09-infinite-scroll", "dynamic-content/10-localstorage",
+    "forms/01-get-form", "forms/02-post-form", "forms/03-image-input", "forms/04-select-field", "forms/05-fetch-post", "forms/06-radio-buttons", "forms/07-checkboxes", "forms/08-formaction-override", "forms/09-js-form-submit", "forms/10-multistep-wizard", "forms/11-fetch-get", "forms/12-xhr-post",
+    "frames/01-iframe-srcdoc", "frames/02-shadow-dom", "frames/03-iframe-src", "frames/04-shadow-dom-closed",
+    "js-events/01-mouseover-injected", "js-events/02-onclick-prevent-default", "js-events/03-focus-injected", "js-events/04-css-hover-dropdown", "js-events/05-multilevel-dropdown", "js-events/06-dialog-modal", "js-events/07-dblclick", "js-events/08-keydown-enter", "js-events/09-contextmenu", "js-events/10-tab-panel", "js-events/11-popover", "js-events/12-pointer-events", "js-events/13-long-press", "js-events/14-custom-event",
+    "links/01-anchor-href", "links/02-js-built-href", "links/03-noscript", "links/04-svg-anchor", "links/05-target-blank", "links/06-javascript-href", "links/07-image-map",
+    "navigation/01-meta-refresh", "navigation/02-window-location-timeout", "navigation/03-history-push-state", "navigation/04-hash-routing", "navigation/05-window-replace", "navigation/06-http-redirect", "navigation/07-base-href", "navigation/08-window-open", "navigation/09-history-replace-state",
+    "other/01-bot-detection-globals"
+  ]
+}

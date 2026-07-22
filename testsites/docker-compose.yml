@@ -5,6 +5,8 @@ services:
       - "8001:8000"
   site-b:
     build: ./site-b-login-flask
+    environment:
+      TEST_HARNESS_TOKEN: ${TEST_HARNESS_TOKEN:-}
     ports:
       - "8002:8000"
   site-c:
@@ -17,10 +19,14 @@ services:
       - "8004:8000"
   site-e:
     build: ./site-e-crawl-trap-ruby
+    environment:
+      TEST_HARNESS_TOKEN: ${TEST_HARNESS_TOKEN:-}
     ports:
       - "8005:8000"
   site-f:
     build: ./site-f-spa-deno
+    environment:
+      TEST_HARNESS_TOKEN: ${TEST_HARNESS_TOKEN:-}
     ports:
       - "8006:8000"
   auth-a:

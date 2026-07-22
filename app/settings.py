@@ -23,7 +23,7 @@ def _env_float(name: str, fallback: float, *, minimum: float | None = None) -> f
     return value
 
 
-CRAWLER_SUBPROCESS_TIMEOUT_SECONDS = _env_int("CRAWLER_SUBPROCESS_TIMEOUT", 60, minimum=1)
+CRAWLER_SUBPROCESS_TIMEOUT_SECONDS = _env_int("CRAWLER_SUBPROCESS_TIMEOUT", 360, minimum=1)
 CRAWLER_SUBPROCESS_POLL_INTERVAL_SECONDS = _env_float(
     "CRAWLER_SUBPROCESS_POLL_INTERVAL", 0.5, minimum=0.1
 )

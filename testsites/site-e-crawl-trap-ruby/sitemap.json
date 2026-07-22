@@ -69,6 +69,13 @@
       "status": 200,
       "content_type": "text/html",
       "timestamp": null
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/gauntlet",
+      "status": 200,
+      "content_type": "text/html",
+      "timestamp": null
     }
   ],
   "tree": {
@@ -210,6 +217,18 @@
             "timestamp": null
           }
         ]
+      },
+      "gauntlet": {
+        "children": {},
+        "pages": [
+          {
+            "method": "GET",
+            "url": "http://localhost:8005/gauntlet",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": null
+          }
+        ]
       }
     },
     "pages": [
@@ -227,6 +246,32 @@
       "method": "POST",
       "url": "http://localhost:8005/workspace/delete",
       "reason": "destructive or session-ending action that normal crawls must not hit"
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:8005/api/gauntlet/destroy",
+      "reason": "misleading destructive form must remain blocked"
     }
-  ]
+  ],
+  "browser_discovery": {
+    "browser_only_entries": [
+      {"method": "GET", "path": "/api/gauntlet/details"}
+    ],
+    "required_interactions": [
+      "load one deduplicated runtime detail",
+      "open and close the consent panel without looping"
+    ],
+    "expected_workflows": ["bounded-runtime-detail"],
+    "required_request_sequences": [["GET /api/gauntlet/details"]],
+    "terminal_criteria": ["runtime detail is displayed"],
+    "allowed_action_variants": ["button", "wait-for-enabled-control"],
+    "expected_policy_blocks": ["archive old calendar", "out-of-scope navigation"],
+    "forbidden_server_routes": [
+      "POST /workspace/delete",
+      "POST /api/gauntlet/destroy"
+    ],
+    "acceptable_partial_reasons": ["budget_exhausted_on_calendar"],
+    "budgets": {"max_steps": 16, "max_states": 12, "max_duration_seconds": 45},
+    "reset_procedure": "POST /_test/reset with the per-run harness token"
+  }
 }

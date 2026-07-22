@@ -1,0 +1,59 @@
+name: crawler-external-targets
+
+services:
+  crawlground:
+    build:
+      context: .
+      dockerfile: Dockerfile.crawlground
+    image: crawler-crawlground:9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e
+    ports:
+      - "127.0.0.1:13456:3456"
+    volumes:
+      - crawlground-scores:/app/data
+    networks:
+      - external-targets
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3456/results.json').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 45
+      start_period: 5s
+
+  juice-shop:
+    image: bkimminich/juice-shop:v20.1.1@sha256:cd58d79c5cb4d82f22fbaf616f9ff43bbd04ba630cd6b448a9ed99cf652fcebf
+    ports:
+      - "127.0.0.1:13000:3000"
+    networks:
+      - external-targets
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, /nodejs/bin/node, -e, "fetch('http://127.0.0.1:3000/rest/admin/application-version').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 10s
+
+  parabank:
+    image: parasoft/parabank@sha256:1b8d2fd47c5f11d65d4ef5445d354cf541895aa6f327be2dd69ae95c92fee942
+    ports:
+      - "127.0.0.1:18080:8080"
+    networks:
+      - external-targets
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:8080/parabank/]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 15s
+
+networks:
+  external-targets:
+    driver: bridge
+
+volumes:
+  crawlground-scores:

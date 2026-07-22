@@ -1,0 +1,2077 @@
+{
+  "configuration": {
+    "crawl_duration": "5m",
+    "execution_boundary": "uv-run-server-http-api",
+    "headless_katana": true,
+    "include_external": true,
+    "max_depth": 3,
+    "max_pages": 80
+  },
+  "generated_at": "2026-07-22T19:38:27.342418+00:00",
+  "results": [
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 104.194,
+      "entry_count": 13,
+      "error": null,
+      "expected_entries_found": 11,
+      "expected_entry_count": 11,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "b757664c-6cab-4e14-8ba5-e21ae92fa035",
+      "kind": "repository",
+      "methods": {
+        "GET": 12,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/about.html",
+        "/contact",
+        "/docs/guide.html",
+        "/docs/reference.html",
+        "/library/checklist/packing.html",
+        "/library/overview.html",
+        "/news/2026.html",
+        "/styles.css",
+        "/workspace.html",
+        "/workspace/created.html",
+        "/workspace/updated.html"
+      ],
+      "score": null,
+      "sitemap_sha256": "6138fa0cb001a1f6913251ef25da277c8022b86bcd4996c910dbceb78cd50ea7",
+      "status_codes": {
+        "200": 13
+      },
+      "target": "site-a-static",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 4,
+      "crawl_status": "completed",
+      "elapsed_seconds": 103.25,
+      "entry_count": 6,
+      "error": null,
+      "expected_entries_found": 3,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "63784f86-5af3-4cf1-9f17-a7a11eb97ef4",
+      "kind": "repository",
+      "methods": {
+        "GET": 5,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/favicon.ico",
+        "/login",
+        "/public",
+        "/public/robots.txt"
+      ],
+      "score": null,
+      "sitemap_sha256": "77fb13e4b9597cb91011ad2102a2aaa6f44ba679de5ad3fbc9da8d0e97788441",
+      "status_codes": {
+        "200": 4,
+        "404": 2
+      },
+      "target": "site-b-login-flask",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 91.826,
+      "entry_count": 9,
+      "error": null,
+      "expected_entries_found": 8,
+      "expected_entry_count": 8,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "8e6cb604-3849-4b11-9756-0e9d7b0cd027",
+      "kind": "repository",
+      "methods": {
+        "GET": 8,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/blog/launch",
+        "/blog/launch/faq",
+        "/products",
+        "/products/core",
+        "/products/edge",
+        "/register",
+        "/workspace"
+      ],
+      "score": null,
+      "sitemap_sha256": "7d558794d8254c1c681f26e570010f7364531109fae272b38df24611156b7545",
+      "status_codes": {
+        "200": 9
+      },
+      "target": "site-c-registration-express",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 48.106,
+      "entry_count": 4,
+      "error": null,
+      "expected_entries_found": 3,
+      "expected_entry_count": 6,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "0b79c195-abcc-4db9-a2cb-2bcb1dd9c4bd",
+      "kind": "repository",
+      "methods": {
+        "GET": 3,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/login",
+        "/register"
+      ],
+      "score": null,
+      "sitemap_sha256": "ac325178cc7046b1e7198f09a42261a5521fa926ba2a9e6630439b37416ae536",
+      "status_codes": {
+        "200": 4
+      },
+      "target": "site-d-complex-auth-go",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 1,
+      "crawl_status": "completed",
+      "elapsed_seconds": 97.756,
+      "entry_count": 14,
+      "error": null,
+      "expected_entries_found": 11,
+      "expected_entry_count": 11,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "cea0cf1b-43c5-4de4-8463-578dedf04296",
+      "kind": "repository",
+      "methods": {
+        "GET": 13,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/about",
+        "/calendar/2025/12/30",
+        "/calendar/2025/12/31",
+        "/calendar/2026/01/01",
+        "/calendar/2026/01/02",
+        "/calendar/2026/01/03",
+        "/calendar/2026/01/31",
+        "/calendar/2026/02/01",
+        "/calendar/2026/02/02",
+        "/gauntlet",
+        "/limits"
+      ],
+      "score": null,
+      "sitemap_sha256": "5ea220c64f10672e00d5f3fc2da1a1029ef2074cf2b8de8a5350191be86e9219",
+      "status_codes": {
+        "200": 14
+      },
+      "target": "site-e-crawl-trap-ruby",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 5,
+      "crawl_status": "completed",
+      "elapsed_seconds": 92.111,
+      "entry_count": 10,
+      "error": null,
+      "expected_entries_found": 7,
+      "expected_entry_count": 8,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "5c623aec-75ca-4d17-9b5a-f79aa41ec604",
+      "kind": "repository",
+      "methods": {
+        "GET": 9,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app",
+        "/app.js",
+        "/app/actions",
+        "/app/overview",
+        "/app/projects",
+        "/app/reports/2026",
+        "/form.action",
+        "/styles.css"
+      ],
+      "score": null,
+      "sitemap_sha256": "3637557c8b90ce8d5fe68125250e52452a60145cd1f35430c5fa9a6d98abed3c",
+      "status_codes": {
+        "200": 8,
+        "404": 1
+      },
+      "target": "site-f-spa-deno",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 122.331,
+      "entry_count": 13,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "f93ce001-0ec6-49d3-ae79-4c79f3fa8375",
+      "kind": "repository",
+      "methods": {
+        "GET": 12,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/projects",
+        "/app/projects/robots.txt",
+        "/app/projects/sitemap.xml",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/robots.txt",
+        "/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "933d29a86e1c6f0dd832ffe04b197d88eaaabcc0cfa9ddf24eb93b73a3661609",
+      "status_codes": {
+        "200": 6,
+        "404": 6
+      },
+      "target": "auth-a-simple-form",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "manual_headers",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 203.832,
+      "entry_count": 8,
+      "error": null,
+      "expected_entries_found": 7,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "5ed5cede-01e1-4143-b31c-61564ef3dade",
+      "kind": "repository",
+      "methods": {
+        "GET": 7,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/overview",
+        "/app/projects",
+        "/app/reports",
+        "/login"
+      ],
+      "score": null,
+      "sitemap_sha256": "9d4c27129438492aadd93b988b9258cdffcb734f27c606cbd325ee650c09a0c8",
+      "status_codes": {
+        "200": 7,
+        "302": 1
+      },
+      "target": "auth-b-http-basic",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 119.707,
+      "entry_count": 14,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "a7962a35-ee90-4b5c-9100-9c6035980778",
+      "kind": "repository",
+      "methods": {
+        "GET": 13,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/audit/robots.txt",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/app/reports/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "678e4e076bf0144a277521ac3b9d9786b9552216f83d092a1f2aa13030cab60c",
+      "status_codes": {
+        "200": 6,
+        "404": 7
+      },
+      "target": "auth-c-complex-form",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 122.242,
+      "entry_count": 12,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "63ad23b4-45b2-4df7-90c2-a0fe4e54bdfa",
+      "kind": "repository",
+      "methods": {
+        "GET": 11,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/projects",
+        "/app/projects/sitemap.xml",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/favicon.ico"
+      ],
+      "score": null,
+      "sitemap_sha256": "d8a548f2b6d62273d7ba3e917fae2547f6e022537137d08b2e0b1533b6b3fdd7",
+      "status_codes": {
+        "200": 6,
+        "404": 5
+      },
+      "target": "auth-d-interactive-captcha",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 191.94,
+      "entry_count": 11,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "e402be2b-2fff-4363-8202-3b65b5ac15aa",
+      "kind": "repository",
+      "methods": {
+        "GET": 10,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/audit/sitemap.xml",
+        "/app/billing",
+        "/app/overview",
+        "/app/projects",
+        "/app/projects/robots.txt",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/app/reports/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "e51c504f3fa9b310ed160ccacb523fbbe1cf52631762431432102efe4d400204",
+      "status_codes": {
+        "200": 7,
+        "404": 4
+      },
+      "target": "auth-e-delay-login",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 135.436,
+      "entry_count": 14,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 8,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "dcf07964-c312-4da7-8ae4-ba2254c6fd6b",
+      "kind": "repository",
+      "methods": {
+        "GET": 13,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/audit/robots.txt",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/billing/sitemap.xml",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/projects/robots.txt",
+        "/app/reports"
+      ],
+      "score": null,
+      "sitemap_sha256": "9cd8bea7067f86c0f13ca492d6453ac0a1d183586fa71a26b0c069a3591d7ab9",
+      "status_codes": {
+        "200": 6,
+        "404": 7
+      },
+      "target": "auth-f-ocr-captcha",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 140.694,
+      "entry_count": 15,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 8,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "7ac6f7d8-d3ba-4a92-aa56-8d644d799bf9",
+      "kind": "repository",
+      "methods": {
+        "GET": 14,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/audit/robots.txt",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/billing/sitemap.xml",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/projects/robots.txt",
+        "/app/projects/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "5f08cba063927b44de4f6ea90679bb9c6599350dee09816ef9b00710545138a4",
+      "status_codes": {
+        "200": 6,
+        "404": 8
+      },
+      "target": "auth-g-multi-step",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 139.735,
+      "entry_count": 13,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 8,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "3f264e97-c430-4beb-8220-15b23b437acc",
+      "kind": "repository",
+      "methods": {
+        "GET": 12,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/audit/sitemap.xml",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/overview",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/projects/sitemap.xml",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/app/reports/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "4134685b6e8443486054236a187cb31fe083d5554fdca0c008b310688301f3d0",
+      "status_codes": {
+        "200": 7,
+        "404": 6
+      },
+      "target": "auth-h-new-window",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 135.174,
+      "entry_count": 13,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 8,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "4f22967b-37f2-485e-98cd-bdc47a9e3b09",
+      "kind": "repository",
+      "methods": {
+        "GET": 12,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/billing/sitemap.xml",
+        "/app/overview",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/projects/robots.txt",
+        "/app/projects/sitemap.xml",
+        "/app/reports",
+        "/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "5b9981a17de18a8fde3e296d9e2917bc2a5232259cca2674e8ffb046dfe5a73b",
+      "status_codes": {
+        "200": 4,
+        "404": 6
+      },
+      "target": "auth-i-iframe",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 142.119,
+      "entry_count": 10,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "f84ecb7c-6687-4177-a511-fa3d5975f918",
+      "kind": "repository",
+      "methods": {
+        "GET": 9,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/billing/sitemap.xml",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/projects",
+        "/app/reports",
+        "/app/reports/robots.txt"
+      ],
+      "score": null,
+      "sitemap_sha256": "1c8b0adb03444ac5c680552e7bf2ff2a35333c9579ac1de3cd9f21443b33511f",
+      "status_codes": {
+        "200": 7,
+        "404": 3
+      },
+      "target": "auth-j-xsrf-token",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 129.188,
+      "entry_count": 14,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "14c19bc0-8e5a-4d00-859a-88c9fc995c37",
+      "kind": "repository",
+      "methods": {
+        "GET": 13,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/billing/sitemap.xml",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/projects/sitemap.xml",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/favicon.ico"
+      ],
+      "score": null,
+      "sitemap_sha256": "2e65578da9c7c6635ebd6953339078a8bdd06e4f8d0ff60af3f4252a72c34099",
+      "status_codes": {
+        "200": 5,
+        "404": 7
+      },
+      "target": "auth-k-dynamic-fields",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 123.197,
+      "entry_count": 15,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "43468fb1-9180-4df8-9d47-f36915554e58",
+      "kind": "repository",
+      "methods": {
+        "GET": 14,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/audit/robots.txt",
+        "/app/audit/sitemap.xml",
+        "/app/billing",
+        "/app/overview",
+        "/app/overview/sitemap.xml",
+        "/app/projects",
+        "/app/projects/sitemap.xml",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/favicon.ico"
+      ],
+      "score": null,
+      "sitemap_sha256": "ef2f0e0f3910926718048a4fba5a280162af3ccc5f81526c609eb68b0ba75696",
+      "status_codes": {
+        "200": 5,
+        "404": 8
+      },
+      "target": "auth-l-security-question",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "llm",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 153.403,
+      "entry_count": 12,
+      "error": null,
+      "expected_entries_found": 6,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "10984a29-78ed-4252-af1c-d6f577058a59",
+      "kind": "repository",
+      "methods": {
+        "GET": 11,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/billing/robots.txt",
+        "/app/billing/sitemap.xml",
+        "/app/overview",
+        "/app/overview/robots.txt",
+        "/app/projects",
+        "/app/reports",
+        "/app/reports/robots.txt",
+        "/sitemap.xml"
+      ],
+      "score": null,
+      "sitemap_sha256": "fd615bd495c52e064e9c37a92f761900a2c2d2dd55b0e7505e969b1ec4e69de3",
+      "status_codes": {
+        "200": 6,
+        "404": 5
+      },
+      "target": "auth-m-totp-mfa",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "manual_headers",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 184.178,
+      "entry_count": 8,
+      "error": null,
+      "expected_entries_found": 7,
+      "expected_entry_count": 7,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "8f124444-d0e5-4f06-894d-9453f3443750",
+      "kind": "repository",
+      "methods": {
+        "GET": 7,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/app/audit",
+        "/app/billing",
+        "/app/overview",
+        "/app/projects",
+        "/app/reports",
+        "/login"
+      ],
+      "score": null,
+      "sitemap_sha256": "ef59ba00a9820bed1cbdff7df7b6e12877697edc54aa4c6aae04f93206a29353",
+      "status_codes": {
+        "200": 8
+      },
+      "target": "auth-o-bearer-token",
+      "version": "repository-worktree"
+    },
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 269.054,
+      "entry_count": 80,
+      "error": null,
+      "expected_entries_found": 1,
+      "expected_entry_count": 1,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "b4bab09e-ec2b-4968-92cf-9de6e404acf8",
+      "kind": "external",
+      "methods": {
+        "GET": 79,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/api/redirect?url=%2Fscore%2Fnavigation%2F06-http-redirect",
+        "/category/forms",
+        "/category/frames",
+        "/category/js-events",
+        "/category/links",
+        "/category/navigation",
+        "/category/other",
+        "/results.json",
+        "/score/forms/11-fetch-get",
+        "/score/forms/12-xhr-post",
+        "/score/frames/04-shadow-dom-closed"
+      ],
+      "score": {
+        "summary": {
+          "scored": 32,
+          "tools": [
+            {
+              "name": "default",
+              "scored": 0,
+              "scoredPercent": 0
+            },
+            {
+              "name": "katana-baseline",
+              "scored": 32,
+              "scoredPercent": 54
+            }
+          ],
+          "total": 59
+        },
+        "tests": [
+          {
+            "category": "buttons",
+            "description": "A standard <button> element whose onclick handler navigates to the marker URL.",
+            "id": "buttons.01-html-button",
+            "name": "HTML <button> with onclick",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "buttons",
+            "description": "A <div role=\"button\"> with an inline onclick handler that navigates to the marker URL.",
+            "id": "buttons.02-div-onclick",
+            "name": "Div styled as button",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "Container is empty on initial load; a link is inserted ~250ms later via setTimeout. Crawlers must wait for JS to settle before scraping the DOM.",
+            "id": "dynamic-content.01-fetch-injected",
+            "name": "Link appears after async delay",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "Container is empty on load; a fetch() call retrieves the score URL from the server, then injects a link. Crawlers must wait for network activity to settle, not just a fixed timer.",
+            "id": "dynamic-content.02-fetch-injected",
+            "name": "Link appears after fetch() network request",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "A sentinel element sits below the fold; when it scrolls into the viewport an IntersectionObserver injects the score link. Crawlers must scroll the page to trigger it.",
+            "id": "dynamic-content.03-intersection-observer",
+            "name": "Link appears on scroll (IntersectionObserver)",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "A <details> element contains no link on load; the toggle event injects one when the disclosure widget is opened. Crawlers must interact with the <details> to reveal the link.",
+            "id": "dynamic-content.04-details-toggle",
+            "name": "Link injected when <details> is opened",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "The page opens an EventSource connection; the server pushes the score URL as an SSE event ~250 ms later and the client injects the link. Crawlers must process SSE streams to discover it.",
+            "id": "dynamic-content.05-sse-injected",
+            "name": "Link delivered via Server-Sent Events",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "The page opens a WebSocket connection; the server pushes the score URL as a message ~250 ms later and the client injects the link. Crawlers must process WebSocket messages to discover it.",
+            "id": "dynamic-content.06-websocket-injected",
+            "name": "Link delivered via WebSocket",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "An initial list of items is visible on load; clicking \"Load more\" appends a second batch containing the score link. Crawlers must click the button to discover it.",
+            "id": "dynamic-content.07-load-more",
+            "name": "\"Load more\" button appends score link",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "The score link lives inside a <template> element, which is inert \u2014 its subtree is not rendered and links inside are not reachable by static HTML parsing. A button clones the template into the live DOM to reveal the link.",
+            "id": "dynamic-content.08-template-element",
+            "name": "Score link inside <template> element",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "A scroll event listener fires when the user reaches the bottom of the page and automatically appends the next batch of items, which contains the score link. No button click is needed \u2014 the crawler must scroll to the bottom of the page.",
+            "id": "dynamic-content.09-infinite-scroll",
+            "name": "Infinite scroll \u2014 link in auto-loaded batch",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "dynamic-content",
+            "description": "A button sets a flag in localStorage, then re-renders the page content without a navigation. The score link is only shown once the flag is present \u2014 either after clicking the button in the same session, or on a return visit if the crawler shares localStorage state across page loads.",
+            "id": "dynamic-content.10-localstorage",
+            "name": "localStorage token gates score link",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A <form method=\"GET\"> that submits to the marker URL. Tests crawler form discovery via GET.",
+            "id": "forms.01-get-form",
+            "name": "GET form with submit button",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A <form method=\"POST\"> that submits to the marker URL. Crawlers that only follow GET links will miss this.",
+            "id": "forms.02-post-form",
+            "name": "POST form with submit button",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A GET form whose submit control is <input type=\"image\"> instead of <button type=\"submit\">. Crawlers that only trigger <button> elements will miss this.",
+            "id": "forms.03-image-input",
+            "name": "<input type=\"image\"> submit button",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A GET form containing a <select> element. Tests whether the crawler submits forms that include dropdown inputs.",
+            "id": "forms.04-select-field",
+            "name": "GET form with <select> dropdown",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A button whose click handler uses fetch() to POST to the marker URL. There is no <form> element \u2014 crawlers must execute JS and handle the async submission.",
+            "id": "forms.05-fetch-post",
+            "name": "AJAX fetch() POST \u2014 no <form> element",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A GET form containing radio button inputs. Tests whether the crawler submits forms with radio inputs and handles the selected value correctly.",
+            "id": "forms.06-radio-buttons",
+            "name": "GET form with radio buttons",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A GET form containing checkbox inputs. Tests whether the crawler submits forms that include checkboxes.",
+            "id": "forms.07-checkboxes",
+            "name": "GET form with checkboxes",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "The <form> has a benign action, but one submit button uses the formaction attribute to point to the score URL. Crawlers must recognise per-button formaction overrides.",
+            "id": "forms.08-formaction-override",
+            "name": "<button formaction> overrides form action",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A timer calls form.requestSubmit() after 1 second \u2014 there is no submit button for the crawler to click. Crawlers must detect the programmatic form submission.",
+            "id": "forms.09-js-form-submit",
+            "name": "Form submitted programmatically via JS",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:56.502Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A two-step form: submitting step 1 hides it and reveals step 2, which submits to the score URL. Crawlers must complete both steps.",
+            "id": "forms.10-multistep-wizard",
+            "name": "Multi-step form wizard",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A button whose click handler uses fetch() to make a GET request to the marker URL. Crawlers must execute JS and follow fetch() GET requests, not only POST.",
+            "id": "forms.11-fetch-get",
+            "name": "AJAX fetch() GET \u2014 no <form> element",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:52.163Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "forms",
+            "description": "A button that submits via XMLHttpRequest \u2014 the older AJAX API still common in legacy code. Crawlers must handle XHR requests, not only the newer fetch() API.",
+            "id": "forms.12-xhr-post",
+            "name": "XMLHttpRequest POST",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:42.179Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "frames",
+            "description": "The score link is embedded inside a <iframe srcdoc=\"...\">. Crawlers must parse iframe contents to discover the link \u2014 it does not appear in the outer DOM.",
+            "id": "frames.01-iframe-srcdoc",
+            "name": "Link inside same-origin iframe (srcdoc)",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "frames",
+            "description": "The score link is appended to a shadow root via attachShadow({mode:\"open\"}). It does not exist in the main document tree \u2014 crawlers must traverse shadow roots to discover it.",
+            "id": "frames.02-shadow-dom",
+            "name": "Link inside open Shadow DOM",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "frames",
+            "description": "The score link is inside an <iframe> loaded from a URL \u2014 not inline srcdoc. The browser makes a separate HTTP request for the iframe content, requiring crawlers to discover and request iframe src URLs.",
+            "id": "frames.03-iframe-src",
+            "name": "Link inside same-origin iframe (src URL)",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "frames",
+            "description": "The score link is appended to a shadow root created with mode:\"closed\". Unlike open shadow DOM, the root is not accessible via element.shadowRoot \u2014 crawlers relying on JS reflection to enumerate shadow roots will not find it.",
+            "id": "frames.04-shadow-dom-closed",
+            "name": "Link inside closed Shadow DOM",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:38.874Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A link that does not exist in the DOM until the user hovers over a target zone. Crawlers must simulate hover to discover it.",
+            "id": "js-events.01-mouseover-injected",
+            "name": "Link injected on mouseover",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:40.909Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "An <a href=\"#\"> whose onclick calls event.preventDefault() then navigates via window.location. The href is a red herring; crawlers that follow href without firing the click event will not score.",
+            "id": "js-events.02-onclick-prevent-default",
+            "name": "onclick with preventDefault \u2014 JS-only navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:37.610Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A link does not exist until an input field receives focus. Crawlers must fire focus events on form fields to discover it.",
+            "id": "js-events.03-focus-injected",
+            "name": "Link injected on input focus",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:25.151Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A nav bar with a CSS :hover dropdown menu. The score link is in the DOM but hidden \u2014 it only becomes visible when the cursor hovers over the menu trigger.",
+            "id": "js-events.04-css-hover-dropdown",
+            "name": "Single-level CSS :hover dropdown",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:21.850Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A two-level dropdown: clicking the top button opens the first menu; hovering \"Category B \u25b6\" opens a nested submenu where the score link is injected. Crawlers must navigate both levels to find it.",
+            "id": "js-events.05-multilevel-dropdown",
+            "name": "Multi-level JS dropdown menu",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:11.869Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A button calls showModal() to open a <dialog> element containing the score link. Crawlers must open the dialog to discover the link.",
+            "id": "js-events.06-dialog-modal",
+            "name": "Link inside <dialog> modal",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:08.566Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "An element navigates to the score URL on dblclick. A single click does nothing \u2014 crawlers that only fire single clicks will not score.",
+            "id": "js-events.07-dblclick",
+            "name": "Double-click navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:58.644Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A <div tabindex=\"0\" role=\"link\"> navigates to the score URL when Enter is pressed. Crawlers must focus the element and dispatch a keydown event to score.",
+            "id": "js-events.08-keydown-enter",
+            "name": "Keyboard Enter on non-button element",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:52.837Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "The score link is injected into the page when the contextmenu event fires on a target zone. Crawlers must simulate a right-click to discover it.",
+            "id": "js-events.09-contextmenu",
+            "name": "Right-click (contextmenu) link injection",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:42.894Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A tab panel where each tab's content is injected on click \u2014 inactive tabs have nothing in the DOM. The score link is only rendered when the second tab is selected.",
+            "id": "js-events.10-tab-panel",
+            "name": "Tab panel with JS-rendered content",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:39.600Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A <div popover> is opened via the native Popover API. The score link is injected into it on the toggle event \u2014 it is not in the DOM until the popover is opened.",
+            "id": "js-events.11-popover",
+            "name": "Popover API \u2014 link injected on open",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:29.594Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "A div styled as a button fires navigation on pointerup, not click. Crawlers that only synthesise click events will miss this \u2014 pointer events (pointerdown/pointerup) must also be dispatched.",
+            "id": "js-events.12-pointer-events",
+            "name": "pointerup event triggers navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:26.293Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "Navigation fires only after holding mousedown for 600 ms without releasing. A standard quick click does nothing \u2014 crawlers must simulate a sustained press rather than an instant click.",
+            "id": "js-events.13-long-press",
+            "name": "Long press (mousedown hold) triggers navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:13.910Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "js-events",
+            "description": "Clicking the button dispatches a custom DOM event (\"navigate\"). A separate listener on the document handles that event and navigates to the score URL. Crawlers must follow chains of DOM events, not only standard click handlers.",
+            "id": "js-events.14-custom-event",
+            "name": "CustomEvent dispatched by button click",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:26:10.620Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "A standard <a href=\"...\"> link to the marker URL. The baseline link test.",
+            "id": "links.01-anchor-href",
+            "name": "Plain anchor with href",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:19.845Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "An anchor element whose href is assigned by JavaScript after page load. Static HTML scrapers will not see the URL.",
+            "id": "links.02-js-built-href",
+            "name": "Anchor with href set in JS",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:16.547Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "The score link is wrapped in a <noscript> element, visible only when scripting is disabled. Crawlers must make a non-JS pass of the page to discover it.",
+            "id": "links.03-noscript",
+            "name": "Link inside <noscript>",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "The score link is an <a> element inside an inline SVG. Crawlers that only scan HTML anchor tags will miss links embedded in SVG.",
+            "id": "links.04-svg-anchor",
+            "name": "SVG <a> element",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:28:06.634Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "A link with target=\"_blank\" that opens the marker URL in a new tab. Crawlers must follow the href even though it targets a separate browsing context.",
+            "id": "links.05-target-blank",
+            "name": "Anchor with target=\"_blank\"",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:54.179Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "An anchor whose href is \"javascript:void(0)\" \u2014 a common pattern to suppress default navigation. The real navigation happens in the onclick handler via window.location.",
+            "id": "links.06-javascript-href",
+            "name": "Anchor with javascript: href and onclick",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:27:50.877Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "links",
+            "description": "An <img> element with a <map> and <area href=\"...\"> pointing to the marker URL. Crawlers must parse <map> elements and treat <area> like a link.",
+            "id": "links.07-image-map",
+            "name": "Image map with clickable <area>",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "The page <head> contains <meta http-equiv=\"refresh\"> pointing to the marker URL after 1 second. No user interaction is required.",
+            "id": "navigation.01-meta-refresh",
+            "name": "Meta refresh redirect",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:25:45.988Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "JavaScript navigates the page via window.location after a 1s delay. There is no link or button in the DOM.",
+            "id": "navigation.02-window-location-timeout",
+            "name": "window.location assigned in setTimeout",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:25:42.627Z",
+                "hits": 2,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "Clicking \"Go to page\" calls history.pushState() and swaps the visible content, like a real SPA router. The score link only appears in the rendered second view \u2014 crawlers must detect the state change and find the injected link.",
+            "id": "navigation.03-history-push-state",
+            "name": "history.pushState() SPA navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:25:38.289Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "A link navigates to #/score; a hashchange listener maps the fragment to the real score URL and performs navigation. Crawlers must click the link, trigger the hashchange event, and follow the resulting navigation.",
+            "id": "navigation.04-hash-routing",
+            "name": "Hash-based SPA routing",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:25:31.708Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "JavaScript navigates the page via window.location.replace() after a 1s delay. Unlike window.location.href assignment, replace() does not add an entry to the browser history.",
+            "id": "navigation.05-window-replace",
+            "name": "window.location.replace() navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:25:10.285Z",
+                "hits": 3,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "A link that points to a server endpoint which immediately issues an HTTP 302 redirect to the marker URL. Crawlers must follow server-side redirects to score.",
+            "id": "navigation.06-http-redirect",
+            "name": "HTTP 302 redirect to marker URL",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:25:12.649Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "The <head> contains a <base href> element that relocates the base for all relative URLs on the page. The score link uses a relative path that only resolves correctly when the base is applied \u2014 crawlers that ignore <base> will compute the wrong URL.",
+            "id": "navigation.07-base-href",
+            "name": "<base href> changes relative URL resolution",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "A button calls window.open() with the marker URL. Crawlers must detect window.open() calls and visit the target URL to score.",
+            "id": "navigation.08-window-open",
+            "name": "window.open() navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:24:59.242Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "navigation",
+            "description": "Clicking \"Go to page\" calls history.replaceState() and swaps the visible content. Unlike pushState, replaceState modifies the current history entry without adding a new one \u2014 crawlers must still detect the DOM swap and discover the injected link.",
+            "id": "navigation.09-history-replace-state",
+            "name": "history.replaceState() SPA navigation",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:24:49.345Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          },
+          {
+            "category": "other",
+            "description": "Simulates an Akamai Bot Manager-style check. JavaScript waits 1.5 s after page load, then tests two signals: (1) chrome-extension:// URLs in document.scripts, (2) history.pushState.toString() lacking [native code]. The link to the marker URL is only injected when all three pass.",
+            "id": "other.01-bot-detection-globals",
+            "name": "Bot-detection globals check",
+            "tools": {
+              "default": {
+                "firstHit": null,
+                "hits": 0,
+                "scored": false
+              },
+              "katana-baseline": {
+                "firstHit": "2026-07-22T19:24:40.323Z",
+                "hits": 1,
+                "scored": true
+              }
+            }
+          }
+        ]
+      },
+      "sitemap_sha256": "d470da74b2f501fdfc22f6213da0e170f804873df99048238d466e471ea6c764",
+      "status_codes": {
+        "200": 76,
+        "302": 1,
+        "404": 3
+      },
+      "target": "crawlground",
+      "version": "commit-9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e"
+    },
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 316.947,
+      "entry_count": 93,
+      "error": null,
+      "expected_entries_found": 2,
+      "expected_entry_count": 3,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "d10e9b06-6dd7-40d5-ad5e-40dd8122e114",
+      "kind": "external",
+      "methods": {
+        "GET": 86,
+        "HEAD": 1,
+        "POST": 6
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/",
+        "/api/Challenges?name=Score%20Board",
+        "/api/Quantitys",
+        "/assets/i18n/en.json",
+        "/assets/public/favicon_js.ico",
+        "/assets/public/images/products/apple_pressings.jpg",
+        "/assets/public/images/products/artwork2.jpg",
+        "/assets/public/images/products/berry_juice.png",
+        "/assets/public/images/products/braga.jpg",
+        "/assets/public/images/products/carrot_juice.jpeg",
+        "/assets/public/images/products/dragonfruit_juice.png",
+        "/assets/public/images/products/eggfruit_juice.jpg"
+      ],
+      "score": null,
+      "sitemap_sha256": "68bc3fd609f0884b9eb8b602f1a8d080fab98feb9747bc6c16813199fe51c51c",
+      "status_codes": {
+        "200": 48,
+        "304": 33,
+        "400": 12
+      },
+      "target": "juice-shop",
+      "version": "20.1.1@sha256:cd58d79c5cb4d82f22fbaf616f9ff43bbd04ba630cd6b448a9ed99cf652fcebf"
+    },
+    {
+      "auth_mode": "public",
+      "blocked_hits": [],
+      "browser_only_entries_found": 0,
+      "browser_only_entry_count": 0,
+      "crawl_status": "completed",
+      "elapsed_seconds": 203.837,
+      "entry_count": 93,
+      "error": null,
+      "expected_entries_found": 1,
+      "expected_entry_count": 4,
+      "health_status": 200,
+      "isolation_violations": [],
+      "job_id": "ab27095b-61b2-46c1-ab10-c73363c9d4a4",
+      "kind": "external",
+      "methods": {
+        "GET": 92,
+        "HEAD": 1
+      },
+      "persisted_result_verified": true,
+      "ready": true,
+      "sample_paths": [
+        "/parabank",
+        "/parabank/images/atmhand.jpg",
+        "/parabank/images/header-main.jpg",
+        "/parabank/images/icon4.jpg",
+        "/parabank/index.htm",
+        "/parabank/sitemap.xml",
+        "/parabank/template.css",
+        "/parabank/webjars/jquery/4.0.0/jquery.min.js",
+        "/parabank/webjars/jquery/4.0.0/true",
+        "/parabank/webjars/jquery/4.0.0/true/images/about.htm",
+        "/parabank/webjars/jquery/4.0.0/true/images/admin.htm",
+        "/parabank/webjars/jquery/4.0.0/true/images/contact.htm"
+      ],
+      "score": null,
+      "sitemap_sha256": "397593602568ef6612c65c39d533758abc9153f0a1eb059987fd31e72a83b6ff",
+      "status_codes": {
+        "200": 6,
+        "302": 2,
+        "404": 85
+      },
+      "target": "parabank",
+      "version": "baseline@sha256:1b8d2fd47c5f11d65d4ef5445d354cf541895aa6f327be2dd69ae95c92fee942"
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "blocked_hits": 0,
+    "browser_only_declared": 10,
+    "browser_only_found": 0,
+    "completed": 23,
+    "entries": 494,
+    "isolation_violations": 0,
+    "persisted_results_verified": 23,
+    "ready": 23,
+    "targets": 23
+  }
+}

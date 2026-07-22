@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "id": "crawlground",
+  "name": "ZAP CrawlGround",
+  "seed_url": "http://127.0.0.1:13456/",
+  "health_probe": {"method": "GET", "url": "http://127.0.0.1:13456/results.json", "expect_status": 200},
+  "reset_operation": {"command": "./scripts/reset-crawlground.sh", "timeout_seconds": 30},
+  "auth_reference": null,
+  "allowed_origins": ["http://127.0.0.1:13456", "http://crawlground:3456"],
+  "allowed_ports": [13456, 3456],
+  "baseline_exclusions": ["/reset", "/set-tool", "/results", "/results.json", "/results.yaml", "/website-results.yaml", "/score/*"],
+  "expected_deterministic_surface": {
+    "inventory": "crawlground-inventory.json",
+    "categories": ["buttons", "dynamic-content", "forms", "frames", "js-events", "links", "navigation", "other"],
+    "control_count": 59,
+    "required_harness_endpoints": ["POST /reset", "POST /set-tool", "GET /results.json"]
+  },
+  "target_version": {
+    "commit": "9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e",
+    "source_archive_sha256": "c16f8484cc33c4471d733259c7b256fbc980d32cc1423fc57c2f4944f44d526b"
+  }
+}

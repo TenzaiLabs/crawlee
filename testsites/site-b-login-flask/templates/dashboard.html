@@ -22,5 +22,12 @@
     <h1>Dashboard</h1>
     <p>Authenticated session confirmed.</p>
     <p><a href="/actions">Create, update, or delete a workspace entry</a>.</p>
+    <button id="open-workflow-center" type="button">Open workflow center</button>
+    <script>
+      document.getElementById("open-workflow-center").addEventListener("click", () => {
+        const route = ["", "workflow", "center"].join("-").replace("-workflow", "/workflow");
+        window.location.assign(route);
+      });
+    </script>
   </body>
 </html>

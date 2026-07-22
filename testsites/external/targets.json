@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "compose_file": "testsites/external/compose.yml",
+  "targets": [
+    {
+      "name": "crawlground",
+      "kind": "external",
+      "seed_url": "http://127.0.0.1:13456/",
+      "health_url": "http://127.0.0.1:13456/results.json",
+      "health_status": 200,
+      "reset": {"method": "POST", "url": "http://127.0.0.1:13456/reset", "json": {"confirm": "RESET"}},
+      "auth_reference": null,
+      "allowed_origins": ["http://127.0.0.1:13456", "http://crawlground:3456"],
+      "sitemap": null,
+      "version": "commit-9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e",
+      "expected_entries": [
+        {"method": "GET", "path": "/"}
+      ],
+      "score_setup": {"method": "POST", "url": "http://127.0.0.1:13456/set-tool", "json": {"name": "katana-baseline"}},
+      "score_results_url": "http://127.0.0.1:13456/results.json"
+    },
+    {
+      "name": "juice-shop",
+      "kind": "external",
+      "seed_url": "http://127.0.0.1:13000/",
+      "health_url": "http://127.0.0.1:13000/rest/admin/application-version",
+      "health_status": 200,
+      "reset": "external-recreate:reset-juice-shop.sh",
+      "auth_reference": null,
+      "allowed_origins": ["http://127.0.0.1:13000", "http://juice-shop:3000"],
+      "sitemap": null,
+      "version": "20.1.1@sha256:cd58d79c5cb4d82f22fbaf616f9ff43bbd04ba630cd6b448a9ed99cf652fcebf",
+      "expected_entries": [
+        {"method": "GET", "path": "/"},
+        {"method": "GET", "path": "/rest/admin/application-version"},
+        {"method": "GET", "path": "/rest/products/search"}
+      ]
+    },
+    {
+      "name": "parabank",
+      "kind": "external",
+      "seed_url": "http://127.0.0.1:18080/parabank/",
+      "health_url": "http://127.0.0.1:18080/parabank/",
+      "health_status": 200,
+      "reset": "external-recreate:reset-parabank.sh",
+      "auth_reference": "existing-case:parabank",
+      "allowed_origins": ["http://127.0.0.1:18080", "http://parabank:8080"],
+      "sitemap": null,
+      "version": "baseline@sha256:1b8d2fd47c5f11d65d4ef5445d354cf541895aa6f327be2dd69ae95c92fee942",
+      "expected_entries": [
+        {"method": "GET", "path": "/parabank/"},
+        {"method": "GET", "path": "/parabank/index.htm"},
+        {"method": "GET", "path": "/parabank/about.htm"},
+        {"method": "GET", "path": "/parabank/services.htm"}
+      ]
+    }
+  ]
+}

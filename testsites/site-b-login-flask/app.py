@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections import defaultdict
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import Flask, redirect, render_template, request, session, url_for
@@ -10,6 +12,63 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret")
 
 VALID_USER = {"username": "demo", "password": "password"}
+HARNESS_TOKEN = os.environ.get("TEST_HARNESS_TOKEN")
+LEDGERS: dict[str, list[dict[str, str]]] = defaultdict(list)
+REQUIRED_ROUTES = {
+    "/api/onboarding/validate",
+    "/api/onboarding/preview",
+    "/api/settings/validate",
+}
+FORBIDDEN_ROUTES = {
+    "/logout",
+    "/actions/delete",
+    "/api/invitations/send",
+    "/api/security/password",
+    "/api/account/close",
+}
+
+
+@app.before_request
+def record_test_request():
+    if request.path.startswith("/_test/"):
+        return None
+    run_id = request.headers.get("X-Crawler-Test-Run")
+    if not run_id:
+        return None
+    if request.path in FORBIDDEN_ROUTES:
+        classification = "forbidden"
+    elif request.path in REQUIRED_ROUTES:
+        classification = "required"
+    else:
+        classification = "allowed-background"
+    LEDGERS[run_id].append(
+        {
+            "method": request.method,
+            "route": request.path.rstrip("/") or "/",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "classification": classification,
+        }
+    )
+    return None
+
+
+def harness_authorized() -> bool:
+    return bool(HARNESS_TOKEN) and request.headers.get("X-Test-Harness-Token") == HARNESS_TOKEN
+
+
+@app.get("/_test/ledger/<run_id>")
+def test_ledger(run_id: str):
+    if not harness_authorized():
+        return "Not Found", 404
+    return {"run_id": run_id, "entries": LEDGERS.get(run_id, [])}
+
+
+@app.post("/_test/reset")
+def test_reset():
+    if not harness_authorized():
+        return "Not Found", 404
+    LEDGERS.clear()
+    return "", 204
 
 
 def login_required(view):
@@ -87,6 +146,48 @@ def reports():
 @login_required
 def actions():
     return render_template("actions.html")
+
+
+@app.get("/workflow-center")
+@login_required
+def workflow_center():
+    return render_template("workflow_center.html")
+
+
+@app.post("/api/onboarding/validate")
+@login_required
+def validate_onboarding():
+    return {"valid": True, "next": "preview"}
+
+
+@app.post("/api/onboarding/preview")
+@login_required
+def preview_onboarding():
+    return {"draft_id": "harbor-onboarding-draft", "state": "preview"}
+
+
+@app.post("/api/settings/validate")
+@login_required
+def validate_settings():
+    return {"valid": True, "state": "not-saved"}
+
+
+@app.post("/api/invitations/send")
+@login_required
+def send_invitation():
+    return {"sent": False, "fixture": True}
+
+
+@app.post("/api/security/password")
+@login_required
+def change_password():
+    return {"changed": False, "fixture": True}
+
+
+@app.post("/api/account/close")
+@login_required
+def close_account():
+    return {"closed": False, "fixture": True}
 
 
 @app.post("/actions/create")

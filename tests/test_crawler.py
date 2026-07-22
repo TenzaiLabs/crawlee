@@ -26,6 +26,7 @@ def test_build_katana_command_defaults():
     assert "rdn" in command
     assert "-d" in command
     assert "-rl" in command
+    assert command[command.index("-ct") + 1] == "5m"
     assert "-crawl-out-scope" in command
     cos_index = command.index("-crawl-out-scope") + 1
     assert "logout" in command[cos_index]
@@ -39,6 +40,7 @@ def test_build_katana_command_overrides():
             "rate_limit": 5,
             "exclude_filters": ["/admin"],
             "crawl_scope": "app",
+            "crawl_duration": "90s",
         },
         headers=["Cookie: session=abc"],
     )
@@ -47,6 +49,7 @@ def test_build_katana_command_overrides():
     assert command[command.index("-d") + 1] == "2"
     assert command[command.index("-rl") + 1] == "5"
     assert command[command.index("-cs") + 1] == "app"
+    assert command[command.index("-ct") + 1] == "90s"
     assert "-H" in command
 
 

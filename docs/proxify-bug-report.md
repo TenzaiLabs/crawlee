@@ -7,6 +7,7 @@
 - **Proxify version:** v0.0.16 (latest release)
 - **OS:** Ubuntu 24.04 (amd64)
 - **Go version:** 1.21+
+- **Last reproduced:** 2026-07-21 with the repository repro server
 
 ## Description
 
@@ -82,7 +83,9 @@ The failure is silent: the client receives a normal response from the upstream, 
 
 ## Workaround
 
-Bypass the proxy for POST/PUT requests and route them directly to the upstream.
+Bypass the proxy for body-bearing requests and route them directly to the upstream. The crawler's
+Playwright authentication path therefore captures browser traffic directly; Proxify remains in the
+Katana crawl path.
 
 ## Related Issues
 

@@ -27,6 +27,7 @@ DEFAULT_EXCLUSION_PATTERNS = [
     "unsubscribe",
     "deactivate",
 ]
+DEFAULT_CRAWL_DURATION = "5m"
 
 
 @dataclass
@@ -162,9 +163,8 @@ def build_katana_command(
     if parallelism is not None:
         command.extend(["-p", str(coerce_int(parallelism, 10))])
 
-    crawl_duration = scope_config.get("crawl_duration")
-    if crawl_duration:
-        command.extend(["-ct", str(crawl_duration)])
+    crawl_duration = scope_config.get("crawl_duration", DEFAULT_CRAWL_DURATION)
+    command.extend(["-ct", str(crawl_duration)])
 
     headless = _coerce_bool(scope_config.get("headless", True))
     cdp_url = scope_config.get("cdp_url") or scope_config.get("chrome_ws_url")

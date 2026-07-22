@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "id": "juice-shop",
+  "name": "OWASP Juice Shop",
+  "seed_url": "http://127.0.0.1:13000/",
+  "health_probe": {"method": "GET", "url": "http://127.0.0.1:13000/rest/admin/application-version", "expect_status": 200},
+  "reset_operation": {"command": "./scripts/reset-juice-shop.sh", "timeout_seconds": 120},
+  "auth_reference": null,
+  "allowed_origins": ["http://127.0.0.1:13000", "http://juice-shop:3000"],
+  "allowed_ports": [13000, 3000],
+  "baseline_exclusions": ["/ftp/*", "/socket.io/*", "/rest/admin/*", "/api/Challenges/*"],
+  "expected_deterministic_surface": {
+    "required_routes": ["GET /", "GET /rest/admin/application-version", "GET /rest/products/search"]
+  },
+  "target_version": {
+    "version": "20.1.1",
+    "source_tag_commit": "f915bddd82790d0f3018902d36ae9b4241a5f51f",
+    "image_manifest_digest": "sha256:cd58d79c5cb4d82f22fbaf616f9ff43bbd04ba630cd6b448a9ed99cf652fcebf"
+  }
+}

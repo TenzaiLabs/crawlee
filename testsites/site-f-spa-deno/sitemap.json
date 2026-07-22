@@ -175,5 +175,32 @@
       "url": "http://localhost:8006/api/actions/delete",
       "reason": "destructive or session-ending action that normal crawls must not hit"
     }
-  ]
+  ],
+  "browser_discovery": {
+    "browser_only_entries": [
+      {"method": "GET", "path": "/api/shadow/audit"},
+      {"method": "POST", "path": "/api/projects/search"},
+      {"method": "GET", "path": "/api/projects/details/project-aurora"},
+      {"method": "POST", "path": "/api/reports/validate"},
+      {"method": "POST", "path": "/api/reports/preview"}
+    ],
+    "required_interactions": [
+      "activate the open Shadow DOM audit control",
+      "open the project filter drawer and search",
+      "open the Aurora project modal",
+      "complete report validation and draft preview"
+    ],
+    "expected_workflows": ["project-search-and-details", "report-draft-preview"],
+    "required_request_sequences": [
+      ["POST /api/projects/search", "GET /api/projects/details/project-aurora"],
+      ["POST /api/reports/validate", "POST /api/reports/preview"]
+    ],
+    "terminal_criteria": ["Aurora details are visible", "draft report is in preview state"],
+    "allowed_action_variants": ["button", "select", "safe-form-submit", "open-shadow-dom"],
+    "expected_policy_blocks": ["Delete entry"],
+    "forbidden_server_routes": ["POST /api/actions/delete"],
+    "acceptable_partial_reasons": [],
+    "budgets": {"max_steps": 30, "max_states": 22, "max_duration_seconds": 90},
+    "reset_procedure": "POST /_test/reset with the per-run harness token"
+  }
 }

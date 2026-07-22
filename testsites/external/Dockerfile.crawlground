@@ -1,0 +1,19 @@
+FROM node:26-alpine@sha256:e88a35be04478413b7c71c455cd9865de9b9360e1f43456be5951032d7ac1a66
+
+ADD --checksum=sha256:c16f8484cc33c4471d733259c7b256fbc980d32cc1423fc57c2f4944f44d526b \
+    https://github.com/zaproxy/crawlground/archive/9a9fea6237d3b3c72788cd8e1d158ebcdb0f7a2e.tar.gz \
+    /tmp/crawlground.tar.gz
+
+WORKDIR /app
+RUN tar -xzf /tmp/crawlground.tar.gz --strip-components=1 \
+    && rm /tmp/crawlground.tar.gz \
+    && npm ci --omit=dev \
+    && npm cache clean --force \
+    && mkdir -p /app/data \
+    && chown -R node:node /app
+
+USER node
+ENV PORT=3456
+EXPOSE 3456
+VOLUME ["/app/data"]
+CMD ["node", "server.js"]

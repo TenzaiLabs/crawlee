@@ -33,6 +33,31 @@ cd testsites
 python verify_sites.py
 ```
 
+Run the Phase 0 current-crawler baseline across every repository and external
+target after both Compose stacks are available:
+
+```bash
+uv run python -m scripts.run_phase0_baseline --manage-targets --stop-targets
+```
+
+Use `--local-only` to exercise just the 20 repository fixtures. The runner
+starts a real `uv run tenzai-crawler-server` process with temporary database and
+log paths, submits and polls jobs only through HTTP, restarts the server to
+verify persisted retrieval, checks cross-job isolation and blocked-route
+results, and writes
+`docs/phase0-baseline-report.md` plus `docs/phase0-baseline-results.json`.
+
+The browser-only positive controls for the three enhanced fixtures are opt-in:
+
+```bash
+RUN_E2E=1 TEST_HARNESS_TOKEN=<runtime-token> \
+  uv run pytest -q tests/test_browser_discovery_fixtures_e2e.py
+```
+
+The token must match the ephemeral `TEST_HARNESS_TOKEN` supplied to Compose.
+It protects reset and request-ledger endpoints and is never stored in a
+fixture manifest or result artifact.
+
 The verifier uses direct ports. The Docker Compose gateway also exposes the
 same sites on the `910x` and `920x` port ranges.
 

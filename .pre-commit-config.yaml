@@ -37,7 +37,7 @@ repos:
         files: ^\.github/workflows/
       - id: forbid-generated-comparison-artifacts
         name: forbid-generated-comparison-artifacts
-        entry: bash -c 'if git diff --cached --name-only -- docs/testsite-comparison-report.md docs/testsite-comparison-results.json | grep -q .; then echo "Do not commit generated testsite comparison report/result artifacts unless explicitly requested."; exit 1; fi'
+        entry: bash -c 'if git diff --cached --name-only -- docs | grep -Eq "^docs/(external-.*-(report\.md|results\.json)|cmt-.*-comparison-report\.md|testsite-.*-(report\.md|results\.json))$"; then echo "Do not commit generated comparison artifacts unless explicitly requested."; exit 1; fi'
         language: system
         pass_filenames: false
         always_run: true
