@@ -37,7 +37,7 @@ def detect_provider(model_id: str, auth_config: dict[str, Any]) -> str:
 def resolve_model_and_api_key(
     auth_config: dict[str, Any],
 ) -> tuple[str, str | None, str, tuple[str, ...]]:
-    model_id = os.getenv("CRAWLER_AUTH_MODEL", "gpt-5-mini")
+    model_id = os.getenv("CRAWLER_AUTH_MODEL", "gpt-5.4-nano")
     provider = detect_provider(model_id, auth_config)
 
     direct_api_key = auth_config.get("api_key")

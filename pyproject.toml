@@ -9,7 +9,7 @@ dependencies = [
   "uvicorn",
   "aiosqlite",
   "playwright",
-  "llm",
+  "llm==0.31.1",
   "pyotp",
   "python-dotenv>=1.2.2",
 ]

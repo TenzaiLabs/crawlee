@@ -487,7 +487,7 @@ def test_resolve_model_and_api_key_default_openai(monkeypatch: pytest.MonkeyPatc
 
     model_id, key, provider, candidates = auth_agent._resolve_model_and_api_key({})
 
-    assert model_id == "gpt-5-mini"
+    assert model_id == "gpt-5.4-nano"
     assert key == "openai-key"
     assert provider == "openai"
     assert candidates == ("OPENAI_API_KEY",)

@@ -268,7 +268,7 @@ wheels = [
 
 [[package]]
 name = "llm"
-version = "0.31"
+version = "0.31.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -286,9 +286,9 @@ dependencies = [
     { name = "sqlite-migrate" },
     { name = "sqlite-utils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/f2/3a81744fdaf3a92fe9020dc298dd2e4c144e2e7fcab863e1a132ea537cab/llm-0.31.tar.gz", hash = "sha256:c7701408fdc53cbdf1db6a43f35c7dd410c291dda36cc38a14db4b482b274fa4", size = 86505, upload-time = "2026-04-24T23:37:24.579Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/2a/ac37d94f6ac91d501475d80a0a1d8fb6bce392f9d7b483bf87257342e0b7/llm-0.31.1.tar.gz", hash = "sha256:f99955cfd92cdf7b8dc08a795f68c688cefdbc4f9a67245988ccc1adb5c49eeb", size = 86518, upload-time = "2026-07-09T16:08:44.848Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/5d/033f0a2ba2fd952323d9b6434f653755ac1ce2e42f23c43579d47b008660/llm-0.31-py3-none-any.whl", hash = "sha256:10fabf61f60869a3ff90383f020ad8c787503c53f706eef4477a262d856c18ff", size = 83919, upload-time = "2026-04-24T23:37:23.294Z" },
+    { url = "https://files.pythonhosted.org/packages/94/9f/816e53685915a3b515f535816ae6909f036ee2767b9d668a7f3743ef5c84/llm-0.31.1-py3-none-any.whl", hash = "sha256:32a86f216da0797c43a87866737b36f3ba36da8f82f07ca099eb2bf10ed5e56f", size = 83954, upload-time = "2026-07-09T16:08:43.471Z" },
 ]
 
 [[package]]
@@ -719,7 +719,7 @@ requires-dist = [
     { name = "aiosqlite" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "llm" },
+    { name = "llm", specifier = "==0.31.1" },
     { name = "playwright" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pyotp" },

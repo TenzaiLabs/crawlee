@@ -236,7 +236,7 @@ The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `-
 | `CRAWLER_PORT` | `8000` | Bind port |
 | `CRAWLER_DB_PATH` | `/data/jobs.db` | SQLite database path |
 | `CRAWLER_LOG_DIR` | `/data/logs` | Log output directory |
-| `CRAWLER_AUTH_MODEL` | `gpt-5-mini` | LLM model for AI auth |
+| `CRAWLER_AUTH_MODEL` | `gpt-5.4-nano` | LLM model for AI auth |
 | `CRAWLER_AUTH_ATTEMPTS` | `3` | Auth retry attempts |
 | `CRAWLER_AUTH_MAX_STEPS` | `85` | Default max tool-calling steps for auth |
 | `CRAWLER_SUBPROCESS_TIMEOUT` | `60` | Subprocess timeout (seconds) |
