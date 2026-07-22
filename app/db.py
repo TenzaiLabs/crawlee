@@ -47,15 +47,25 @@ async def init_db() -> None:
                 error TEXT,
                 created_at TEXT NOT NULL,
                 finished_at TEXT,
-                generated_exclusions TEXT
+                generated_exclusions TEXT,
+                sitemap TEXT,
+                result_entry_count INTEGER,
+                result_size_bytes INTEGER
             );
             """
         )
         cursor = await conn.execute("PRAGMA table_info(jobs)")
         columns = {row[1] for row in await cursor.fetchall()}
         await cursor.close()
-        if "generated_exclusions" not in columns:
-            await conn.execute("ALTER TABLE jobs ADD COLUMN generated_exclusions TEXT")
+        migrations = {
+            "generated_exclusions": "TEXT",
+            "sitemap": "TEXT",
+            "result_entry_count": "INTEGER",
+            "result_size_bytes": "INTEGER",
+        }
+        for column, column_type in migrations.items():
+            if column not in columns:
+                await conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {column_type}")
         await conn.commit()
     logger.info("Database schema initialization complete")
 
@@ -95,3 +105,13 @@ async def execute(query: str, params: Iterable[Any] = ()) -> None:
     async with connect() as conn:
         await conn.execute(query, params)
         await conn.commit()
+
+
+async def execute_rowcount(query: str, params: Iterable[Any] = ()) -> int:
+    logger.debug("Executing write query with row count")
+    async with connect() as conn:
+        cursor = await conn.execute(query, params)
+        await conn.commit()
+        rowcount = cursor.rowcount
+        await cursor.close()
+        return rowcount

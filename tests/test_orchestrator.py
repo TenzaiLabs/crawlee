@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 
@@ -109,3 +110,160 @@ async def test_run_auth_if_needed_returns_manual_header_context() -> None:
     )
 
     assert auth_context == orchestrator.CrawlAuthContext(headers=["Cookie: session=abc"])
+
+
+@pytest.mark.asyncio
+async def test_complete_job_persists_result_and_metadata_atomically(app) -> None:
+    await orchestrator.db.execute(
+        """
+        INSERT INTO jobs (job_id, status, target_url, created_at)
+        VALUES (?, 'processing', ?, datetime('now'))
+        """,
+        ("job-complete", "https://example.com"),
+    )
+    sitemap = {
+        "entries": [{"method": "GET", "url": "https://example.com"}],
+        "tree": {"children": {}, "pages": []},
+    }
+
+    assert await orchestrator.complete_job("job-complete", sitemap) is True
+
+    row = await orchestrator.db.fetch_one("SELECT * FROM jobs WHERE job_id = ?", ("job-complete",))
+    assert row is not None
+    assert row["status"] == "completed"
+    assert row["finished_at"] is not None
+    assert row["result_entry_count"] == 1
+    assert row["result_size_bytes"] == len(row["sitemap"].encode("utf-8"))
+    assert orchestrator.db.loads_json(row["sitemap"]) == sitemap
+
+
+@pytest.mark.asyncio
+async def test_complete_job_does_not_overwrite_cancelled_state(app) -> None:
+    await orchestrator.db.execute(
+        """
+        INSERT INTO jobs (job_id, status, target_url, created_at, finished_at)
+        VALUES (?, 'cancelled', ?, datetime('now'), datetime('now'))
+        """,
+        ("job-cancelled", "https://example.com"),
+    )
+
+    assert (
+        await orchestrator.complete_job(
+            "job-cancelled",
+            {"entries": [], "tree": {"children": {}, "pages": []}},
+        )
+        is False
+    )
+    row = await orchestrator.db.fetch_one(
+        "SELECT status, sitemap FROM jobs WHERE job_id = ?", ("job-cancelled",)
+    )
+    assert row is not None
+    assert row["status"] == "cancelled"
+    assert row["sitemap"] is None
+
+
+@pytest.mark.asyncio
+async def test_completion_loses_to_requested_cancellation(app) -> None:
+    await orchestrator.db.execute(
+        """
+        INSERT INTO jobs (job_id, status, target_url, created_at)
+        VALUES (?, 'processing', ?, datetime('now'))
+        """,
+        ("job-cancel-race", "https://example.com"),
+    )
+    cancel_event = asyncio.Event()
+    cancel_event.set()
+
+    assert (
+        await orchestrator.complete_job(
+            "job-cancel-race",
+            {"entries": [], "tree": {"children": {}, "pages": []}},
+            cancel_event,
+        )
+        is False
+    )
+    row = await orchestrator.db.fetch_one(
+        "SELECT status, sitemap FROM jobs WHERE job_id = ?",
+        ("job-cancel-race",),
+    )
+    assert row is not None
+    assert row["status"] == "processing"
+    assert row["sitemap"] is None
+
+
+@pytest.mark.asyncio
+async def test_queued_cancellation_prevents_runner_claim(app) -> None:
+    await orchestrator.db.execute(
+        """
+        INSERT INTO jobs (job_id, status, target_url, created_at)
+        VALUES (?, 'queued', ?, datetime('now'))
+        """,
+        ("job-queued-cancel", "https://example.com"),
+    )
+
+    assert await orchestrator.cancel_queued_job("job-queued-cancel") is True
+    assert (
+        await orchestrator.transition_job_status(
+            "job-queued-cancel",
+            {orchestrator.JobStatus.queued},
+            orchestrator.JobStatus.crawling,
+        )
+        is False
+    )
+    row = await orchestrator.db.fetch_one(
+        "SELECT status, finished_at FROM jobs WHERE job_id = ?",
+        ("job-queued-cancel",),
+    )
+    assert row is not None
+    assert row["status"] == "cancelled"
+    assert row["finished_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_run_job_persists_parsed_sitemap_once(
+    app, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await orchestrator.db.execute(
+        """
+        INSERT INTO jobs (job_id, status, target_url, created_at)
+        VALUES (?, 'queued', ?, datetime('now'))
+        """,
+        ("job-run", "https://example.com"),
+    )
+    proxy_process = SimpleNamespace(log_path="/tmp/job-run.jsonl")
+
+    async def noop(*args, **kwargs) -> None:
+        return None
+
+    monkeypatch.setattr(
+        orchestrator.proxy,
+        "start_proxy",
+        lambda job_id: _async_value(proxy_process),
+    )
+    monkeypatch.setattr(orchestrator.proxy, "wait_for_proxy", noop)
+    monkeypatch.setattr(orchestrator.proxy, "check_target_connectivity", noop)
+    monkeypatch.setattr(orchestrator.proxy, "stop_proxy", noop)
+    monkeypatch.setattr(orchestrator.crawler, "run_crawl", noop)
+    monkeypatch.setattr(orchestrator, "sanitize_log_file", lambda path: None)
+    calls = 0
+    sitemap = {"entries": [], "tree": {"children": {}, "pages": []}}
+
+    def parse_once(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        assert kwargs["require_artifacts"] is True
+        return sitemap
+
+    monkeypatch.setattr(orchestrator.parser, "parse_log", parse_once)
+
+    await orchestrator.run_job("job-run", asyncio.Event())
+
+    row = await orchestrator.db.fetch_one("SELECT * FROM jobs WHERE job_id = ?", ("job-run",))
+    assert row is not None
+    assert row["status"] == "completed"
+    assert orchestrator.db.loads_json(row["sitemap"]) == sitemap
+    assert calls == 1
+
+
+async def _async_value(value):
+    return value

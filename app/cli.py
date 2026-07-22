@@ -10,7 +10,6 @@ from typing import Any
 import httpx
 
 from .auth_config import AuthConfigValidationError, validate_auth_config
-from .auth_secrets import resolve_secrets
 from .scope_config import ScopeConfigValidationError, validate_scope_config
 
 logger = logging.getLogger(__name__)
@@ -135,9 +134,18 @@ async def get_job(client: httpx.AsyncClient, job_id: str) -> dict[str, Any]:
     return response.json()
 
 
-async def list_jobs(client: httpx.AsyncClient) -> dict[str, Any]:
+async def list_jobs(
+    client: httpx.AsyncClient,
+    *,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
     logger.debug("CLI list_jobs")
-    response = await client.get("/jobs")
+    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    if status:
+        params["status"] = status
+    response = await client.get("/jobs", params=params)
     response.raise_for_status()
     return response.json()
 
@@ -240,7 +248,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Login URL for AI-auth mode",
     )
 
-    subparsers.add_parser("list", help="List active and queued jobs")
+    list_parser = subparsers.add_parser("list", help="List current and previously completed jobs")
+    list_parser.add_argument(
+        "--status",
+        choices=[
+            "queued",
+            "pending",
+            "authenticating",
+            "crawling",
+            "processing",
+            "completed",
+            "failed",
+            "failed_interrupted",
+            "cancelled",
+        ],
+        default=None,
+        help="Only show jobs with this status",
+    )
+    list_parser.add_argument("--limit", type=int, default=50, help="Maximum jobs to return (1-250)")
+    list_parser.add_argument("--offset", type=int, default=0, help="Number of jobs to skip")
 
     status_parser = subparsers.add_parser("status", help="Get job status")
     status_parser.add_argument("job_id", help="Job identifier")
@@ -262,7 +288,12 @@ async def _run(
                 client, args.target_url, scope_config=scope_config, auth_config=auth_config
             )
         if args.command == "list":
-            return await list_jobs(client)
+            return await list_jobs(
+                client,
+                status=args.status,
+                limit=args.limit,
+                offset=args.offset,
+            )
         if args.command == "status":
             return await get_job(client, args.job_id)
         return await cancel_job(client, args.job_id)
@@ -284,8 +315,6 @@ def main() -> int:
         try:
             auth_config = _build_auth_config(args)
             validate_auth_config(auth_config)
-            if auth_config:
-                auth_config = resolve_secrets(auth_config)
         except (AuthConfigValidationError, ValueError) as exc:
             logger.warning("CLI auth config validation failed: %s", exc)
             parser.error(str(exc))

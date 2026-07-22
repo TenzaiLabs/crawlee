@@ -98,3 +98,28 @@ def test_parse_log_keeps_response_status_over_request_only_katana_duplicate(
             "timestamp": "2024-01-01T00:00:00Z",
         }
     ]
+
+
+def test_parse_log_strict_mode_rejects_missing_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from app import parser
+
+    monkeypatch.setattr(parser.db, "LOG_DIR", str(tmp_path))
+
+    with pytest.raises(parser.CrawlArtifactsMissingError, match="No crawl artifacts"):
+        parser.parse_log("missing-job", "https://example.com", require_artifacts=True)
+
+
+def test_parse_log_strict_mode_rejects_all_corrupt_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from app import parser
+
+    monkeypatch.setattr(parser.db, "LOG_DIR", str(tmp_path))
+    (tmp_path / "corrupt-job.jsonl").write_text("not-json\nstill-not-json\n", encoding="utf-8")
+
+    with pytest.raises(parser.CrawlArtifactsCorruptError, match="no valid JSON"):
+        parser.parse_log("corrupt-job", "https://example.com", require_artifacts=True)

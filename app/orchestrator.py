@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 _job_tasks: dict[str, asyncio.Task[None]] = {}
 _cancel_events: dict[str, asyncio.Event] = {}
+_state_locks: dict[str, asyncio.Lock] = {}
 _queue: asyncio.Queue[str] = asyncio.Queue()
 _drainer_task: asyncio.Task[None] | None = None
 
@@ -31,6 +33,10 @@ class CrawlAuthContext:
     auth_blocked_url_count: int = 0
     auth_applied_blocked_url_count: int = 0
     auth_ignored_blocked_url_count: int = 0
+
+
+class _JobCancellationRequested(Exception):
+    pass
 
 
 def _now() -> str:
@@ -92,11 +98,9 @@ def _merge_extra_seed_urls(
     return seeds
 
 
-async def _cancel_if_requested(job_id: str, cancel_event: asyncio.Event) -> bool:
-    if not cancel_event.is_set():
-        return False
-    await update_job_status(job_id, JobStatus.cancelled)
-    return True
+def _raise_if_cancel_requested(cancel_event: asyncio.Event) -> None:
+    if cancel_event.is_set():
+        raise _JobCancellationRequested
 
 
 async def _run_auth_if_needed(
@@ -180,6 +184,38 @@ async def update_job_status(job_id: str, status: JobStatus, error: str | None = 
     )
 
 
+async def transition_job_status(
+    job_id: str,
+    from_statuses: set[JobStatus],
+    to_status: JobStatus,
+) -> bool:
+    placeholders = ",".join("?" for _ in from_statuses)
+    updated = await db.execute_rowcount(
+        f"UPDATE jobs SET status = ?, error = NULL, finished_at = NULL "
+        f"WHERE job_id = ? AND status IN ({placeholders})",
+        (to_status.value, job_id, *(status.value for status in from_statuses)),
+    )
+    return updated == 1
+
+
+async def cancel_queued_job(job_id: str) -> bool:
+    updated = await db.execute_rowcount(
+        """
+        UPDATE jobs
+        SET status = ?, error = NULL, finished_at = ?
+        WHERE job_id = ? AND status IN (?, ?)
+        """,
+        (
+            JobStatus.cancelled.value,
+            _now(),
+            job_id,
+            JobStatus.queued.value,
+            JobStatus.pending.value,
+        ),
+    )
+    return updated == 1
+
+
 def build_generated_exclusions_payload(
     config: crawler.CrawlConfig,
     auth_context: CrawlAuthContext,
@@ -208,8 +244,57 @@ async def update_job_generated_exclusions(job_id: str, exclusions: dict[str, Any
     )
 
 
+def serialize_sitemap(sitemap: dict[str, Any]) -> tuple[str, int, int]:
+    parser.validate_sitemap(sitemap)
+    serialized = json.dumps(sitemap, separators=(",", ":"), ensure_ascii=False)
+    entries = sitemap.get("entries")
+    entry_count = len(entries) if isinstance(entries, list) else 0
+    return serialized, entry_count, len(serialized.encode("utf-8"))
+
+
+async def complete_job(
+    job_id: str,
+    sitemap: dict[str, Any],
+    cancel_event: asyncio.Event | None = None,
+) -> bool:
+    serialized, entry_count, size_bytes = serialize_sitemap(sitemap)
+    logger.info(
+        "Persisting completed result job_id=%s entries=%d size_bytes=%d",
+        sanitize_log_value(job_id),
+        entry_count,
+        size_bytes,
+    )
+    lock = _state_locks.setdefault(job_id, asyncio.Lock())
+    async with lock:
+        if cancel_event is not None and cancel_event.is_set():
+            return False
+        updated = await db.execute_rowcount(
+            """
+            UPDATE jobs
+            SET sitemap = ?,
+                result_entry_count = ?,
+                result_size_bytes = ?,
+                status = ?,
+                error = NULL,
+                finished_at = ?
+            WHERE job_id = ? AND status = ?
+            """,
+            (
+                serialized,
+                entry_count,
+                size_bytes,
+                JobStatus.completed.value,
+                _now(),
+                job_id,
+                JobStatus.processing.value,
+            ),
+        )
+    return updated == 1
+
+
 async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
     proxy_process: proxy.ProxyProcess | None = None
+    cancellation_requested = False
     log_job_id = sanitize_log_value(job_id)
     logger.info("Starting job runner for job_id=%s", log_job_id)
     try:
@@ -234,15 +319,23 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
             log_job_id,
             sanitize_log_value(next_status.value),
         )
-        await update_job_status(job_id, next_status)
-        if await _cancel_if_requested(job_id, cancel_event):
+        claimed = await transition_job_status(
+            job_id,
+            {JobStatus.queued, JobStatus.pending},
+            next_status,
+        )
+        if not claimed:
+            logger.info(
+                "Job was no longer queued when runner tried to claim it job_id=%s",
+                log_job_id,
+            )
             return
+        _raise_if_cancel_requested(cancel_event)
 
         proxy_process = await proxy.start_proxy(job_id)
         await proxy.wait_for_proxy(proxy_process)
         logger.info("Proxy started for job_id=%s", log_job_id)
-        if await _cancel_if_requested(job_id, cancel_event):
-            return
+        _raise_if_cancel_requested(cancel_event)
 
         await proxy.check_target_connectivity(row["target_url"])
 
@@ -254,12 +347,16 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
             should_auth,
             cancel_event,
         )
-        if await _cancel_if_requested(job_id, cancel_event):
-            return
+        _raise_if_cancel_requested(cancel_event)
 
         if should_auth:
             logger.info("Job %s transitioning authenticating -> crawling", log_job_id)
-            await update_job_status(job_id, JobStatus.crawling)
+            if not await transition_job_status(
+                job_id,
+                {JobStatus.authenticating},
+                JobStatus.crawling,
+            ):
+                raise RuntimeError("Job could not transition from authenticating to crawling")
 
         logger.info(
             "Crawl config: headers=%d landing_url=%s extra_seeds=%s dynamic_exclusions=%d",
@@ -284,30 +381,50 @@ async def run_job(job_id: str, cancel_event: asyncio.Event) -> None:
             cancel_event=cancel_event,
             log_path=proxy_process.log_path,
         )
-        if await _cancel_if_requested(job_id, cancel_event):
-            return
+        _raise_if_cancel_requested(cancel_event)
 
         logger.info("Job %s transitioning crawling -> processing", log_job_id)
-        await update_job_status(job_id, JobStatus.processing)
-        await asyncio.to_thread(parser.parse_log, job_id, row["target_url"])
+        if not await transition_job_status(
+            job_id,
+            {JobStatus.crawling},
+            JobStatus.processing,
+        ):
+            raise RuntimeError("Job could not transition from crawling to processing")
+        sitemap = await asyncio.to_thread(
+            parser.parse_log,
+            job_id,
+            row["target_url"],
+            require_artifacts=True,
+        )
+        _raise_if_cancel_requested(cancel_event)
         logger.info("Job %s transitioning processing -> completed", log_job_id)
-        await update_job_status(job_id, JobStatus.completed)
+        if not await complete_job(job_id, sitemap, cancel_event):
+            if cancel_event.is_set():
+                raise _JobCancellationRequested
+            raise RuntimeError("Job could not transition from processing to completed")
         logger.info("Job completed successfully job_id=%s", log_job_id)
+    except _JobCancellationRequested:
+        cancellation_requested = True
+        logger.info("Job cancellation reached a safe checkpoint job_id=%s", log_job_id)
     except asyncio.CancelledError:
         logger.warning("Job task cancelled job_id=%s", log_job_id)
-        await update_job_status(job_id, JobStatus.cancelled)
+        cancellation_requested = True
     except Exception as exc:  # pragma: no cover - safeguard
         logger.warning("Job failed job_id=%s error=%s", log_job_id, sanitize_log_value(exc))
         if cancel_event.is_set():
-            await update_job_status(job_id, JobStatus.cancelled)
+            cancellation_requested = True
         else:
             await update_job_status(job_id, JobStatus.failed, str(exc))
     finally:
-        if proxy_process is not None:
-            await proxy.stop_proxy(proxy_process)
-            await asyncio.to_thread(sanitize_log_file, proxy_process.log_path)
-            await asyncio.to_thread(sanitize_log_file, proxy_process.log_path + ".katana")
-        logger.debug("Job runner cleanup finished for job_id=%s", log_job_id)
+        try:
+            if proxy_process is not None:
+                await proxy.stop_proxy(proxy_process)
+                await asyncio.to_thread(sanitize_log_file, proxy_process.log_path)
+                await asyncio.to_thread(sanitize_log_file, proxy_process.log_path + ".katana")
+        finally:
+            if cancellation_requested:
+                await update_job_status(job_id, JobStatus.cancelled)
+            logger.debug("Job runner cleanup finished for job_id=%s", log_job_id)
 
 
 async def _drain_queue() -> None:
@@ -318,12 +435,14 @@ async def _drain_queue() -> None:
         logger.info("Queue drainer picked up job_id=%s (remaining=%d)", job_id, _queue.qsize())
         cancel_event = asyncio.Event()
         _cancel_events[job_id] = cancel_event
+        _state_locks[job_id] = asyncio.Lock()
         task = asyncio.create_task(run_job(job_id, cancel_event))
         _job_tasks[job_id] = task
 
         def _cleanup(_: asyncio.Task[None], _job_id: str = job_id) -> None:
             _cancel_events.pop(_job_id, None)
             _job_tasks.pop(_job_id, None)
+            _state_locks.pop(_job_id, None)
             logger.debug(
                 "Cleaned up in-memory job task state job_id=%s",
                 sanitize_log_value(_job_id),
@@ -356,9 +475,14 @@ async def request_cancel(job_id: str) -> bool:
     if event is None:
         logger.warning("Cancel requested for non-running job_id=%s", sanitize_log_value(job_id))
         return False
-    event.set()
-    logger.info("Set cancellation event for job_id=%s", sanitize_log_value(job_id))
-    return True
+    lock = _state_locks.setdefault(job_id, asyncio.Lock())
+    async with lock:
+        row = await db.fetch_one("SELECT status FROM jobs WHERE job_id = ?", (job_id,))
+        if row is None or row["status"] in TERMINAL_JOB_STATUSES:
+            return False
+        event.set()
+        logger.info("Set cancellation event for job_id=%s", sanitize_log_value(job_id))
+        return True
 
 
 def get_job_task(job_id: str) -> asyncio.Task[None] | None:

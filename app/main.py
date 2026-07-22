@@ -2,21 +2,21 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import copy
 import faulthandler
+import json
 import logging
 import os
 import shutil
 import signal
 import traceback
 import uuid
-from collections import OrderedDict
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
@@ -27,24 +27,19 @@ load_dotenv()
 from . import db, orchestrator, parser  # noqa: E402
 from .auth_config import AuthConfigValidationError, validate_auth_config  # noqa: E402
 from .common import sanitize_log_value  # noqa: E402
-from .job_status import (  # noqa: E402
-    ACTIVE_JOB_STATUSES,
-    INTERRUPTED_JOB_STATUSES,
-    TERMINAL_JOB_STATUSES,
-)
+from .job_status import INTERRUPTED_JOB_STATUSES, TERMINAL_JOB_STATUSES  # noqa: E402
 from .models import (  # noqa: E402
+    CancellationStatus,
     JobCancelResponse,
     JobCreateRequest,
     JobCreateResponse,
     JobListResponse,
     JobResponse,
+    JobResultMetadata,
     JobStatus,
+    JobSummary,
 )
 from .scope_config import ScopeConfigValidationError, validate_scope_config  # noqa: E402
-from .settings import (  # noqa: E402
-    CRAWLER_COMPLETED_SITEMAP_CACHE_ENABLED,
-    CRAWLER_COMPLETED_SITEMAP_CACHE_MAX_ENTRIES,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -59,33 +54,118 @@ OPENAPI_URL = "/openapi.json"
 FAVICON_URL = "/static/tenzai-favicon-48.png"
 LOGO_URL = "/static/tenzai-logo.svg"
 
-_completed_sitemap_cache: OrderedDict[tuple[str, str | None], dict[str, Any]] = OrderedDict()
-_completed_sitemap_cache_lock = asyncio.Lock()
+def _result_metadata(row: Any) -> JobResultMetadata | None:
+    entry_count = row["result_entry_count"]
+    size_bytes = row["result_size_bytes"]
+    if entry_count is None or size_bytes is None:
+        return None
+    return JobResultMetadata(entry_count=entry_count, size_bytes=size_bytes)
 
 
-async def _read_completed_sitemap(
-    job_id: str,
-    target_url: str,
-    finished_at: str | None,
-) -> dict[str, Any]:
-    if not CRAWLER_COMPLETED_SITEMAP_CACHE_ENABLED:
-        return await asyncio.to_thread(parser.parse_log, job_id, target_url)
+def _duration_seconds(created_at: str, finished_at: str | None) -> float | None:
+    try:
+        started = datetime.fromisoformat(created_at)
+        finished = datetime.fromisoformat(finished_at) if finished_at else datetime.now(UTC)
+    except ValueError:
+        return None
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    if finished.tzinfo is None:
+        finished = finished.replace(tzinfo=UTC)
+    return max(0.0, round((finished - started).total_seconds(), 3))
 
-    cache_key = (job_id, finished_at)
-    async with _completed_sitemap_cache_lock:
-        cached = _completed_sitemap_cache.get(cache_key)
-        if cached is not None:
-            _completed_sitemap_cache.move_to_end(cache_key)
-            logger.debug("Sitemap cache hit for completed job_id=%s", sanitize_log_value(job_id))
-            return copy.deepcopy(cached)
 
-    sitemap = await asyncio.to_thread(parser.parse_log, job_id, target_url)
-    async with _completed_sitemap_cache_lock:
-        _completed_sitemap_cache[cache_key] = sitemap
-        _completed_sitemap_cache.move_to_end(cache_key)
-        while len(_completed_sitemap_cache) > CRAWLER_COMPLETED_SITEMAP_CACHE_MAX_ENTRIES:
-            _completed_sitemap_cache.popitem(last=False)
-    return copy.deepcopy(sitemap)
+async def _queue_position(row: Any) -> int | None:
+    if row["status"] != JobStatus.queued.value:
+        return None
+    position = await db.fetch_one(
+        """
+        SELECT COUNT(1) AS position
+        FROM jobs
+        WHERE status = ?
+          AND (created_at < ? OR (created_at = ? AND rowid <= ?))
+        """,
+        (JobStatus.queued.value, row["created_at"], row["created_at"], row["rowid"]),
+    )
+    return int(position["position"]) if position is not None else None
+
+
+def _decode_persisted_sitemap(job_id: str, serialized: str) -> dict[str, Any]:
+    try:
+        sitemap = json.loads(serialized)
+    except (json.JSONDecodeError, TypeError) as exc:
+        logger.error("Persisted sitemap is corrupt for job_id=%s", sanitize_log_value(job_id))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Completed job result is corrupt",
+        ) from exc
+    try:
+        return parser.validate_sitemap(sitemap)
+    except parser.CrawlArtifactsCorruptError as exc:
+        logger.error(
+            "Persisted sitemap has invalid shape for job_id=%s",
+            sanitize_log_value(job_id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Completed job result is corrupt",
+        ) from exc
+
+
+async def _read_completed_sitemap(row: Any) -> tuple[dict[str, Any], JobResultMetadata]:
+    job_id = row["job_id"]
+    serialized = row["sitemap"]
+    if serialized is not None:
+        sitemap = _decode_persisted_sitemap(job_id, serialized)
+        metadata = _result_metadata(row)
+        if metadata is None:
+            _, entry_count, size_bytes = orchestrator.serialize_sitemap(sitemap)
+            metadata = JobResultMetadata(entry_count=entry_count, size_bytes=size_bytes)
+        return sitemap, metadata
+
+    try:
+        sitemap = await asyncio.to_thread(
+            parser.parse_log,
+            job_id,
+            row["target_url"],
+            require_artifacts=True,
+        )
+    except (parser.CrawlArtifactsMissingError, parser.CrawlArtifactsCorruptError) as exc:
+        logger.error("Completed legacy job has unavailable result artifacts job_id=%s", job_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "Completed job result is unavailable"
+                if isinstance(exc, parser.CrawlArtifactsMissingError)
+                else "Completed job result is corrupt"
+            ),
+        ) from exc
+
+    serialized, entry_count, size_bytes = orchestrator.serialize_sitemap(sitemap)
+    await db.execute_rowcount(
+        """
+        UPDATE jobs
+        SET sitemap = ?, result_entry_count = ?, result_size_bytes = ?
+        WHERE job_id = ? AND status = ? AND sitemap IS NULL
+        """,
+        (serialized, entry_count, size_bytes, job_id, JobStatus.completed.value),
+    )
+    persisted = await db.fetch_one(
+        "SELECT sitemap, result_entry_count, result_size_bytes FROM jobs WHERE job_id = ?",
+        (job_id,),
+    )
+    if persisted is None or persisted["sitemap"] is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Completed job result could not be persisted",
+        )
+    return (
+        _decode_persisted_sitemap(job_id, persisted["sitemap"]),
+        JobResultMetadata(
+            entry_count=persisted["result_entry_count"],
+            size_bytes=persisted["result_size_bytes"],
+        ),
+    )
 
 
 @asynccontextmanager
@@ -131,8 +211,6 @@ async def lifespan(_: FastAPI):
         """
     )
     logger.info("Marked interrupted in-flight jobs as failed_interrupted")
-    async with _completed_sitemap_cache_lock:
-        _completed_sitemap_cache.clear()
     orchestrator.start_drainer()
     yield
     logger.info("Shutting down crawler service lifespan")
@@ -337,43 +415,72 @@ async def create_job(payload: JobCreateRequest) -> JobCreateResponse:
 
 
 @app.get("/jobs", response_model=JobListResponse)
-async def list_jobs() -> JobListResponse:
-    logger.debug("Listing active jobs")
-    placeholders = ",".join("?" for _ in ACTIVE_JOB_STATUSES)
-    rows = await db.fetch_all(
-        f"SELECT * FROM jobs WHERE status IN ({placeholders}) ORDER BY created_at ASC",
-        tuple(ACTIVE_JOB_STATUSES),
-    )
+async def list_jobs(
+    status_filter: Annotated[JobStatus | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=250)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> JobListResponse:
+    logger.debug("Listing jobs status=%s limit=%d offset=%d", status_filter, limit, offset)
+    where = " WHERE j.status = ?" if status_filter is not None else ""
+    params: tuple[Any, ...] = (status_filter.value,) if status_filter is not None else ()
+    async with db.connect() as conn:
+        await conn.execute("BEGIN")
+        count_cursor = await conn.execute(f"SELECT COUNT(1) FROM jobs j{where}", params)
+        count_row = await count_cursor.fetchone()
+        await count_cursor.close()
+        rows_cursor = await conn.execute(
+            f"""
+            SELECT j.job_id, j.status, j.target_url, j.error, j.created_at, j.finished_at,
+                   j.result_entry_count, j.result_size_bytes,
+                   CASE WHEN j.status = 'queued' THEN (
+                       SELECT COUNT(1)
+                       FROM jobs q
+                       WHERE q.status = 'queued'
+                         AND (
+                             q.created_at < j.created_at
+                             OR (q.created_at = j.created_at AND q.rowid <= j.rowid)
+                         )
+                   ) END AS queue_position
+            FROM jobs j{where}
+            ORDER BY j.created_at DESC, j.rowid DESC
+            LIMIT ? OFFSET ?
+            """,
+            (*params, limit, offset),
+        )
+        rows = await rows_cursor.fetchall()
+        await rows_cursor.close()
+    total = int(count_row[0]) if count_row is not None else 0
     jobs = [
-        JobResponse(
+        JobSummary(
             job_id=row["job_id"],
             status=JobStatus(row["status"]),
             target_url=row["target_url"],
-            scope_config=db.loads_json(row["scope_config"]),
-            auth_config=db.loads_json(row["auth_config"]),
             error=row["error"],
             created_at=row["created_at"],
             finished_at=row["finished_at"],
-            generated_exclusions=db.loads_json(row["generated_exclusions"]),
+            duration_seconds=_duration_seconds(row["created_at"], row["finished_at"]),
+            queue_position=row["queue_position"],
+            result_metadata=_result_metadata(row),
         )
         for row in rows
     ]
-    return JobListResponse(jobs=jobs)
+    return JobListResponse(jobs=jobs, total=total, limit=limit, offset=offset)
 
 
 @app.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: str) -> JobResponse:
     log_job_id = sanitize_log_value(job_id)
     logger.debug("Fetching job status for job_id=%s", log_job_id)
-    row = await db.fetch_one("SELECT * FROM jobs WHERE job_id = ?", (job_id,))
+    row = await db.fetch_one("SELECT rowid, * FROM jobs WHERE job_id = ?", (job_id,))
     if row is None:
         logger.warning("Job lookup failed, not found: job_id=%s", log_job_id)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     sitemap = None
+    result_metadata = _result_metadata(row)
     if row["status"] == JobStatus.completed.value:
-        logger.debug("Job %s is completed, reading sitemap", log_job_id)
-        sitemap = await _read_completed_sitemap(job_id, row["target_url"], row["finished_at"])
+        logger.debug("Job %s is completed, reading persisted sitemap", log_job_id)
+        sitemap, result_metadata = await _read_completed_sitemap(row)
 
     return JobResponse(
         job_id=row["job_id"],
@@ -384,7 +491,10 @@ async def get_job(job_id: str) -> JobResponse:
         error=row["error"],
         created_at=row["created_at"],
         finished_at=row["finished_at"],
+        duration_seconds=_duration_seconds(row["created_at"], row["finished_at"]),
+        queue_position=await _queue_position(row),
         generated_exclusions=db.loads_json(row["generated_exclusions"]),
+        result_metadata=result_metadata,
         sitemap=sitemap,
     )
 
@@ -400,27 +510,73 @@ async def cancel_job(job_id: str) -> JobCancelResponse:
 
     status_value = row["status"]
     if status_value in TERMINAL_JOB_STATUSES:
-        return JobCancelResponse(job_id=job_id, status=JobStatus(status_value))
+        cancellation_status = (
+            CancellationStatus.completed
+            if status_value == JobStatus.cancelled.value
+            else CancellationStatus.not_needed
+        )
+        return JobCancelResponse(
+            job_id=job_id,
+            status=JobStatus(status_value),
+            cancellation_status=cancellation_status,
+        )
 
     if status_value in {JobStatus.queued.value, JobStatus.pending.value}:
-        await orchestrator.update_job_status(job_id, JobStatus.cancelled)
-        logger.info(
-            "Cancelled %s job job_id=%s",
-            sanitize_log_value(status_value),
-            log_job_id,
-        )
-        return JobCancelResponse(job_id=job_id, status=JobStatus.cancelled)
+        if await orchestrator.cancel_queued_job(job_id):
+            logger.info(
+                "Cancelled %s job job_id=%s",
+                sanitize_log_value(status_value),
+                log_job_id,
+            )
+            return JobCancelResponse(
+                job_id=job_id,
+                status=JobStatus.cancelled,
+                cancellation_status=CancellationStatus.completed,
+            )
+        row = await db.fetch_one("SELECT status FROM jobs WHERE job_id = ?", (job_id,))
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        status_value = row["status"]
+        if status_value in TERMINAL_JOB_STATUSES:
+            cancellation_status = (
+                CancellationStatus.completed
+                if status_value == JobStatus.cancelled.value
+                else CancellationStatus.not_needed
+            )
+            return JobCancelResponse(
+                job_id=job_id,
+                status=JobStatus(status_value),
+                cancellation_status=cancellation_status,
+            )
 
     requested = await orchestrator.request_cancel(job_id)
     if not requested:
-        await orchestrator.update_job_status(job_id, JobStatus.cancelled)
+        row = await db.fetch_one("SELECT status FROM jobs WHERE job_id = ?", (job_id,))
+        if row is not None and row["status"] in TERMINAL_JOB_STATUSES:
+            terminal_status = JobStatus(row["status"])
+            return JobCancelResponse(
+                job_id=job_id,
+                status=terminal_status,
+                cancellation_status=(
+                    CancellationStatus.completed
+                    if terminal_status is JobStatus.cancelled
+                    else CancellationStatus.not_needed
+                ),
+            )
         logger.warning(
-            "Cancel request had no in-memory event, force-marked cancelled for job_id=%s",
+            "Cancel request had no in-memory runner for job_id=%s",
             log_job_id,
         )
-        return JobCancelResponse(job_id=job_id, status=JobStatus.cancelled)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Job runner is unavailable; cancellation was not recorded",
+        )
 
-    return JobCancelResponse(job_id=job_id, status=JobStatus(status_value))
+    return JobCancelResponse(
+        job_id=job_id,
+        status=JobStatus(status_value),
+        cancellation_status=CancellationStatus.requested,
+    )
 
 
 def cli() -> None:
