@@ -5,18 +5,6 @@ import os
 from .common import coerce_int
 
 
-def _env_bool(name: str, fallback: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return fallback
-    normalized = raw.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    return fallback
-
-
 def _env_int(name: str, fallback: int, *, minimum: int | None = None) -> int:
     value = coerce_int(os.getenv(name), fallback)
     if minimum is not None and value < minimum:
@@ -51,10 +39,7 @@ CRAWLER_PROXY_HEALTHCHECK_INTERVAL_SECONDS = _env_float(
 )
 
 CRAWLER_AUTH_ATTEMPTS = _env_int("CRAWLER_AUTH_ATTEMPTS", 3, minimum=1)
+CRAWLER_AUTH_TIMEOUT_SECONDS = _env_float("CRAWLER_AUTH_TIMEOUT_SECONDS", 180.0, minimum=0.1)
 CRAWLER_AUTH_RETRY_BASE_SECONDS = _env_float("CRAWLER_AUTH_RETRY_BASE_SECONDS", 1.0, minimum=0.1)
 CRAWLER_AUTH_MAX_STEPS_DEFAULT = _env_int("CRAWLER_AUTH_MAX_STEPS", 85, minimum=1)
 CRAWLER_AUTH_SCAN_MAX_BYTES = _env_int("CRAWLER_AUTH_SCAN_MAX_BYTES", 1_000_000, minimum=1)
-CRAWLER_COMPLETED_SITEMAP_CACHE_ENABLED = _env_bool("CRAWLER_COMPLETED_SITEMAP_CACHE", False)
-CRAWLER_COMPLETED_SITEMAP_CACHE_MAX_ENTRIES = _env_int(
-    "CRAWLER_COMPLETED_SITEMAP_CACHE_MAX_ENTRIES", 128, minimum=1
-)

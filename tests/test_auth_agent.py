@@ -233,10 +233,12 @@ async def test_build_tools_generates_totp_from_credential_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FakeTotp:
+        interval = 30
+
         def __init__(self, secret: str) -> None:
             self.secret = secret
 
-        def now(self) -> str:
+        def at(self, timestamp: float) -> str:
             assert self.secret == "JBSWY3DPEHPK3PXP"
             return "654321"
 
@@ -251,6 +253,105 @@ async def test_build_tools_generates_totp_from_credential_key(
     get_totp_code = next(tool for tool in tools if tool.__name__ == "get_totp_code")
 
     assert await get_totp_code("totp_secret") == "TOTP code from totp_secret: 654321"
+
+
+@pytest.mark.asyncio
+async def test_fresh_totp_waits_for_next_period_near_rollover(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generated_at: list[float] = []
+    waits: list[float] = []
+
+    class FakeTotp:
+        interval = 30
+
+        def __init__(self, secret: str) -> None:
+            assert secret == "seed"
+
+        def at(self, timestamp: float) -> str:
+            generated_at.append(timestamp)
+            return "123456"
+
+    async def fake_wait(delay: float, cancel_event) -> None:
+        assert not cancel_event.is_set()
+        waits.append(delay)
+
+    timestamps = iter((59.0, 60.1))
+    import pyotp
+
+    monkeypatch.setattr(pyotp, "TOTP", FakeTotp)
+    code = await auth_agent._fresh_totp_from_secret(
+        "seed",
+        auth_agent.asyncio.Event(),
+        wall_time=lambda: next(timestamps),
+        wait_for_fresh_period=fake_wait,
+    )
+
+    assert code == "123456"
+    assert waits == [1.0]
+    assert generated_at == [60]
+
+
+@pytest.mark.asyncio
+async def test_tool_checks_cancellation_before_side_effect() -> None:
+    class FakePage:
+        def locator(self, target: str):
+            raise AssertionError(f"unexpected side effect for {target}")
+
+    cancel_event = auth_agent.asyncio.Event()
+    cancel_event.set()
+    tools = auth_agent._build_tools(FakePage(), cancel_event=cancel_event)
+    click = next(tool for tool in tools if tool.__name__ == "click")
+
+    with pytest.raises(auth_agent.asyncio.CancelledError):
+        await click("button")
+
+
+@pytest.mark.asyncio
+async def test_authenticate_total_timeout_cancels_work(monkeypatch: pytest.MonkeyPatch) -> None:
+    cancelled = auth_agent.asyncio.Event()
+
+    async def hanging_workflow(*args) -> auth_agent.AuthResult:
+        try:
+            await auth_agent.asyncio.Event().wait()
+        finally:
+            cancelled.set()
+        raise AssertionError("unreachable")
+
+    monkeypatch.setattr(auth_agent, "_authenticate_workflow", hanging_workflow)
+    monkeypatch.setattr(auth_agent, "CRAWLER_AUTH_TIMEOUT_SECONDS", 0.01)
+
+    with pytest.raises(auth_agent.AuthenticationError, match="timed out after 0.01 seconds"):
+        await auth_agent.authenticate("https://example.com", {}, auth_agent.asyncio.Event())
+    assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
+async def test_authenticate_operator_cancellation_is_cancelled_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    work_started = auth_agent.asyncio.Event()
+    work_cancelled = auth_agent.asyncio.Event()
+
+    async def hanging_workflow(*args) -> auth_agent.AuthResult:
+        work_started.set()
+        try:
+            await auth_agent.asyncio.Event().wait()
+        finally:
+            work_cancelled.set()
+        raise AssertionError("unreachable")
+
+    monkeypatch.setattr(auth_agent, "_authenticate_workflow", hanging_workflow)
+    cancel_event = auth_agent.asyncio.Event()
+    task = auth_agent.asyncio.create_task(
+        auth_agent.authenticate("https://example.com", {}, cancel_event)
+    )
+    await work_started.wait()
+    cancel_event.set()
+
+    with pytest.raises(auth_agent.asyncio.CancelledError):
+        await task
+    assert work_cancelled.is_set()
 
 
 @pytest.mark.asyncio

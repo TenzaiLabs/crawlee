@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
@@ -19,6 +20,7 @@ from .settings import (
     CRAWLER_AUTH_ATTEMPTS,
     CRAWLER_AUTH_MAX_STEPS_DEFAULT,
     CRAWLER_AUTH_RETRY_BASE_SECONDS,
+    CRAWLER_AUTH_TIMEOUT_SECONDS,
 )
 
 logger = logging.getLogger(__name__)
@@ -408,6 +410,43 @@ def _totp_from_secret(secret: str) -> str:
     except ImportError as exc:  # pragma: no cover
         raise AuthenticationError("pyotp is required for TOTP authentication") from exc
     return pyotp.TOTP(secret).now()
+
+
+async def _wait_or_cancel(delay: float, cancel_event: asyncio.Event) -> None:
+    if cancel_event.is_set():
+        raise asyncio.CancelledError
+    try:
+        await asyncio.wait_for(cancel_event.wait(), timeout=delay)
+    except TimeoutError:
+        return
+    raise asyncio.CancelledError
+
+
+async def _fresh_totp_from_secret(
+    secret: str,
+    cancel_event: asyncio.Event,
+    *,
+    wall_time: Any = time.time,
+    wait_for_fresh_period: Any = _wait_or_cancel,
+    safety_margin: float = 5.0,
+) -> str:
+    try:
+        import pyotp
+    except ImportError as exc:  # pragma: no cover
+        raise AuthenticationError("pyotp is required for TOTP authentication") from exc
+
+    totp = pyotp.TOTP(secret)
+    timestamp = float(wall_time())
+    interval = float(totp.interval)
+    if safety_margin <= 0 or safety_margin >= interval:
+        raise ValueError("TOTP safety margin must be positive and smaller than the interval")
+    remaining = interval - (timestamp % interval)
+    if remaining < safety_margin:
+        await wait_for_fresh_period(remaining, cancel_event)
+        timestamp = float(wall_time())
+    if cancel_event.is_set():
+        raise asyncio.CancelledError
+    return totp.at(int(timestamp))
 
 
 async def _safe_visible_text(page: Any, *, limit: int = 8000) -> str:
@@ -982,6 +1021,7 @@ def _build_tools(
     browser: Any,
     blocked_urls: list[str] | None = None,
     *,
+    cancel_event: asyncio.Event | None = None,
     target_url: str | None = None,
     login_url: str | None = None,
     success_indicator: str | None = None,
@@ -993,9 +1033,15 @@ def _build_tools(
     seen_blocked_urls: set[str] = set(blocked_url_sink)
     controller = browser if isinstance(browser, _AuthBrowserController) else None
     credential_values = credentials or {}
+    cancellation = cancel_event or asyncio.Event()
+
+    def _check_cancelled() -> None:
+        if cancellation.is_set():
+            raise asyncio.CancelledError
 
     async def click(target: str) -> str:
         """Click an element by ref from get_page_state, or by CSS selector as fallback."""
+        _check_cancelled()
         try:
             if controller is not None:
                 return await controller.click(target)
@@ -1006,6 +1052,7 @@ def _build_tools(
 
     async def type_text(target: str, text: str) -> str:
         """Fill text into an input by ref from get_page_state, or CSS selector as fallback."""
+        _check_cancelled()
         try:
             if controller is not None:
                 return await controller.type_text(target, text)
@@ -1018,6 +1065,7 @@ def _build_tools(
 
     async def select_option(target: str, value: str) -> str:
         """Select an option from a dropdown by ref from get_page_state."""
+        _check_cancelled()
         try:
             if controller is not None:
                 return await controller.select_option(target, value)
@@ -1028,6 +1076,7 @@ def _build_tools(
 
     async def press_key(key: str, target: str = "") -> str:
         """Press a keyboard key, optionally focused on an element ref."""
+        _check_cancelled()
         try:
             if controller is not None:
                 return await controller.press_key(key, target or None)
@@ -1041,6 +1090,7 @@ def _build_tools(
 
     async def navigate(url: str) -> str:
         """Navigate the active browser page to an absolute or relative URL."""
+        _check_cancelled()
         try:
             if controller is not None:
                 return await controller.navigate(url)
@@ -1052,12 +1102,14 @@ def _build_tools(
 
     async def switch_page(page_ref: str) -> str:
         """Switch active page/tab by page ref, for example p0 or p1."""
+        _check_cancelled()
         if controller is None:
             return "page switching is unavailable"
         return await controller.switch_page(page_ref)
 
     async def wait(milliseconds: int) -> str:
         """Wait for a specified number of milliseconds."""
+        _check_cancelled()
         ms = coerce_int(milliseconds, 500)
         if controller is not None:
             await controller.active_page.wait_for_timeout(ms)
@@ -1067,6 +1119,7 @@ def _build_tools(
 
     async def get_page_state() -> str:
         """Get current pages, frames, visible text, and element refs for interaction."""
+        _check_cancelled()
         try:
             if controller is not None:
                 return await controller.get_page_state()
@@ -1076,6 +1129,7 @@ def _build_tools(
 
     async def verify_authentication(probe_url: str = "") -> str:
         """Probe whether the current browser context can access authenticated content."""
+        _check_cancelled()
         if controller is None or not target_url or not login_url:
             return "verification unavailable"
         requested_probe_url = str(probe_url).strip() or configured_probe_url
@@ -1096,6 +1150,7 @@ def _build_tools(
 
     async def get_totp_code(secret_or_key: str = "") -> str:
         """Generate a current TOTP code from a seed or a credential key such as totp_secret."""
+        _check_cancelled()
         requested = str(secret_or_key).strip()
         secret = ""
         source = requested or "default"
@@ -1116,17 +1171,19 @@ def _build_tools(
             return "error generating TOTP: no secret or credential key was provided"
 
         try:
-            code = _totp_from_secret(secret)
+            code = await _fresh_totp_from_secret(secret, cancellation)
         except Exception as exc:
             return f"error generating TOTP: {exc}"
         return f"TOTP code from {source}: {code}"
 
     async def done() -> str:
         """Finish only after authentication verification succeeds."""
+        _check_cancelled()
         return await verify_authentication()
 
     async def record_blocked_url(url: str, reason: str = "") -> str:
         """Record a URL that the crawler should avoid after authentication."""
+        _check_cancelled()
         url_text = str(url).strip()
         if not url_text:
             return "ignored empty blocked URL"
@@ -1204,6 +1261,7 @@ async def _run_auth_with_retries(
     tools: list[Any],
     before_call: Any,
     after_call: Any,
+    cancel_event: asyncio.Event,
 ) -> None:
     for attempt in range(CRAWLER_AUTH_ATTEMPTS):
         try:
@@ -1224,10 +1282,10 @@ async def _run_auth_with_retries(
         except Exception as exc:
             if attempt >= CRAWLER_AUTH_ATTEMPTS - 1:
                 raise AuthenticationError(f"LLM authentication failed: {exc}") from exc
-            await asyncio.sleep(CRAWLER_AUTH_RETRY_BASE_SECONDS * (2**attempt))
+            await _wait_or_cancel(CRAWLER_AUTH_RETRY_BASE_SECONDS * (2**attempt), cancel_event)
 
 
-async def authenticate(
+async def _authenticate_workflow(
     target_url: str, auth_config: dict, cancel_event: asyncio.Event
 ) -> AuthResult:
     if not isinstance(auth_config, dict):
@@ -1238,10 +1296,11 @@ async def authenticate(
     prepared = _prepare_auth_config(target_url, auth_config)
     configured_model = _configure_model(auth_config)
 
-    playwright = await async_playwright().start()
+    playwright = None
     browser = None
     context = None
     try:
+        playwright = await async_playwright().start()
         browser = await playwright.chromium.launch(headless=True)
         context = await browser.new_context(ignore_https_errors=True)
         page = await context.new_page()
@@ -1279,6 +1338,7 @@ async def authenticate(
             configured_probe_url=prepared.probe_url,
             credentials=prepared.credentials_payload,
             verification_memory=verification_memory,
+            cancel_event=cancel_event,
         )
         await _run_auth_with_retries(
             model=configured_model.model,
@@ -1288,6 +1348,7 @@ async def authenticate(
             tools=tools,
             before_call=before_call,
             after_call=after_call,
+            cancel_event=cancel_event,
         )
         verification = await _verify_authenticated(
             controller,
@@ -1328,11 +1389,55 @@ async def authenticate(
             discovered_urls=discovered_urls,
         )
     finally:
-        with contextlib.suppress(Exception):
-            if context is not None:
-                await context.close()
-        with contextlib.suppress(Exception):
-            if browser is not None:
-                await browser.close()
-        with contextlib.suppress(Exception):
-            await playwright.stop()
+        for resource, method_name in (
+            (context, "close"),
+            (browser, "close"),
+            (playwright, "stop"),
+        ):
+            if resource is None:
+                continue
+            with contextlib.suppress(Exception, asyncio.CancelledError):
+                await asyncio.wait_for(getattr(resource, method_name)(), timeout=3.0)
+
+
+async def authenticate(
+    target_url: str, auth_config: dict, cancel_event: asyncio.Event
+) -> AuthResult:
+    """Run authentication under one total deadline and an operator cancellation supervisor."""
+    if not isinstance(auth_config, dict):
+        raise TypeError("auth_config must be a dict")
+    if cancel_event.is_set():
+        raise asyncio.CancelledError
+
+    work = asyncio.create_task(_authenticate_workflow(target_url, auth_config, cancel_event))
+    cancellation = asyncio.create_task(cancel_event.wait())
+    try:
+        done, _ = await asyncio.wait(
+            {work, cancellation},
+            timeout=CRAWLER_AUTH_TIMEOUT_SECONDS,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if cancellation in done:
+            work.cancel()
+            with contextlib.suppress(Exception, asyncio.CancelledError):
+                await work
+            raise asyncio.CancelledError
+        if work in done:
+            return await work
+
+        work.cancel()
+        with contextlib.suppress(Exception, asyncio.CancelledError):
+            await work
+        raise AuthenticationError(
+            f"Authentication timed out after {CRAWLER_AUTH_TIMEOUT_SECONDS:g} seconds"
+        )
+    except asyncio.CancelledError:
+        if not work.done():
+            work.cancel()
+            with contextlib.suppress(Exception, asyncio.CancelledError):
+                await work
+        raise
+    finally:
+        cancellation.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await cancellation
