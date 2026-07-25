@@ -7,24 +7,29 @@
 [![License](https://img.shields.io/badge/license-see%20LICENSE.md-lightgrey)](LICENSE.md)
 [![Security](https://img.shields.io/badge/security-policy-00a8bf)](SECURITY.md)
 
-Tenzai Crawler is an async-native FastAPI service for crawling websites with Katana and Proxify. It stores job state in SQLite, writes request logs to disk, and can perform pre-crawl authentication with either operator-supplied headers or a Playwright-driven LLM auth agent.
+Tenzai Crawler is an async-native FastAPI service for crawling websites with Katana. It stores job state in SQLite, writes per-lane Katana JSONL artifacts, can authenticate through an operator-supplied header or Playwright-driven LLM flow, and uses browser-guided discovery to expose workflows that an ordinary crawl misses.
 
-The service runs as a single-job worker. Jobs are accepted through the API, stored as queued records, and drained serially because Proxify binds the fixed local proxy address `127.0.0.1:8888`.
+The service runs as a single-job worker. Jobs are accepted through the API, stored as queued records, and drained serially.
 
 ## Architecture
 
 - **API**: FastAPI endpoints create, inspect, list, and cancel crawl jobs.
 - **Job store**: SQLite stores target URLs, status, scope config, auth config, errors, and timestamps.
-- **Orchestrator**: owns job status transitions, starts/stops Proxify, runs authentication when required, invokes Katana, and processes completed logs.
+- **Orchestrator**: owns job status transitions, a job-scoped Chromium profile, bounded known-file discovery, both Katana lanes, browser-guided discovery, checkpoints, and cleanup.
 - **Authentication**: header-only configs are passed directly to the crawler; credential or login-url configs run the LLM auth agent before crawl.
-- **Crawler**: Katana receives target URLs, authenticated headers, extra seed URLs, scope limits, and exclusion patterns. The crawler remains auth-agnostic.
-- **Parser**: Proxify and Katana JSONL logs are normalized into a completed-job sitemap.
+- **Crawler**: standard Katana handles static/JavaScript/form extraction; pure-headless Katana reuses the job Chrome through CDP for rendered behavior. The crawler remains auth-agnostic.
+- **Browser discovery**: Playwright and the LLM open fresh pages after Katana, exercise safe workflow controls, and return stable seeds to another two-lane Katana stage.
+- **Parser**: controlled-fetch, Katana, and passive-CDP evidence is aggregated into a completed-job sitemap by exact `(method, URL)` identity.
+
+Target certificate verification is intentionally disabled across controlled
+fetches, Katana, and the shared Chrome so self-signed test applications remain
+crawlable.
 
 ## Requirements
 
 - Python `3.14`
 - `uv`
-- Katana `v1.6.1` and `proxify` in `PATH`
+- The source-pinned `v1.6.1`-derived Katana build in `PATH` (the container image installs and verifies the qualified artifact)
 
 ## Setup For Usage
 
@@ -42,7 +47,7 @@ uv run tenzai-crawler-server
 
 The server binds `0.0.0.0:8000` by default. Override with `CRAWLER_HOST` and `CRAWLER_PORT`.
 
-The service validates `katana` and `proxify` at startup and exits if either is missing.
+The service validates `katana` at startup and exits if it is missing.
 
 ## Setup For Development
 
@@ -104,21 +109,146 @@ Cancel a job:
 curl -X POST http://localhost:8000/jobs/<job_id>/cancel
 ```
 
-## Quick CLI Usage
+## CLI Usage
 
-The CLI is a wrapper over the same API endpoints.
+The CLI is an HTTP client for the same API endpoints. Start
+`uv run tenzai-crawler-server` first; every CLI command prints its response as
+JSON. Creating a job returns immediately with a `job_id` rather than waiting for
+the crawl to finish.
 
-Basic commands:
+### Connect to the server
+
+Show the available commands and options:
+
+```bash
+uv run tenzai-crawler --help
+uv run tenzai-crawler create --help
+```
+
+The global options must appear before the subcommand:
+
+- `--base-url` selects the API server (default `http://localhost:8000`).
+- `--timeout` controls each CLI-to-API request (default `30` seconds). It does
+  not change the crawl or whole-job deadline.
+
+For example, query a remote crawler server with a 60-second HTTP timeout:
+
+```bash
+uv run tenzai-crawler \
+  --base-url http://crawler.example:8000 \
+  --timeout 60 \
+  list
+```
+
+The previous `crawler` and `crawler-server` entry points remain available as
+compatibility aliases.
+
+### Create a crawl job
+
+Create a job with the default scope and browser-guided discovery settings:
 
 ```bash
 uv run tenzai-crawler create https://example.com
-uv run tenzai-crawler list
-uv run tenzai-crawler list --status completed --limit 25
+```
+
+The response contains the identifier used by the other commands:
+
+```json
+{
+  "job_id": "<job_id>"
+}
+```
+
+Pass per-job Katana limits as inline JSON:
+
+```bash
+uv run tenzai-crawler create https://example.com \
+  --scope-config-json \
+  '{"max_depth":4,"crawl_duration":"5m","exclude_filters":["/logout"]}'
+```
+
+For reusable configuration, put the same JSON object in a file:
+
+```bash
+uv run tenzai-crawler create https://example.com \
+  --scope-config-file ./scope.json
+```
+
+`--scope-config-json` and `--scope-config-file` are mutually exclusive. Valid
+scope keys are `max_depth`, `rate_limit`, `crawl_scope`, `exclude_filters`,
+`exclude_regex`, `field_scope`, `concurrency`, `parallelism`,
+`crawl_duration`, and `timeout`. Chrome and CDP settings are server-owned.
+
+### Add authentication
+
+For manual-header mode, repeat `--auth-header` as needed. Environment templates
+are resolved by the server, so the referenced variables must exist in the
+server process environment:
+
+```bash
+uv run tenzai-crawler create https://example.com \
+  --auth-header 'Authorization: Bearer {{env:APP_TOKEN}}' \
+  --auth-header 'X-Tenant: example'
+```
+
+For AI-auth mode, save a full configuration such as this as `auth.json`:
+
+```json
+{
+  "login_url": "https://example.com/login",
+  "credentials": {
+    "email": "{{env:APP_EMAIL}}",
+    "password": "{{env:APP_PASSWORD}}"
+  },
+  "instructions": "Sign in and stop when the dashboard is visible.",
+  "success_indicator": "Dashboard"
+}
+```
+
+Then create the job:
+
+```bash
+uv run tenzai-crawler create https://example.com \
+  --auth-config-file ./auth.json
+```
+
+`--auth-config-json` accepts the same object inline. `--auth-login-url` and
+`--auth-header` override the corresponding values supplied through JSON or a
+file. Header-only configuration does not invoke the AI auth agent.
+
+### Control browser-guided discovery
+
+Discovery is enabled by default with server-capped limits of 3 rounds, 100
+actions, and 25 LLM-selected pages. Lower those per-job budgets with:
+
+```bash
+uv run tenzai-crawler create https://example.com \
+  --discovery-max-rounds 2 \
+  --discovery-max-actions 40 \
+  --discovery-max-llm-pages 10
+```
+
+Run only the deterministic two-lane Katana baseline with:
+
+```bash
+uv run tenzai-crawler create https://example.com --disable-discovery
+```
+
+### Inspect and cancel jobs
+
+Use the `job_id` returned by `create`:
+
+```bash
 uv run tenzai-crawler status <job_id>
+uv run tenzai-crawler list
+uv run tenzai-crawler list --status completed --limit 25 --offset 0
 uv run tenzai-crawler cancel <job_id>
 ```
 
-The previous `crawler` and `crawler-server` entry points remain available as compatibility aliases.
+`status` returns the persisted sitemap when a job completes. A cancelled job
+also returns a sitemap if it reached a valid baseline or discovery checkpoint.
+The service runs one job at a time, so `list` and `status` expose queue positions
+for waiting jobs.
 
 ## Docs Website
 
@@ -133,16 +263,6 @@ The GitHub Pages workflow publishes that directory from `main`; after Pages is e
 
 - See `SECURITY.md` for vulnerability reporting, security boundaries, and disclosure expectations.
 - See `CONTRIBUTING.md` for local development, test, docs, and pull request expectations.
-
-Global options:
-
-- `--base-url` (default `http://localhost:8000`)
-- `--timeout` (default `30` seconds)
-
-Pass `scope_config` via `--scope-config-json` / `--scope-config-file`, or use shorthand flags like `--headless` and `--cdp-url`. When combined, flags override matching keys.
-
-Katana crawls for up to `5m` by default. Set `scope_config.crawl_duration` to override the
-budget for an individual job.
 
 ## Authentication Usage
 
@@ -185,14 +305,162 @@ Use `credentials` and/or `login_url` when the service should log in before crawl
 ```
 
 - AI auth runs only when `credentials` or `login_url` is present; header-only config never triggers it.
-- Auth browsing is direct through Playwright; Proxify is used for the Katana crawl path.
+- Auth browsing is direct through Playwright; Katana also connects to targets directly.
 - The auth agent must verify access to authenticated content before returning a session.
+  Hash/history routes are preserved, and credentialed auth is compared with a
+  temporary clean context in the same Chrome instance. A public `200`, cookies,
+  storage, or a changed URL alone is not sufficient evidence.
 - Cookies, captured auth headers, and the authenticated landing URL are passed to Katana.
-- Unsafe URLs detected during auth, such as logout or destructive actions, can be recorded and converted into Katana exclusion patterns.
+- URLs the auth agent considers unsafe may be recorded as evidence, but are not converted into Katana exclusions. Operator-supplied scope exclusions remain explicit inputs.
 - Secret templates `{{env:VAR}}`, `{{totp:VAR}}`, and `{{totp_seed:SECRET}}` are resolved only in memory before auth.
 - `auth_config.api_key` is rejected; use `api_key_env` instead.
 
 From the CLI, use `--auth-header` for manual headers or `--auth-config-json` / `--auth-config-file` for full config. `--auth-login-url` sets the login URL. Flags override matching keys when combined with JSON/file config.
+
+## Manual Browser-Discovery Testing
+
+The browser-guided workflow is ready for manual testing against the repository
+fixtures. The authoritative automated qualification uses the same deployed
+boundary described here: start external targets, run a real
+`tenzai-crawler-server`, submit through HTTP, poll the persisted job, and inspect
+the returned sitemap. It does not use an in-process FastAPI harness.
+
+The latest repeated qualification is recorded in
+[`docs/browser-guided-discovery-qualification.md`](docs/browser-guided-discovery-qualification.md).
+
+### 1. Check prerequisites
+
+Make sure `katana` and Docker are available:
+
+```bash
+katana -version
+docker version
+```
+
+On Windows with WSL, if `docker` is missing, enable the current distribution in
+Docker Desktop under **Settings → Resources → WSL Integration**, then reopen the
+shell.
+
+Export the provider API key required by the configured auth and discovery
+models. Keep the value in the shell environment; do not put it in a job payload
+or configuration file.
+
+### 2. Start the fixture websites
+
+From the repository root, generate an ephemeral fixture token and start all 21
+repository targets:
+
+```bash
+export TEST_HARNESS_TOKEN="$(openssl rand -hex 16)"
+docker compose -f testsites/docker-compose.yml up -d --build
+```
+
+The most useful browser-discovery targets are:
+
+| Fixture | URL | What it exercises |
+| --- | --- | --- |
+| Site B | `http://localhost:8002` | LLM authentication and multi-step workflow discovery |
+| Site E | `http://localhost:8005` | Crawl-trap resistance and bounded guided interaction |
+| Site F | `http://localhost:8006` | SPA controls, runtime requests, modal state, and report preview |
+| Site G | `http://localhost:8007` | Both Katana lanes, CDP evidence, scoped headers, subdomains, and known files |
+
+The complete port and credential roster is in
+[`testsites/README.md`](testsites/README.md).
+
+### 3. Start the real crawler server
+
+Use temporary runtime paths so manual results do not modify `/data` or mix with
+another run. Site B uses deterministic, non-production fixture credentials;
+the job stores only their environment references.
+
+```bash
+export MANUAL_CRAWLER_DIR="$(mktemp -d)"
+export CRAWLER_DB_PATH="$MANUAL_CRAWLER_DIR/jobs.db"
+export CRAWLER_LOG_DIR="$MANUAL_CRAWLER_DIR/logs"
+export SITE_B_USERNAME=demo
+export SITE_B_PASSWORD=password
+mkdir -p "$CRAWLER_LOG_DIR"
+
+uv run tenzai-crawler-server
+```
+
+Leave this terminal running. The server should bind to
+`http://localhost:8000` and validate Katana during startup.
+
+### 4. Submit an authenticated Site B job
+
+In another terminal, submit the job through the CLI. The CLI uses the public
+`POST /jobs` API, so this still exercises the deployed HTTP boundary:
+
+```bash
+uv run tenzai-crawler create http://localhost:8002 \
+  --auth-config-json \
+  '{"login_url":"http://localhost:8002/login","credentials":{"username":"{{env:SITE_B_USERNAME}}","password":"{{env:SITE_B_PASSWORD}}"},"instructions":"Sign in and stop when the dashboard is visible.","success_indicator":"Dashboard"}' \
+  --discovery-max-rounds 3 \
+  --discovery-max-actions 100 \
+  --discovery-max-llm-pages 25
+```
+
+Copy the returned `job_id`, then poll the persisted job:
+
+```bash
+uv run tenzai-crawler status <job_id>
+```
+
+The normal lifecycle is:
+
+```text
+queued → authenticating → crawling → discovering → processing → completed
+```
+
+The two baseline Katana lanes can take several minutes. Only one job runs at a
+time; additional jobs remain queued.
+
+### 5. Check the result
+
+For Site B, the completed sitemap should include these browser-only results:
+
+```text
+GET  /workflow-center
+POST /api/onboarding/validate
+POST /api/onboarding/preview
+POST /api/settings/validate
+```
+
+The response's `sitemap.discovery` object should report a terminal outcome,
+nonzero state and workflow counts, and the stop reason. The response evidence
+should show both baseline Katana lanes and the browser-guided rounds. Raw lane
+artifacts and terminal summaries are written under `$CRAWLER_LOG_DIR`.
+
+Repeat the same `create` command without auth options for Sites E and F. Their
+declared browser-only endpoints, required request sequences, and manual
+interaction descriptions are in:
+
+- [`testsites/site-e-crawl-trap-ruby/sitemap.json`](testsites/site-e-crawl-trap-ruby/sitemap.json)
+- [`testsites/site-f-spa-deno/sitemap.json`](testsites/site-f-spa-deno/sitemap.json)
+
+For Site G, pass its scoped fixture header by reference:
+
+```bash
+uv run tenzai-crawler create http://localhost:8007 \
+  --auth-header 'X-Discovery-Token: {{env:TEST_HARNESS_TOKEN}}'
+```
+
+Header-only mode does not invoke the authentication agent.
+
+### 6. Reset or stop
+
+Restart a fixture before repeating a manual scenario:
+
+```bash
+docker compose -f testsites/docker-compose.yml restart site-b
+```
+
+Stop the crawler with `Ctrl-C`. Stop all fixture websites when finished:
+
+```bash
+docker compose -f testsites/docker-compose.yml down
+```
 
 ## Local Auth Testsites
 
@@ -249,24 +517,41 @@ The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `-
 | `CRAWLER_AUTH_MODEL` | `gpt-5.4-nano` | LLM model for AI auth |
 | `CRAWLER_AUTH_ATTEMPTS` | `3` | Auth retry attempts |
 | `CRAWLER_AUTH_MAX_STEPS` | `85` | Default max tool-calling steps for auth |
-| `CRAWLER_AUTH_TIMEOUT_SECONDS` | `180` | Total AI-auth deadline, including retries and verification |
-| `CRAWLER_SUBPROCESS_TIMEOUT` | `360` | Subprocess timeout (seconds) |
+| `CRAWLER_AUTH_TIMEOUT_SECONDS` | `300` | Total AI-auth deadline, including retries and verification |
+| `CRAWLER_DISCOVERY_MODEL` | `gpt-5.4-mini` | LLM model for browser-guided workflow decisions |
+| `CRAWLER_DISCOVERY_MAX_MODEL_TURNS` | `40` | Hard model-turn budget for browser discovery |
+| `CRAWLER_DISCOVERY_MAX_STATES` | `120` | Hard unique UI-state budget for browser discovery |
+| `CRAWLER_DISCOVERY_TIMEOUT_SECONDS` | `300` | Total browser-guided action/model deadline |
+| `CRAWLER_JOB_TIMEOUT_SECONDS` | `3600` | Whole-job wall-clock deadline across auth, baseline, discovery, and finalization |
+| `CRAWLER_JOB_MEMORY_LIMIT_BYTES` | `2147483648` | Shared RSS ceiling for the job Chrome and active Katana process groups |
+| `CRAWLER_SUBPROCESS_TIMEOUT` | `720` | Subprocess inactivity timeout (seconds) |
+| `CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS` | `720` | Katana wall deadline, including shutdown after its 10-minute crawl budget |
 | `CRAWLER_ENABLE_DEBUG_ENDPOINTS` | off | Set `1` to enable debug routes |
 
 ## Output
 
-Completed jobs expose a `sitemap` on `GET /jobs/<job_id>` with:
+Completed jobs, and cancelled jobs that reached a valid checkpoint, expose a
+`sitemap` on `GET /jobs/<job_id>` with:
 
-- **`entries`** — flat list of observed HTTP requests (`method`, `url`, `status`, `content_type`, `timestamp`), deduplicated by `(method, url)`, scoped to the target domain.
+- **`entries`** — flat list of observed HTTP requests (`method`, `url`, `status`, `content_type`, `timestamp`), aggregated by exact `(method, url)` identity and scoped to the target domain.
 - **`tree`** — the same entries organized into a path-segment hierarchy (`children`, `pages`) for tree-style rendering.
+- **`discovery`** — the terminal discovery outcome, rounds, additions, state/workflow counts, and stop reason.
 
-Log artifacts are written to `$CRAWLER_LOG_DIR`: `{job_id}.jsonl` (Proxify) and `{job_id}.jsonl.katana` (Katana sidecar).
+The baseline writes `$CRAWLER_LOG_DIR/{job_id}.standard.jsonl` and `{job_id}.pure-headless.jsonl`; each enrichment round writes matching `discovery-{round}` artifacts. Every Katana JSONL artifact has an adjacent atomic `.terminal.json` summary that proves the result of every input seed.
 
 Katana can emit both response-bearing records and request-only records for the same URL. Completed sitemaps preserve response status and content type when duplicate records are normalized.
 
-The normalized sitemap and its entry-count/size metadata are persisted atomically with the
-`completed` status. Raw log artifacts remain available for diagnostics, but completed job reads do
-not depend on reparsing them. Older completed jobs are backfilled from their artifacts on first read.
+The standard lane is checkpointed before pure-headless starts, and the merged
+dual-pass baseline is checkpointed before guided discovery. Validated partial
+additions are checkpointed during discovery, so cancellation, deadline,
+memory-budget, and restart recovery can finalize the latest valid sitemap. A
+Katana `crawl_timeout` with valid output is returned as a completed partial
+result instead of discarding the sitemap; `result_metadata.completeness` is
+`partial` and `result_metadata.warnings` identifies the affected lane and seed.
+A partial lane cannot establish a discovery fixpoint. A cancelled job keeps
+status `cancelled` while exposing any finalized checkpoint; cancellation before
+the baseline has no sitemap. Terminal result reads use only the persisted result
+and never reparse historical logs.
 
 ## Deployment
 
@@ -279,7 +564,7 @@ kubectl apply -f k8s/service.yaml
 
 ## Known Limitations
 
-- Authorization extraction from browser/proxy traffic is heuristic and may miss unusual record shapes.
+- Authorization extraction from browser traffic is heuristic and may miss unusual record shapes.
 - The LLM auth agent depends on the configured model, the quality of page accessibility data, and the supplied operator instructions for unusual flows.
 - TOTP is supported through an explicit auth-agent tool; other out-of-band MFA methods require additional tooling or operator-specific instructions.
 - Cancellation checks run in preflight/callbacks and long subprocess boundaries, not at the top of every tool function body.

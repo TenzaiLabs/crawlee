@@ -49,13 +49,14 @@
         <h2>Overview</h2>
         <p>
           The service accepts crawl jobs through an API, stores job state in SQLite, runs work
-          serially, captures traffic through Proxify, and returns a normalized sitemap when the
-          job completes.
+          serially, runs standard and pure-headless Katana against a shared browser profile,
+          performs browser-guided gap discovery, and returns a normalized sitemap when the job
+          completes.
         </p>
         <div class="doc-callout">
           The crawler stays auth-agnostic. The orchestrator decides whether authentication is
-          required and passes only headers, cookies, seed URLs, and exclusion patterns into the
-          crawl step.
+          required and passes headers, cookies, stable seed URLs, and operator-supplied scope
+          configuration into the crawl step.
         </div>
       </section>
 
@@ -130,8 +131,9 @@ curl http://localhost:8000/jobs/&lt;job_id&gt;</pre>
       <section id="architecture">
         <h2>Architecture</h2>
         <p>
-          The service boundary stays small: the orchestrator owns auth, proxy, and job state, while
-          crawler, proxy, process, and parser adapters keep external tooling isolated.
+          The orchestrator owns authentication, the job browser, known-file discovery, both
+          Katana lanes, browser-guided discovery, checkpoints, and job state. Crawler, process,
+          and parser adapters keep external tooling isolated.
         </p>
         <div class="diagram-card" aria-label="Tenzai Crawler architecture flow">
           <pre class="mermaid">
@@ -141,22 +143,18 @@ flowchart TD
 
       Orch --> Auth{Auth required?}
       Auth -->|credentials or login_url| AuthAgent[Auth Agent<br/>app.auth_agent]
-      Auth -->|manual headers or no auth| Safety[Scope and safety config]
-      AuthAgent --> Safety
+      Auth -->|manual headers or no auth| Session[Job browser and auth context]
+      AuthAgent --> Session
 
-      Safety --> CrawlInput[Crawl input<br/>target, headers, seeds, exclusions]
-
-      CrawlInput --> Crawler[Crawler Adapter<br/>app.crawler]
-      Crawler --> Katana[Katana subprocess]
-      Crawler --> Process[Async subprocess wrapper<br/>app.process]
-
-      Orch --> Proxy[Proxy Adapter<br/>app.proxy]
-      Proxy --> Proxify[Proxify subprocess]
-
-      Katana --> Logs[Katana / Proxify logs]
-      Proxify --> Logs
-
-      Logs --> Parser[Parser<br/>app.parser + app.log_records]
+      Session --> Known[Bounded robots and sitemap discovery]
+      Known --> Standard[Standard Katana<br/>JavaScript, forms, classification]
+      Standard --> Pure[Pure-headless Katana<br/>shared Chrome plus passive CDP]
+      Pure --> Guided[Playwright and LLM gap discovery]
+      Guided -->|stable seeds| Standard
+      Standard --> Logs[Per-lane JSONL and terminal summaries]
+      Pure --> Logs
+      Guided --> Parser[Exact evidence aggregation<br/>app.parser]
+      Logs --> Parser
       Parser --> Sitemap[Sitemap result]
       Sitemap --> Store
       Store --> API
@@ -164,11 +162,11 @@ flowchart TD
         </div>
         <ul>
           <li><strong>API:</strong> validates input and records jobs.</li>
-          <li><strong>Orchestrator:</strong> owns status transitions and the single-job queue.</li>
+          <li><strong>Orchestrator:</strong> owns status transitions, checkpoints, budgets, and the single-job queue.</li>
           <li><strong>Auth agent:</strong> uses Playwright browser controls when login is required.</li>
-          <li><strong>Proxy:</strong> captures traffic through a fixed local listener.</li>
-          <li><strong>Crawler:</strong> runs Katana with target, scope, headers, and exclusions.</li>
-          <li><strong>Parser:</strong> turns logs into the completed job sitemap.</li>
+          <li><strong>Crawler:</strong> runs standard and pure-headless Katana with target, scope, headers, and seeds.</li>
+          <li><strong>Browser discovery:</strong> explores workflow controls and returns stable seeds to Katana.</li>
+          <li><strong>Parser:</strong> aggregates controlled-fetch, Katana, and passive-CDP evidence.</li>
         </ul>
 
         <h3>Threat model</h3>
@@ -184,14 +182,14 @@ flowchart TD
               <li>Job records and target history in SQLite.</li>
               <li>Auth config references and resolved in-memory secrets.</li>
               <li>Captured cookies, headers, request logs, and completed sitemaps.</li>
-              <li>Proxy, browser, Katana, and subprocess control surfaces.</li>
+              <li>Browser, Katana, and subprocess control surfaces.</li>
             </ul>
           </article>
           <article>
             <h4>Trust boundaries</h4>
             <ul>
               <li>Operator to API payloads.</li>
-              <li>API/orchestrator to Playwright, Katana, and Proxify subprocesses.</li>
+              <li>API/orchestrator to Playwright and Katana subprocesses.</li>
               <li>Internal service network to arbitrary target sites.</li>
               <li>Persistent `/data` storage to generated API responses and docs artifacts.</li>
             </ul>
@@ -211,7 +209,7 @@ flowchart TD
               <li>Secret leakage through stored payloads, logs, screenshots, or debug endpoints.</li>
               <li>SSRF or unwanted egress through target URLs, login URLs, redirects, or seed URLs.</li>
               <li>Unsafe crawl actions against logout, delete, unsubscribe, or destructive paths.</li>
-              <li>Subprocess leaks that leave browsers, Katana, or Proxify running after cancel.</li>
+              <li>Subprocess leaks that leave browsers or Katana running after cancel.</li>
             </ul>
           </article>
           <article>
@@ -219,8 +217,8 @@ flowchart TD
             <ul>
               <li>Orchestrator-owned auth decisions and status transitions.</li>
               <li>Header-only auth mode that never invokes AI auth.</li>
-              <li>Scope validation, default dangerous-path exclusions, and auth-recorded blocked URLs.</li>
-              <li>Cancellation checks and async subprocess cleanup.</li>
+              <li>Explicit scope validation and evidence-only reporting of auth-recorded or destructive-looking URLs.</li>
+              <li>Whole-job time and memory budgets, cancelled-checkpoint publication, bounded subprocess diagnostics, and async process-group cleanup.</li>
               <li>Debug endpoints disabled by default.</li>
             </ul>
           </article>

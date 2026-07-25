@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tenzai Crawler - authenticated application crawling</title>
-  <meta name="description" content="Tenzai Crawler is an async-native FastAPI service for authenticated application crawling with Katana, Proxify, and operator-controlled auth flows." />
+  <meta name="description" content="Tenzai Crawler is an async-native FastAPI service for authenticated application crawling with Katana and operator-controlled auth flows." />
   <meta property="og:title" content="Tenzai Crawler" />
   <meta property="og:description" content="Authenticated application crawling for operator-led reconnaissance." />
   <meta property="og:type" content="website" />
@@ -32,8 +32,8 @@
     <h1>Tenzai Crawler</h1>
     <p class="tagline">Authenticated crawling for operator-led application reconnaissance.</p>
     <p class="lede">
-      A single-job FastAPI service that runs pre-crawl authentication when needed, sends Katana
-      through Proxify, and turns captured traffic into a sitemap your team can inspect or feed into
+      A single-job FastAPI service that runs pre-crawl authentication when needed, runs Katana
+      directly, and turns its JSONL artifact into a sitemap your team can inspect or feed into
       the next testing step.
     </p>
     <div class="cta">
@@ -47,7 +47,7 @@
       <h2>Quickstart</h2>
       <p class="section-sub">
         Install dependencies, run the API, and create a crawl job. The service drains one job at a
-        time because the proxy binds a fixed local port.
+        time and persists each completed sitemap atomically.
       </p>
       <div class="code-card">
 <pre><span class="c"># Install runtime dependencies</span>
@@ -71,7 +71,8 @@ uv run tenzai-crawler status &lt;job_id&gt;</pre>
       <h2>How it works</h2>
       <p class="section-sub">
         The orchestrator owns job state. Authentication is optional, crawling stays auth-agnostic,
-        and logs are parsed only after the crawl finishes.
+        and standard Katana, shared-Chrome pure-headless Katana, and browser-guided discovery
+        contribute evidence to one persisted result.
       </p>
       <div class="flow" aria-label="Crawler flow">
         <div class="node">
@@ -83,12 +84,16 @@ uv run tenzai-crawler status &lt;job_id&gt;</pre>
           <div class="d">Credentials or a login URL trigger the Playwright-driven auth agent.</div>
         </div>
         <div class="node">
-          <div class="k">Katana crawl</div>
-          <div class="d">Katana receives headers, seed URLs, scope limits, and exclusion patterns.</div>
+          <div class="k">Two Katana lanes</div>
+          <div class="d">Standard extraction and shared-Chrome pure-headless rendering run sequentially.</div>
+        </div>
+        <div class="node">
+          <div class="k">Browser-guided gaps</div>
+          <div class="d">Playwright and the LLM exercise workflow controls and return stable seeds to Katana.</div>
         </div>
         <div class="node">
           <div class="k">Sitemap output</div>
-          <div class="d">Proxify and Katana logs become a normalized job result.</div>
+          <div class="d">Known-file, Katana, and passive-CDP evidence becomes a checkpointed job result.</div>
         </div>
       </div>
       <p class="read-more"><a href="docs.html#architecture">Read the architecture notes</a></p>
@@ -111,17 +116,17 @@ uv run tenzai-crawler status &lt;job_id&gt;</pre>
           </p>
         </article>
         <article class="feature">
-          <h3>Safety-aware crawling</h3>
+          <h3>Observable crawling</h3>
           <p>
-            Scope rules and blocked URL patterns keep destructive flows, logout routes, and unrelated
-            domains out of the crawl path.
+            Scope rules bound target domains while evidence and fixture ledgers make destructive or
+            session-ending requests visible without a second orchestrator crawl policy.
           </p>
         </article>
         <article class="feature">
           <h3>Durable evidence</h3>
           <p>
-            Job state lands in SQLite, request logs stay on disk, and completed jobs expose a
-            deduplicated sitemap through the API.
+            Job state lands in SQLite, request logs stay on disk, and completed or checkpointed
+            cancelled jobs expose a deduplicated sitemap through the API.
           </p>
         </article>
       </div>

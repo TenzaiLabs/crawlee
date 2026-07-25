@@ -10,11 +10,11 @@ uv run ruff check app tests scripts
 uv run ty check
 ```
 
-E2E is opt-in (`RUN_E2E=1`) and requires `katana` and `proxify` in `PATH`.
+E2E is opt-in (`RUN_E2E=1`) and requires `katana` in `PATH`.
 
 ## Guardrails
 
-- Keep I/O async and preserve the single-job design; Proxify binds `127.0.0.1:8888`.
+- Keep I/O async and preserve the single-job design.
 - Never persist plaintext secrets. Store references such as `{{env:VAR_NAME}}`.
 - The orchestrator owns auth/crawl flow and status transitions.
 - Run AI auth only for `auth_config` containing `credentials` or `login_url`; headers alone are manual-header mode.

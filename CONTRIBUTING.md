@@ -33,7 +33,7 @@ Install the hooks once with:
 uv run pre-commit install
 ```
 
-The E2E scenario suite is opt-in and requires `katana` and `proxify` in `PATH`:
+The E2E scenario suite is opt-in and requires `katana` in `PATH`:
 
 ```bash
 RUN_E2E=1 uv run pytest -q tests/test_scenarios.py
@@ -42,8 +42,8 @@ RUN_E2E=1 uv run pytest -q tests/test_scenarios.py
 ## Engineering Rules
 
 - Keep the service async-native; do not add blocking I/O to the event loop.
-- Preserve the single-job constraint because Proxify binds `127.0.0.1:8888`.
-- Keep the orchestrator as the hub for auth decisions, proxy lifecycle, crawl execution, and job
+- Preserve the single-job constraint.
+- Keep the orchestrator as the hub for auth decisions, crawl execution, and job
   status transitions.
 - Keep crawler code auth-agnostic. It should consume headers, target URL, scope, seed URLs, and
   exclusions, not auth internals.

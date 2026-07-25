@@ -1,7 +1,7 @@
 # Security Policy
 
 Tenzai Crawler is trusted-operator tooling for authenticated application crawling. It drives
-Playwright, Katana, and Proxify against operator-selected targets, so security reports should
+Playwright and Katana against operator-selected targets, so security reports should
 focus on ways the service can cross trust boundaries, expose secrets, or perform unsafe crawl
 behavior despite its configuration.
 
@@ -33,7 +33,7 @@ authentication, authorization, and egress controls before exposing it.
 
 Important boundaries:
 
-- The orchestrator owns job state, auth decisions, proxy lifecycle, and status transitions.
+- The orchestrator owns job state, auth decisions, crawl lifecycle, and status transitions.
 - AI auth only runs when `auth_config` includes `credentials` or `login_url`.
 - Header-only `auth_config` is manual-header mode and must not trigger AI auth.
 - The crawler remains auth-agnostic and accepts only target, headers, scope, seed URLs, and
@@ -49,10 +49,11 @@ Examples of security issues worth reporting:
 - Plaintext secret persistence or secret leakage in logs, command output, API responses, or docs.
 - Auth-boundary bypasses where header-only mode triggers AI auth or AI auth runs without a login
   URL or credentials.
-- Unsafe crawl behavior that visits recorded blocked URLs or default dangerous paths.
-- SSRF or egress-control bypasses in `target_url`, `login_url`, redirects, proxy handling, or
+- Crawl behavior that violates operator-supplied scope or explicit exclusion configuration. The
+  runtime intentionally does not infer or block destructive-looking routes.
+- SSRF or egress-control bypasses in `target_url`, `login_url`, redirects, or
   extra seed URLs.
-- Cancellation or process-lifecycle bugs that leave Katana, Proxify, or browser processes running.
+- Cancellation or process-lifecycle bugs that leave Katana or browser processes running.
 - Debug endpoint exposure or sensitive task/stack leakage.
 - GitHub Actions changes that broaden permissions, use mutable third-party actions, or expose
   secrets to untrusted code paths.
@@ -62,7 +63,7 @@ Examples of security issues worth reporting:
 These are usually not security vulnerabilities by themselves:
 
 - Reports against local deterministic `testsites/` fixtures with no impact on the service.
-- Failed crawls caused by missing `katana`, `proxify`, browser binaries, or model credentials.
+- Failed crawls caused by missing `katana`, browser binaries, or model credentials.
 - LLM prompt quality concerns without a concrete security boundary bypass.
 - Denial of service from an operator intentionally submitting expensive crawl jobs in a trusted
   single-user deployment.
