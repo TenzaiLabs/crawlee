@@ -9,7 +9,7 @@ set :protection, host_authorization: { permitted_hosts: ["localhost", "127.0.0.1
 
 HARNESS_TOKEN = ENV["TEST_HARNESS_TOKEN"]
 LEDGERS = Hash.new { |hash, key| hash[key] = [] }
-REQUIRED_ROUTES = ["/api/gauntlet/details"].freeze
+REQUIRED_ROUTES = ["/api/gauntlet/guided-details"].freeze
 FORBIDDEN_ROUTES = ["/workspace/delete", "/api/gauntlet/destroy"].freeze
 
 before do
@@ -62,6 +62,11 @@ end
 get "/api/gauntlet/details" do
   content_type :json
   { state: "bounded", detail: "Runtime-only crawl detail" }.to_json
+end
+
+get "/api/gauntlet/guided-details" do
+  content_type :json
+  { state: "guided", detail: "Guided runtime detail" }.to_json
 end
 
 get "/api/gauntlet/poll" do

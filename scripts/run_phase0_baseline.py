@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import copy
 import hashlib
 import json
 import os
+import secrets
 import signal
 import socket
 import subprocess
@@ -20,6 +22,7 @@ from urllib.parse import urlparse
 
 import httpx
 
+from scripts.qualification_artifacts import prepare_server_home, sha256_file
 from scripts.run_auth_agent_tests import AuthAgentSiteCase
 from scripts.run_crawler_auth_tests import (
     _build_scope_config,
@@ -50,6 +53,16 @@ class Target:
     score_setup: dict[str, Any] | None = None
     score_results_url: str | None = None
     expected_entries: tuple[tuple[str, str], ...] = ()
+    auth_config: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class CapabilityMarker:
+    marker_id: str
+    lane: str
+    method: str
+    path: str
+    evidence: str
 
 
 @dataclass
@@ -77,6 +90,21 @@ class BaselineResult:
     sitemap_sha256: str | None = None
     persisted_result_verified: bool = False
     isolation_violations: list[str] = field(default_factory=list)
+    capability_marker_count: int = 0
+    capability_markers_found: int = 0
+    capability_by_lane: dict[str, str] = field(default_factory=dict)
+    ledger_entry_count: int = 0
+    ledger_required_count: int = 0
+    ledger_destructive_count: int = 0
+    missing_expected_entries: list[str] = field(default_factory=list)
+    discovery_outcome: str | None = None
+    discovery_rounds: int = 0
+    discovery_new_entry_count: int = 0
+    discovery_state_count: int = 0
+    discovery_workflow_count: int = 0
+    discovery_stop_reason: str | None = None
+    request_sequence_count: int = 0
+    request_sequences_found: int = 0
 
 
 @dataclass
@@ -136,6 +164,11 @@ def _load_manifest(path: Path, *, required: bool) -> list[Target]:
                 (str(entry.get("method", "GET")).upper(), str(entry["path"]))
                 for entry in raw.get("expected_entries", [])
                 if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+            ),
+            auth_config=(
+                copy.deepcopy(raw["auth_config"])
+                if isinstance(raw.get("auth_config"), dict)
+                else None
             ),
         )
         _validate_target(target)
@@ -203,6 +236,102 @@ def _manifest_entries(target: Target, field: str) -> set[tuple[str, str]]:
     }
 
 
+def _sitemap_metadata(target: Target) -> dict[str, Any]:
+    if target.sitemap is None:
+        return {}
+    data = json.loads(target.sitemap.read_text())
+    return data if isinstance(data, dict) else {}
+
+
+def _capability_markers(target: Target) -> tuple[CapabilityMarker, ...]:
+    raw_markers = _sitemap_metadata(target).get("capability_markers", [])
+    markers: list[CapabilityMarker] = []
+    for raw in raw_markers:
+        if not isinstance(raw, dict):
+            continue
+        if not all(isinstance(raw.get(key), str) for key in ("id", "lane", "path")):
+            continue
+        markers.append(
+            CapabilityMarker(
+                marker_id=str(raw["id"]),
+                lane=str(raw["lane"]),
+                method=str(raw.get("method", "GET")).upper(),
+                path=str(raw["path"]),
+                evidence=str(raw.get("evidence", "endpoint")),
+            )
+        )
+    return tuple(markers)
+
+
+def _required_request_sequences(target: Target) -> tuple[tuple[str, ...], ...]:
+    browser_discovery = _sitemap_metadata(target).get("browser_discovery", {})
+    if not isinstance(browser_discovery, dict):
+        return ()
+    raw_sequences = browser_discovery.get("required_request_sequences", [])
+    if not isinstance(raw_sequences, list):
+        return ()
+    sequences: list[tuple[str, ...]] = []
+    for raw_sequence in raw_sequences:
+        if not isinstance(raw_sequence, list):
+            continue
+        sequence = tuple(str(item).strip() for item in raw_sequence if str(item).strip())
+        if sequence:
+            sequences.append(sequence)
+    return tuple(sequences)
+
+
+def _request_sequence_results(
+    target: Target,
+    ledger_entries: list[dict[str, Any]],
+) -> tuple[int, int]:
+    sequences = _required_request_sequences(target)
+    observed = [
+        f"{str(entry.get('method', 'GET')).upper()} {str(entry.get('route', '')).strip()}"
+        for entry in ledger_entries
+        if isinstance(entry, dict) and str(entry.get("route", "")).strip()
+    ]
+
+    def contains_in_order(sequence: tuple[str, ...]) -> bool:
+        position = 0
+        for request_key in observed:
+            if request_key == sequence[position]:
+                position += 1
+                if position == len(sequence):
+                    return True
+        return False
+
+    return len(sequences), sum(contains_in_order(sequence) for sequence in sequences)
+
+
+def _ledger_config(target: Target) -> dict[str, str] | None:
+    raw = _sitemap_metadata(target).get("ledger")
+    if not isinstance(raw, dict):
+        return None
+    required = ("run_header", "url_template", "harness_header")
+    if not all(isinstance(raw.get(key), str) and raw[key] for key in required):
+        raise ValueError(f"target {target.name} has an invalid ledger configuration")
+    return {key: str(raw[key]) for key in required}
+
+
+def _capability_results(
+    target: Target,
+    observed: set[tuple[str, str]],
+    form_observed: set[tuple[str, str]] | None = None,
+) -> tuple[int, int, dict[str, str]]:
+    markers = _capability_markers(target)
+    form_identities = form_observed or set()
+
+    def marker_found(marker: CapabilityMarker) -> bool:
+        identities = form_identities if marker.evidence == "form" else observed
+        return (marker.method, marker.path) in identities
+
+    lane_totals: Counter[str] = Counter(marker.lane for marker in markers)
+    lane_found: Counter[str] = Counter(marker.lane for marker in markers if marker_found(marker))
+    by_lane = {lane: f"{lane_found[lane]}/{total}" for lane, total in sorted(lane_totals.items())}
+    found = sum(marker_found(marker) for marker in markers)
+    return len(markers), found, by_lane
+
+
 def _crawl_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
     sitemap = payload.get("sitemap")
     entries = sitemap.get("entries", []) if isinstance(sitemap, dict) else []
@@ -215,6 +344,37 @@ def _observed_identities(entries: list[dict[str, Any]]) -> set[tuple[str, str]]:
         url = entry.get("url")
         if isinstance(url, str):
             identities.add((str(entry.get("method", "GET")).upper(), _path(url)))
+    return identities
+
+
+def _observed_form_identities(payload: dict[str, Any]) -> set[tuple[str, str]]:
+    identities: set[tuple[str, str]] = set()
+    evidence = payload.get("evidence")
+    katana = evidence.get("katana") if isinstance(evidence, dict) else None
+    if not isinstance(katana, dict):
+        return identities
+    for lane in katana.values():
+        records = lane.get("records") if isinstance(lane, dict) else None
+        if not isinstance(records, list):
+            continue
+        for record in records:
+            features = record.get("features") if isinstance(record, dict) else None
+            if not isinstance(features, dict):
+                continue
+            forms = features.get("forms") or features.get("form")
+            if isinstance(forms, dict):
+                forms = [forms]
+            if not isinstance(forms, list):
+                continue
+            for form in forms:
+                if not isinstance(form, dict) or not isinstance(form.get("action"), str):
+                    continue
+                identities.add(
+                    (
+                        str(form.get("method", "GET")).upper(),
+                        _path(form["action"]),
+                    )
+                )
     return identities
 
 
@@ -254,7 +414,11 @@ def _ensure_response_origin(target: Target, response: httpx.Response, label: str
         raise RuntimeError(f"target {target.name} {label} redirected outside its allowlist")
 
 
-async def _prepare_target(client: httpx.AsyncClient, target: Target) -> None:
+async def _prepare_target(
+    client: httpx.AsyncClient,
+    target: Target,
+    harness_token: str | None = None,
+) -> None:
     if isinstance(target.reset, dict):
         response = await _request_from_spec(client, target.reset)
         _ensure_response_origin(target, response, "reset")
@@ -281,6 +445,9 @@ async def _prepare_target(client: httpx.AsyncClient, target: Target) -> None:
         service_name = "-".join(target.name.split("-")[:2])
         if not service_name or not service_name.replace("-", "").isalnum():
             raise ValueError(f"target {target.name} has unsafe Compose service name")
+        compose_env = os.environ.copy()
+        if harness_token:
+            compose_env["TEST_HARNESS_TOKEN"] = harness_token
         result = await asyncio.to_thread(
             subprocess.run,
             [
@@ -293,6 +460,7 @@ async def _prepare_target(client: httpx.AsyncClient, target: Target) -> None:
                 service_name,
             ],
             cwd=ROOT / "testsites",
+            env=compose_env,
             text=True,
             capture_output=True,
             timeout=180,
@@ -339,10 +507,51 @@ def _generic_case(target: Target) -> AuthAgentSiteCase:
     return AuthAgentSiteCase(
         name=target.name,
         target_url=target.seed_url,
-        auth_config=None,
+        auth_config=copy.deepcopy(target.auth_config),
         probe_path="/",
-        mode="public",
+        mode="manual_headers" if target.auth_config else "public",
     )
+
+
+def _auth_config_for_run(
+    target: Target,
+    case: AuthAgentSiteCase,
+    run_id: str | None,
+) -> dict[str, Any] | None:
+    source = case.auth_config if case.auth_config is not None else target.auth_config
+    auth_config = copy.deepcopy(source) if source is not None else None
+    ledger = _ledger_config(target)
+    if ledger is None or run_id is None:
+        return auth_config
+    if auth_config is None:
+        auth_config = {}
+    headers = auth_config.setdefault("headers", [])
+    if not isinstance(headers, list):
+        raise ValueError(f"target {target.name} auth headers must be a list")
+    headers.append(f"{ledger['run_header']}: {run_id}")
+    return auth_config
+
+
+async def _read_ledger(
+    client: httpx.AsyncClient,
+    target: Target,
+    run_id: str | None,
+    harness_token: str | None,
+) -> list[dict[str, Any]]:
+    ledger = _ledger_config(target)
+    if ledger is None:
+        return []
+    if run_id is None or not harness_token:
+        raise RuntimeError(f"target {target.name} requires TEST_HARNESS_TOKEN for its ledger")
+    url = ledger["url_template"].format(run_id=run_id)
+    if _origin(url) not in target.allowed_origins:
+        raise ValueError(f"target {target.name} ledger origin is not allowlisted")
+    response = await client.get(url, headers={ledger["harness_header"]: harness_token})
+    _ensure_response_origin(target, response, "ledger")
+    response.raise_for_status()
+    payload = response.json()
+    entries = payload.get("entries", []) if isinstance(payload, dict) else []
+    return [entry for entry in entries if isinstance(entry, dict)]
 
 
 async def _crawl_one(
@@ -355,19 +564,23 @@ async def _crawl_one(
     job_timeout: float,
     cancel_timeout: float,
     health_client: httpx.AsyncClient,
+    harness_token: str | None,
+    discovery_enabled: bool = False,
 ) -> BaselineResult:
     started = time.monotonic()
     health_status: int | None = None
     job_id: str | None = None
+    run_id = secrets.token_hex(12) if _ledger_config(target) is not None else None
     try:
-        await _prepare_target(health_client, target)
+        await _prepare_target(health_client, target, harness_token)
         health_status = await _wait_for_target(health_client, target)
         response = await client.post(
             "/jobs",
             json={
                 "target_url": target.seed_url,
                 "scope_config": scope_config,
-                "auth_config": case.auth_config,
+                "auth_config": _auth_config_for_run(target, case, run_id),
+                "discovery": {"enabled": discovery_enabled},
             },
         )
         response.raise_for_status()
@@ -381,10 +594,31 @@ async def _crawl_one(
         )
         entries = _crawl_entries(payload)
         observed = _observed_identities(entries)
+        observed_forms = _observed_form_identities(payload)
         expected = _manifest_entries(target, "entries")
         browser_only = _manifest_entries(target, "browser_only_entries")
         blocked = _manifest_entries(target, "blocked_entries")
         blocked_hits = sorted(f"{method} {path}" for method, path in observed & blocked)
+        capability_count, capability_found, capability_by_lane = _capability_results(
+            target,
+            observed,
+            observed_forms,
+        )
+        ledger_entries = await _read_ledger(
+            health_client,
+            target,
+            run_id,
+            harness_token,
+        )
+        ledger_required = sum(entry.get("classification") == "required" for entry in ledger_entries)
+        ledger_destructive = sum(
+            entry.get("classification") in {"forbidden", "destructive-marker"}
+            for entry in ledger_entries
+        )
+        request_sequence_count, request_sequences_found = _request_sequence_results(
+            target,
+            ledger_entries,
+        )
         isolation_violations = _isolation_violations(target, payload, entries)
         methods = Counter(str(entry.get("method", "GET")).upper() for entry in entries)
         status_codes = Counter(
@@ -399,8 +633,9 @@ async def _crawl_one(
             score = score_payload if isinstance(score_payload, dict) else {"results": score_payload}
         status = str(payload.get("status")) if payload.get("status") is not None else None
         error = payload.get("error")
-        if blocked_hits:
-            error = f"blocked routes were observed: {', '.join(blocked_hits)}"
+        discovery = payload.get("discovery_result")
+        if not isinstance(discovery, dict):
+            discovery = {}
         if isolation_violations:
             error = f"cross-job isolation failed: {'; '.join(isolation_violations)}"
         return BaselineResult(
@@ -428,6 +663,27 @@ async def _crawl_one(
             job_id=job_id,
             sitemap_sha256=_sitemap_digest(payload),
             isolation_violations=isolation_violations,
+            capability_marker_count=capability_count,
+            capability_markers_found=capability_found,
+            capability_by_lane=capability_by_lane,
+            ledger_entry_count=len(ledger_entries),
+            ledger_required_count=ledger_required,
+            ledger_destructive_count=ledger_destructive,
+            missing_expected_entries=sorted(
+                f"{method} {path}" for method, path in expected - observed
+            ),
+            discovery_outcome=(
+                str(discovery["outcome"]) if discovery.get("outcome") is not None else None
+            ),
+            discovery_rounds=int(discovery.get("rounds") or 0),
+            discovery_new_entry_count=int(discovery.get("new_entry_count") or 0),
+            discovery_state_count=int(discovery.get("state_count") or 0),
+            discovery_workflow_count=int(discovery.get("workflow_count") or 0),
+            discovery_stop_reason=(
+                str(discovery["stop_reason"]) if discovery.get("stop_reason") is not None else None
+            ),
+            request_sequence_count=request_sequence_count,
+            request_sequences_found=request_sequences_found,
         )
     except Exception as exc:
         return BaselineResult(
@@ -450,6 +706,9 @@ async def _crawl_one(
             elapsed_seconds=round(time.monotonic() - started, 3),
             error=f"{type(exc).__name__}: {exc}",
             job_id=job_id,
+            missing_expected_entries=sorted(
+                f"{method} {path}" for method, path in _manifest_entries(target, "entries")
+            ),
         )
 
 
@@ -459,7 +718,14 @@ def _reserve_server_port() -> int:
         return int(listener.getsockname()[1])
 
 
-def _server_environment(args: argparse.Namespace, temp_dir: Path, port: int) -> dict[str, str]:
+def _server_environment(
+    args: argparse.Namespace,
+    temp_dir: Path,
+    port: int,
+    harness_token: str | None = None,
+    *,
+    home_dir: Path | None = None,
+) -> dict[str, str]:
     env = os.environ.copy()
     env.update(
         {
@@ -471,6 +737,13 @@ def _server_environment(args: argparse.Namespace, temp_dir: Path, port: int) -> 
             "CRAWLER_PORT": str(port),
         }
     )
+    if harness_token:
+        env["TEST_HARNESS_TOKEN"] = harness_token
+    if home_dir is not None:
+        env["HOME"] = str(home_dir)
+        private_bin = home_dir / "bin"
+        if private_bin.is_dir():
+            env["PATH"] = f"{private_bin}{os.pathsep}{env.get('PATH', '')}"
     return env
 
 
@@ -480,7 +753,13 @@ def _server_log_tail(server: ServerProcess, *, lines: int = 80) -> str:
     return "server log unavailable"
 
 
-async def _start_server(args: argparse.Namespace, temp_dir: Path) -> ServerProcess:
+async def _start_server(
+    args: argparse.Namespace,
+    temp_dir: Path,
+    harness_token: str | None = None,
+    *,
+    home_dir: Path | None = None,
+) -> ServerProcess:
     port = _reserve_server_port()
     log_path = temp_dir / f"server-{port}.log"
     log_file = log_path.open("wb")
@@ -490,7 +769,13 @@ async def _start_server(args: argparse.Namespace, temp_dir: Path) -> ServerProce
             "run",
             "tenzai-crawler-server",
             cwd=ROOT,
-            env=_server_environment(args, temp_dir, port),
+            env=_server_environment(
+                args,
+                temp_dir,
+                port,
+                harness_token,
+                home_dir=home_dir,
+            ),
             stdout=log_file,
             stderr=asyncio.subprocess.STDOUT,
             start_new_session=True,
@@ -601,8 +886,10 @@ def _compose(args: list[str], *, cwd: Path, env: dict[str, str]) -> None:
         raise RuntimeError(f"docker compose {' '.join(args)} failed: {detail}")
 
 
-def _start_targets(*, include_external: bool) -> None:
+def _start_targets(*, include_external: bool, harness_token: str | None = None) -> None:
     env = os.environ.copy()
+    if harness_token:
+        env["TEST_HARNESS_TOKEN"] = harness_token
     _compose(["up", "-d", "--build", "--wait"], cwd=ROOT / "testsites", env=env)
     if include_external:
         _compose(["up", "-d", "--wait"], cwd=ROOT / "testsites" / "external", env=env)
@@ -615,35 +902,118 @@ def _stop_targets(*, include_external: bool) -> None:
     _compose(["down"], cwd=ROOT / "testsites", env=env)
 
 
+def _qualification_failures(
+    results: list[BaselineResult],
+    *,
+    discovery_enabled: bool,
+) -> list[str]:
+    failures: list[str] = []
+    for result in results:
+        if not result.ready:
+            failures.append(f"{result.target}: target was not ready")
+        if result.isolation_violations:
+            failures.append(f"{result.target}: cross-job isolation violation")
+        if not result.persisted_result_verified:
+            failures.append(f"{result.target}: persisted result was not verified")
+
+        # Public websites are observation-only canaries. Their crawl outcome is
+        # reported, but only repository-controlled fixtures are release gates.
+        if result.kind != "repository":
+            continue
+        if result.crawl_status != "completed":
+            failures.append(
+                f"{result.target}: controlled crawl status was {result.crawl_status or 'missing'}"
+            )
+            continue
+        if not discovery_enabled:
+            continue
+        if result.discovery_outcome != "fixpoint":
+            failures.append(
+                f"{result.target}: controlled discovery outcome was "
+                f"{result.discovery_outcome or 'missing'}"
+            )
+        if result.browser_only_entries_found != result.browser_only_entry_count:
+            failures.append(
+                f"{result.target}: browser-only endpoints "
+                f"{result.browser_only_entries_found}/{result.browser_only_entry_count}"
+            )
+        if result.capability_markers_found != result.capability_marker_count:
+            failures.append(
+                f"{result.target}: capability markers "
+                f"{result.capability_markers_found}/{result.capability_marker_count}"
+            )
+        if result.request_sequences_found != result.request_sequence_count:
+            failures.append(
+                f"{result.target}: request sequences "
+                f"{result.request_sequences_found}/{result.request_sequence_count}"
+            )
+        if result.request_sequence_count and result.discovery_workflow_count < 1:
+            failures.append(f"{result.target}: no runtime-verified discovery workflow")
+    return failures
+
+
 def _write_reports(results: list[BaselineResult], args: argparse.Namespace) -> None:
     generated_at = datetime.now(UTC).isoformat()
+    qualification_failures = _qualification_failures(
+        results,
+        discovery_enabled=args.discovery_enabled,
+    )
+    controlled = [result for result in results if result.kind == "repository"]
+    public_canaries = [result for result in results if result.kind != "repository"]
     payload = {
         "schema_version": 1,
         "generated_at": generated_at,
         "configuration": {
             "execution_boundary": "uv-run-server-http-api",
-            "include_external": not args.local_only,
-            "headless_katana": args.headless,
+            "capture_source": "known-files+standard-katana+pure-headless-katana+passive-cdp",
+            "include_external": any(result.kind != "repository" for result in results),
+            "merged_existing_results": bool(getattr(args, "merge_existing", False)),
+            "discovery_enabled": args.discovery_enabled,
             "max_depth": args.max_depth,
-            "max_pages": args.max_pages,
             "crawl_duration": args.crawl_duration,
+            "dit_model_sha256": sha256_file(args.dit_model),
+            "katana_sha256": sha256_file(args.katana_binary),
         },
         "summary": {
             "targets": len(results),
             "ready": sum(result.ready for result in results),
             "completed": sum(result.crawl_status == "completed" for result in results),
+            "controlled_targets": len(controlled),
+            "controlled_completed": sum(
+                result.crawl_status == "completed" for result in controlled
+            ),
+            "public_canaries": len(public_canaries),
+            "public_canaries_completed": sum(
+                result.crawl_status == "completed" for result in public_canaries
+            ),
+            "qualification_passed": not qualification_failures,
+            "qualification_failures": qualification_failures,
             "entries": sum(result.entry_count for result in results),
             "browser_only_found": sum(result.browser_only_entries_found for result in results),
             "browser_only_declared": sum(result.browser_only_entry_count for result in results),
+            "capability_markers_found": sum(result.capability_markers_found for result in results),
+            "capability_markers_declared": sum(
+                result.capability_marker_count for result in results
+            ),
             "blocked_hits": sum(len(result.blocked_hits) for result in results),
+            "ledger_entries": sum(result.ledger_entry_count for result in results),
+            "ledger_required": sum(result.ledger_required_count for result in results),
+            "ledger_destructive": sum(result.ledger_destructive_count for result in results),
+            "request_sequences_found": sum(result.request_sequences_found for result in results),
+            "request_sequences_declared": sum(result.request_sequence_count for result in results),
             "persisted_results_verified": sum(
                 result.persisted_result_verified for result in results
             ),
             "isolation_violations": sum(len(result.isolation_violations) for result in results),
+            "discovery_fixpoints": sum(
+                result.discovery_outcome == "fixpoint" for result in results
+            ),
+            "discovery_new_entries": sum(result.discovery_new_entry_count for result in results),
+            "discovery_workflows": sum(result.discovery_workflow_count for result in results),
         },
         "results": [asdict(result) for result in results],
     }
-    JSON_PATH.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    args.json_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
     summary = payload["summary"]
     crawlground = next((result for result in results if result.target == "crawlground"), None)
@@ -681,30 +1051,71 @@ def _write_reports(results: list[BaselineResult], args: argparse.Namespace) -> N
                 )
 
     lines = [
-        "# Phase 0 Current Crawler Baseline",
+        (
+            "# Step 9 Complete-System Qualification"
+            if args.discovery_enabled
+            else "# Step 6 Dual-Pass Katana Baseline"
+        ),
         "",
         f"Generated: `{generated_at}`",
         "",
         (
-            "This is the pre-browser-discovery result from a real `uv run "
-            "tenzai-crawler-server` process, exercised only through its HTTP API. "
-            "Browser-only coverage is expected to remain low or zero."
+            "This is the complete proxyless qualification"
+            if args.discovery_enabled
+            else "This is the proxyless dual-pass baseline"
+        )
+        + (
+            " from a real `uv run tenzai-crawler-server` process, exercised only through "
+            "its HTTP API. Every job uses bounded known-file discovery, standard Katana, "
+            "shared-Chrome pure-headless Katana, and passive CDP evidence; guided LLM "
+            f"discovery is {'enabled' if args.discovery_enabled else 'disabled'}."
         ),
         "",
         "## Run summary",
         "",
         f"- Completed safely: {summary['completed']}/{summary['targets']} targets.",
+        (
+            f"- Controlled release fixtures completed: "
+            f"{summary['controlled_completed']}/{summary['controlled_targets']}."
+        ),
+        (
+            f"- Observation-only public canaries completed: "
+            f"{summary['public_canaries_completed']}/{summary['public_canaries']}."
+        ),
+        (
+            "- Controlled qualification gate: "
+            f"{'PASS' if summary['qualification_passed'] else 'FAIL'}."
+        ),
         f"- Sitemap entries: {summary['entries']}.",
         (
             f"- Browser-only fixture controls found: {summary['browser_only_found']}/"
             f"{summary['browser_only_declared']}."
         ),
         (
+            f"- Lane-specific capability markers found: "
+            f"{summary['capability_markers_found']}/"
+            f"{summary['capability_markers_declared']}."
+        ),
+        (
+            f"- Required request sequences found: "
+            f"{summary['request_sequences_found']}/"
+            f"{summary['request_sequences_declared']}."
+        ),
+        (
             f"- Persisted results verified after server restart: "
             f"{summary['persisted_results_verified']}/{summary['targets']}."
         ),
         f"- Cross-job isolation violations: {summary['isolation_violations']}.",
-        f"- Blocked-route hits: {summary['blocked_hits']}.",
+        (
+            f"- Discovery fixpoints: {summary['discovery_fixpoints']}/{summary['targets']} "
+            f"with {summary['discovery_new_entries']} new entries."
+        ),
+        (f"- Declared destructive or session-ending markers observed: {summary['blocked_hits']}."),
+        (
+            f"- Fixture-ledger entries: {summary['ledger_entries']} "
+            f"({summary['ledger_required']} required, "
+            f"{summary['ledger_destructive']} destructive markers)."
+        ),
     ]
     if crawlground_line is not None:
         lines.append(crawlground_line)
@@ -713,9 +1124,13 @@ def _write_reports(results: list[BaselineResult], args: argparse.Namespace) -> N
             "",
             (
                 "| Target | Ready | Crawl | Auth mode | Entries | Expected | Browser-only | "
-                "Persisted | Isolation | Blocked | Seconds |"
+                "Lane markers | Sequences | Outcome | New | Ledger | Persisted | Isolation | "
+                "Destructive | Seconds |"
             ),
-            "| --- | --- | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |",
+            (
+                "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | "
+                "---: | --- | ---: | ---: | ---: |"
+            ),
         ]
     )
     for result in results:
@@ -724,25 +1139,62 @@ def _write_reports(results: list[BaselineResult], args: argparse.Namespace) -> N
             f"`{result.crawl_status or '-'}` | `{result.auth_mode}` | {result.entry_count} | "
             f"{result.expected_entries_found}/{result.expected_entry_count} | "
             f"{result.browser_only_entries_found}/{result.browser_only_entry_count} | "
+            f"{result.capability_markers_found}/{result.capability_marker_count} | "
+            f"{result.request_sequences_found}/{result.request_sequence_count} | "
+            f"`{result.discovery_outcome or '-'}` | "
+            f"{result.discovery_new_entry_count} | "
+            f"{result.ledger_entry_count} | "
             f"{'yes' if result.persisted_result_verified else 'no'} | "
-            f"{len(result.isolation_violations)} | {len(result.blocked_hits)} | "
+            f"{len(result.isolation_violations)} | "
+            f"{max(len(result.blocked_hits), result.ledger_destructive_count)} | "
             f"{result.elapsed_seconds:.1f} |"
         )
-    lines.extend(["", "## Errors and safety findings", ""])
-    findings = [result for result in results if result.error or result.blocked_hits]
+    lines.extend(["", "## Errors and observed destructive markers", ""])
+    findings = [
+        result
+        for result in results
+        if result.error or result.blocked_hits or result.ledger_destructive_count
+    ]
     if findings:
         for result in findings:
-            lines.append(f"- `{result.target}`: {result.error or result.blocked_hits}")
+            detail = result.error or result.blocked_hits
+            if not detail:
+                detail = f"ledger destructive markers: {result.ledger_destructive_count}"
+            lines.append(f"- `{result.target}`: {detail}")
     else:
-        lines.append("No crawler failures or blocked-route hits were observed.")
-    lines.extend(["", f"Machine-readable results: `{JSON_PATH.relative_to(ROOT)}`", ""])
-    REPORT_PATH.write_text("\n".join(lines))
+        lines.append("No crawler failures or destructive-route markers were observed.")
+    lines.extend(["", "## Missing expected endpoints", ""])
+    missing_expected = [result for result in results if result.missing_expected_entries]
+    if missing_expected:
+        for result in missing_expected:
+            entries = ", ".join(f"`{entry}`" for entry in result.missing_expected_entries)
+            lines.append(f"- `{result.target}`: {entries}")
+    else:
+        lines.append("Every declared expected endpoint was observed.")
+    lines.extend(["", "## Controlled qualification gate", ""])
+    if qualification_failures:
+        lines.extend(f"- {failure}" for failure in qualification_failures)
+    else:
+        lines.append(
+            "PASS. Every repository-controlled fixture satisfied readiness, completion, "
+            "persistence, isolation, discovery-fixpoint, endpoint, capability-marker, "
+            "and request-sequence gates. Public canaries are reported but non-blocking."
+        )
+    try:
+        json_display = args.json_path.relative_to(ROOT)
+    except ValueError:
+        json_display = args.json_path
+    lines.extend(["", f"Machine-readable results: `{json_display}`", ""])
+    args.report_path.write_text("\n".join(lines))
 
 
-def _merge_existing_results(results: list[BaselineResult]) -> list[BaselineResult]:
-    if not JSON_PATH.is_file():
+def _merge_existing_results(
+    results: list[BaselineResult],
+    json_path: Path,
+) -> list[BaselineResult]:
+    if not json_path.is_file():
         return results
-    existing_payload = json.loads(JSON_PATH.read_text())
+    existing_payload = json.loads(json_path.read_text())
     merged: dict[str, BaselineResult] = {}
     for raw in existing_payload.get("results", []):
         if isinstance(raw, dict):
@@ -767,20 +1219,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Replace selected rows in the existing report instead of discarding it.",
     )
-    parser.add_argument(
-        "--headless",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Enable Katana hybrid mode (default: enabled; use --no-headless to disable).",
-    )
     parser.add_argument("--max-depth", type=int, default=3)
-    parser.add_argument("--max-pages", type=int, default=80)
     parser.add_argument("--rate-limit", type=int, default=20)
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--parallelism", type=int, default=10)
-    parser.add_argument("--crawl-duration", default="5m")
+    parser.add_argument("--crawl-duration", default="10m")
     parser.add_argument("--request-timeout", type=int, default=10)
-    parser.add_argument("--subprocess-timeout", type=int, default=360)
+    parser.add_argument("--subprocess-timeout", type=int, default=720)
     parser.add_argument("--auth-attempts", type=int, default=1)
     parser.add_argument("--job-timeout", type=float, default=600.0)
     parser.add_argument("--cancel-timeout", type=float, default=20.0)
@@ -789,11 +1234,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--server-readiness-timeout", type=float, default=30.0)
     parser.add_argument("--server-shutdown-timeout", type=float, default=20.0)
     parser.add_argument("--case", action="append", default=[], help="Run only named targets.")
+    parser.add_argument("--discovery-enabled", action="store_true")
+    parser.add_argument("--dit-model", type=Path)
+    parser.add_argument("--katana-binary", type=Path)
+    parser.add_argument("--report-path", type=Path)
+    parser.add_argument("--json-path", type=Path)
+    parser.add_argument("--keep-artifacts", action="store_true")
     return parser.parse_args()
 
 
 async def async_main() -> int:
     args = parse_args()
+    if args.report_path is None:
+        args.report_path = (
+            ROOT / "docs" / "complete-system-qualification.md"
+            if args.discovery_enabled
+            else REPORT_PATH
+        )
+    if args.json_path is None:
+        args.json_path = (
+            ROOT / "docs" / "complete-system-qualification.json"
+            if args.discovery_enabled
+            else JSON_PATH
+        )
     include_external = not args.local_only
     targets = _load_manifest(LOCAL_TARGETS_PATH, required=True)
     targets.extend(_load_manifest(EXTERNAL_TARGETS_PATH, required=include_external))
@@ -803,20 +1266,40 @@ async def async_main() -> int:
     if not targets:
         raise ValueError("no Phase 0 targets selected")
 
-    temp_root = tempfile.TemporaryDirectory(prefix="crawler-phase0-")
+    ledger_required = any(_ledger_config(target) is not None for target in targets)
+    harness_token = os.environ.get("TEST_HARNESS_TOKEN")
+    if ledger_required and not harness_token:
+        if not args.manage_targets:
+            raise ValueError(
+                "TEST_HARNESS_TOKEN is required when using an already-running ledger fixture"
+            )
+        harness_token = secrets.token_urlsafe(32)
+
+    temp_root = tempfile.TemporaryDirectory(
+        prefix="crawler-phase0-",
+        delete=not args.keep_artifacts,
+    )
     temp_dir = Path(temp_root.name)
+    server_home, args.dit_model, args.katana_binary = prepare_server_home(
+        temp_dir,
+        args.dit_model,
+        args.katana_binary,
+    )
     targets_started = False
     server: ServerProcess | None = None
     try:
         if args.manage_targets:
-            _start_targets(include_external=include_external)
+            _start_targets(
+                include_external=include_external,
+                harness_token=harness_token,
+            )
             targets_started = True
         cases = {
             _site_name_for_case(case) or case.name: case for case in _canonical_cases(gateway=False)
         }
         scope_config = _build_scope_config(args)
         results: list[BaselineResult] = []
-        server = await _start_server(args, temp_dir)
+        server = await _start_server(args, temp_dir, harness_token, home_dir=server_home)
         await _wait_for_server(server, timeout=args.server_readiness_timeout)
         async with (
             httpx.AsyncClient(
@@ -837,6 +1320,8 @@ async def async_main() -> int:
                     job_timeout=args.job_timeout,
                     cancel_timeout=args.cancel_timeout,
                     health_client=health_client,
+                    harness_token=harness_token,
+                    discovery_enabled=args.discovery_enabled,
                 )
                 print(
                     f"  ready={result.ready} status={result.crawl_status} "
@@ -845,7 +1330,7 @@ async def async_main() -> int:
                     f"browser-only={result.browser_only_entries_found}/"
                     f"{result.browser_only_entry_count} "
                     f"isolation={len(result.isolation_violations)} "
-                    f"blocked={len(result.blocked_hits)} elapsed={result.elapsed_seconds:.1f}s"
+                    f"markers={len(result.blocked_hits)} elapsed={result.elapsed_seconds:.1f}s"
                     + (f" error={result.error}" if result.error else ""),
                     flush=True,
                 )
@@ -853,7 +1338,7 @@ async def async_main() -> int:
 
         await _stop_server(server, timeout=args.server_shutdown_timeout)
         server = None
-        server = await _start_server(args, temp_dir)
+        server = await _start_server(args, temp_dir, harness_token, home_dir=server_home)
         await _wait_for_server(server, timeout=args.server_readiness_timeout)
         async with httpx.AsyncClient(
             base_url=server.base_url,
@@ -864,26 +1349,20 @@ async def async_main() -> int:
         server = None
 
         if args.merge_existing:
-            results = _merge_existing_results(results)
+            results = _merge_existing_results(results, args.json_path)
         _write_reports(results, args)
-        failed = [
-            result
-            for result in results
-            if (
-                not result.ready
-                or result.crawl_status != "completed"
-                or result.blocked_hits
-                or result.isolation_violations
-                or not result.persisted_result_verified
-            )
-        ]
+        qualification_failures = _qualification_failures(
+            results,
+            discovery_enabled=args.discovery_enabled,
+        )
+        completed = sum(result.crawl_status == "completed" for result in results)
         print(
-            f"phase0 summary: {len(results) - len(failed)}/{len(results)} "
-            "targets completed safely; "
-            f"report={REPORT_PATH.relative_to(ROOT)}",
+            f"phase0 summary: {completed}/{len(results)} targets completed; "
+            f"controlled qualification={'PASS' if not qualification_failures else 'FAIL'}; "
+            f"report={args.report_path}",
             flush=True,
         )
-        return 1 if failed else 0
+        return 1 if qualification_failures else 0
     finally:
         if server is not None:
             with contextlib.suppress(Exception):
@@ -891,7 +1370,10 @@ async def async_main() -> int:
         if targets_started and args.stop_targets:
             with contextlib.suppress(Exception):
                 _stop_targets(include_external=include_external)
-        temp_root.cleanup()
+        if args.keep_artifacts:
+            print(f"kept phase qualification artifacts: {temp_dir}", flush=True)
+        else:
+            temp_root.cleanup()
 
 
 def main() -> None:

@@ -1,0 +1,48 @@
+{
+  "entries": [
+    {"method": "GET", "url": "http://localhost:8007/", "status": 200, "content_type": "text/html", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/assets/regex-marker.js", "status": 200, "content_type": "text/javascript", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/assets/jsluice-marker.js", "status": 200, "content_type": "text/javascript", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/static-form", "status": 200, "content_type": "text/html", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/handoff", "status": 200, "content_type": "text/html", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/header-only", "status": 200, "content_type": "text/html", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/seed/one", "status": 200, "content_type": "text/html", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/seed/two", "status": 200, "content_type": "text/html", "timestamp": null},
+    {"method": "GET", "url": "http://localhost:8007/perpetual", "status": 200, "content_type": "text/html", "timestamp": null}
+  ],
+  "tree": {"children": {}, "pages": []},
+  "blocked_entries": [
+    {"method": "POST", "url": "http://localhost:8007/api/destructive", "reason": "observable destructive marker; the crawler is not expected to block it"}
+  ],
+  "capability_markers": [
+    {"id": "standard-jc", "lane": "standard-jc", "method": "GET", "path": "/api/js/regex-marker.do", "evidence": "endpoint"},
+    {"id": "standard-jsl", "lane": "standard-jsl", "method": "GET", "path": "/api/js/jsluice-marker", "evidence": "endpoint"},
+    {"id": "standard-fx", "lane": "standard-fx", "method": "POST", "path": "/api/form/preview", "evidence": "form"},
+    {"id": "pure-rendered-navigation", "lane": "pure-headless", "method": "GET", "path": "/rendered/only", "evidence": "endpoint"},
+    {"id": "cdp-runtime-xhr", "lane": "passive-cdp", "method": "GET", "path": "/api/runtime/xhr", "evidence": "xhr"},
+    {"id": "cookie-localstorage-handoff", "lane": "browser-handoff", "method": "GET", "path": "/handoff", "evidence": "page-state"},
+    {"id": "scoped-header", "lane": "header-propagation", "method": "GET", "path": "/header-only", "evidence": "status-200"},
+    {"id": "serial-seed-one", "lane": "pure-headless", "method": "GET", "path": "/seed/one/child", "evidence": "endpoint"},
+    {"id": "serial-seed-two", "lane": "pure-headless", "method": "GET", "path": "/seed/two/child", "evidence": "endpoint"},
+    {"id": "known-file-nested", "lane": "known-files", "method": "GET", "path": "/known-file-marker", "evidence": "endpoint"},
+    {"id": "known-file-subdomain", "lane": "known-files", "method": "GET", "path": "/subdomain-known-file-marker", "evidence": "status-200"}
+  ],
+  "observer_markers": [
+    {"surface": "popup", "method": "GET", "path": "/api/observer/popup"},
+    {"surface": "frame", "method": "GET", "path": "/api/observer/frame"},
+    {"surface": "worker", "method": "GET", "path": "/api/observer/worker"},
+    {"surface": "service_worker", "method": "GET", "path": "/api/observer/service-worker"}
+  ],
+  "subdomain_markers": [
+    {"method": "GET", "url": "http://child.localhost:8007/subdomain-header-only", "evidence": "status-200"}
+  ],
+  "required_action_sequences": [
+    ["open /", "click Load runtime XHR marker", "observe GET /api/runtime/xhr"],
+    ["open /", "click Open rendered-only page", "observe GET /rendered/only"],
+    ["open /", "close the page", "open /handoff", "observe cookie and localStorage"],
+    ["crawl /seed/one", "crawl /seed/two", "observe both child endpoints"]
+  ],
+  "known_file_cases": ["nested-index", "new-in-scope-subdomain-origin", "redirect", "cycle", "malformed", "oversized-decoded-body"],
+  "budgets": {"crawl_seconds": 300, "browser_actions": 20, "known_file_documents": 100, "known_file_response_bytes": 5242880},
+  "ledger": {"run_header": "X-Crawler-Test-Run", "url_template": "http://localhost:8007/_test/ledger/{run_id}", "harness_header": "X-Test-Harness-Token"}
+}

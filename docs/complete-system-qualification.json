@@ -2,12 +2,15 @@
   "configuration": {
     "capture_source": "known-files+standard-katana+pure-headless-katana+passive-cdp",
     "crawl_duration": "10m",
-    "discovery_enabled": false,
+    "discovery_enabled": true,
+    "dit_model_sha256": "eba238b3093ff7aa4772ce17536bc313cb955428a6aa87dae41695a2dede6e59",
     "execution_boundary": "uv-run-server-http-api",
     "include_external": true,
+    "katana_sha256": "e88b5e90cb4e6305de02f52abe2ca69ce6a45cb3275860a88e432eff612f229e",
+    "merged_existing_results": true,
     "max_depth": 3
   },
-  "generated_at": "2026-07-23T18:10:41.888364+00:00",
+  "generated_at": "2026-07-23T20:38:09.581898+00:00",
   "results": [
     {
       "auth_mode": "public",
@@ -20,14 +23,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 69.007,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 13,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 86.583,
       "entry_count": 16,
       "error": null,
       "expected_entries_found": 11,
       "expected_entry_count": 11,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "7e8ee98c-b0e6-48b9-8494-4dc80d81698e",
+      "job_id": "084b0973-fa2c-4f80-953a-37b276822a99",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -38,6 +47,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/about.html",
@@ -53,7 +64,7 @@
         "/styles.css"
       ],
       "score": null,
-      "sitemap_sha256": "45e32cf7fc235f140d2414d0a122a67fc3acfbe6c05031889af729df2cc44252",
+      "sitemap_sha256": "1c236ef9abf5421b4d3af18f7690befcf59b40d9a2f1dd0a10f2da0f408eee7e",
       "status_codes": {
         "200": 16
       },
@@ -63,49 +74,57 @@
     {
       "auth_mode": "llm",
       "blocked_hits": [],
-      "browser_only_entries_found": 1,
+      "browser_only_entries_found": 4,
       "browser_only_entry_count": 4,
       "capability_by_lane": {},
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 247.02,
-      "entry_count": 13,
+      "discovery_new_entry_count": 3,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 16,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 280.204,
+      "entry_count": 16,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "27128713-d234-42b6-8025-6f8171f57e0b",
+      "job_id": "36655a64-5081-46f3-ac13-180aaf9847b9",
       "kind": "repository",
       "ledger_destructive_count": 0,
-      "ledger_entry_count": 83,
-      "ledger_required_count": 0,
+      "ledger_entry_count": 111,
+      "ledger_required_count": 3,
       "methods": {
         "GET": 12,
-        "POST": 1
+        "POST": 4
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 2,
+      "request_sequences_found": 2,
       "sample_paths": [
         "/",
         "/actions",
+        "/api/onboarding/preview",
+        "/api/onboarding/validate",
+        "/api/settings/validate",
         "/dashboard",
         "/favicon.ico",
         "/login",
         "/public",
         "/reports",
         "/robots.txt",
-        "/settings",
-        "/sitemap.xml",
-        "/workflow",
-        "/workflow-center"
+        "/settings"
       ],
       "score": null,
-      "sitemap_sha256": "e934e512e980e9bfc74c2b03f3eb1b9a3cf0af1e66896f5a54481a311b24566e",
+      "sitemap_sha256": "c0bf71db71887c10517da2eba2cb1e194a8ceb04cc9f71f4dda8079b115085fd",
       "status_codes": {
-        "200": 8,
+        "200": 11,
         "404": 4
       },
       "target": "site-b-login-flask",
@@ -120,24 +139,33 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 91.059,
-      "entry_count": 11,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 9,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 103.776,
+      "entry_count": 12,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 8,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "4c2bb6af-833e-4ede-b125-78617b0feb3c",
+      "job_id": "1e2c7ddb-ae6e-4251-b331-689ec53c72bf",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
-        "GET": 11
+        "GET": 11,
+        "POST": 1
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/blog/launch",
@@ -149,12 +177,13 @@
         "/register",
         "/robots.txt",
         "/sitemap.xml",
-        "/workspace"
+        "/workspace",
+        "/workspace/create"
       ],
       "score": null,
-      "sitemap_sha256": "f8db560f3f94db6ba5243748b88ec6f5f725e0c39fd763e9fcdeb1cdf8a59948",
+      "sitemap_sha256": "8901f735f074ba887142277d6d52e0bb3df2f275720510a3835851eec58fd8e7",
       "status_codes": {
-        "200": 8,
+        "200": 9,
         "404": 3
       },
       "target": "site-c-registration-express",
@@ -169,14 +198,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 187.114,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 7,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 200.745,
       "entry_count": 10,
       "error": null,
       "expected_entries_found": 6,
       "expected_entry_count": 6,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "6d9540ea-bffb-46e5-8aa6-d5f0e48ffc7e",
+      "job_id": "04464d7c-d10e-4141-b2fb-696362e94a46",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -188,6 +223,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app",
@@ -200,7 +237,7 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "4eb9e9aaae014aa201d60d18c5ae2c6b3988fbad8c3f5ef7d05c187d55b64455",
+      "sitemap_sha256": "fcca59c190a6206f5a9f1f4920d781610b42cafebbdbee0de2ba8adf430b3ad2",
       "status_codes": {
         "200": 9
       },
@@ -210,26 +247,32 @@
     {
       "auth_mode": "public",
       "blocked_hits": [],
-      "browser_only_entries_found": 0,
+      "browser_only_entries_found": 1,
       "browser_only_entry_count": 1,
       "capability_by_lane": {},
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 93.49,
-      "entry_count": 12,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 10,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 202.375,
+      "entry_count": 13,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 11,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "8293c97e-b248-4bc2-9425-0305a24e0817",
+      "job_id": "83bc6d44-ba5d-4263-b8c5-2cf609fd5771",
       "kind": "repository",
       "ledger_destructive_count": 0,
-      "ledger_entry_count": 41,
-      "ledger_required_count": 0,
+      "ledger_entry_count": 108,
+      "ledger_required_count": 3,
       "methods": {
-        "GET": 12
+        "GET": 13
       },
       "missing_expected_entries": [
         "GET /calendar/2026/01/02",
@@ -238,9 +281,12 @@
       ],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 1,
+      "request_sequences_found": 1,
       "sample_paths": [
         "/",
         "/about",
+        "/api/gauntlet/guided-details",
         "/api/gauntlet/poll",
         "/calendar/2025/12/31",
         "/calendar/2026/01/01",
@@ -249,13 +295,12 @@
         "/gauntlet",
         "/limits",
         "/robots.txt",
-        "/sitemap.xml",
-        "/workspace"
+        "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "105a9e38046520b462a8d4eda636b96e2aa7b537f7a894d74446e79b51483177",
+      "sitemap_sha256": "3bd950a76fad84e28c3436fc9e3bbd974c5fcf085b8d822980b78bd5bcb30910",
       "status_codes": {
-        "200": 9,
+        "200": 10,
         "404": 3
       },
       "target": "site-e-crawl-trap-ruby",
@@ -264,48 +309,57 @@
     {
       "auth_mode": "public",
       "blocked_hits": [],
-      "browser_only_entries_found": 0,
+      "browser_only_entries_found": 5,
       "browser_only_entry_count": 5,
       "capability_by_lane": {},
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 55.365,
-      "entry_count": 13,
+      "discovery_new_entry_count": 5,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 13,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 140.641,
+      "entry_count": 18,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 8,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "14228f35-db5f-46dc-9378-4fbcd311c3b6",
+      "job_id": "13714b59-f8a1-4f16-aee7-bb3e32bbf719",
       "kind": "repository",
       "ledger_destructive_count": 0,
-      "ledger_entry_count": 25,
-      "ledger_required_count": 0,
+      "ledger_entry_count": 144,
+      "ledger_required_count": 9,
       "methods": {
-        "GET": 13
+        "GET": 15,
+        "POST": 3
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 2,
+      "request_sequences_found": 2,
       "sample_paths": [
         "/",
         "/api/links",
+        "/api/projects/details/project-aurora",
+        "/api/projects/search",
+        "/api/reports/preview",
+        "/api/reports/validate",
+        "/api/shadow/audit",
         "/app",
         "/app.js",
         "/app/actions",
         "/app/overview",
-        "/app/projects",
-        "/app/reports/2026",
-        "/favicon.ico",
-        "/form.action",
-        "/robots.txt",
-        "/sitemap.xml"
+        "/app/projects"
       ],
       "score": null,
-      "sitemap_sha256": "1ae47639fbd8debadc359ba7475f65402caa816c4a842364c84477d20e9a314d",
+      "sitemap_sha256": "858702dd46d3ed091e578760dbc6b7c17dbced80cb838f0fd4cdeda461b93503",
       "status_codes": {
-        "200": 4,
+        "200": 14,
         "404": 4
       },
       "target": "site-f-spa-deno",
@@ -319,36 +373,46 @@
       "capability_by_lane": {
         "browser-handoff": "1/1",
         "header-propagation": "1/1",
-        "known-files": "1/1",
+        "known-files": "2/2",
         "passive-cdp": "1/1",
         "pure-headless": "3/3",
         "standard-fx": "1/1",
         "standard-jc": "1/1",
         "standard-jsl": "1/1"
       },
-      "capability_marker_count": 10,
-      "capability_markers_found": 10,
+      "capability_marker_count": 11,
+      "capability_markers_found": 11,
       "crawl_status": "completed",
-      "elapsed_seconds": 108.178,
-      "entry_count": 36,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 17,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 397.406,
+      "entry_count": 41,
       "error": null,
       "expected_entries_found": 9,
       "expected_entry_count": 9,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "e0cf4d13-c898-4e70-95db-d5c727e0b419",
+      "job_id": "aeb6cb99-4589-4928-81bb-5bbf58308aa2",
       "kind": "repository",
       "ledger_destructive_count": 0,
-      "ledger_entry_count": 86,
-      "ledger_required_count": 18,
+      "ledger_entry_count": 346,
+      "ledger_required_count": 93,
       "methods": {
-        "GET": 36
+        "GET": 40,
+        "POST": 1
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/api/form/preview",
         "/api/js/jsluice-marker",
         "/api/js/regex-marker.do",
         "/api/observer/frame",
@@ -358,13 +422,12 @@
         "/api/perpetual/poll",
         "/api/runtime/xhr",
         "/assets/jsluice-marker.js",
-        "/assets/observer-worker.js",
-        "/assets/regex-marker.js"
+        "/assets/observer-worker.js"
       ],
       "score": null,
-      "sitemap_sha256": "490387d1b4905c45a32cfcbbe45ab94e0866da23a7928ca382d34abf2ac293ef",
+      "sitemap_sha256": "2b251ea857051895cc20f66c7cfb84fe37025ddf4212cfeb5ee6dc414fc5ab31",
       "status_codes": {
-        "200": 33,
+        "200": 38,
         "302": 1,
         "404": 2
       },
@@ -380,14 +443,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 241.514,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 13,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 279.363,
       "entry_count": 12,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "e8ccad3f-735e-46a3-801b-92e86b302dfc",
+      "job_id": "7480656f-8497-425e-90cc-e5897380d9d0",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -399,6 +468,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app/audit",
@@ -413,7 +484,7 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "e78f5a1b15966b6fb0324ee181f6317a1c474c8fb34c180c97e33abf70351d79",
+      "sitemap_sha256": "5dce83dbb6833ee396cbc996b39448124882c81d1bd4296a5aff2fcb832927aa",
       "status_codes": {
         "200": 8,
         "404": 3
@@ -432,14 +503,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 55.771,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 8,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 73.517,
       "entry_count": 11,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "9856c10f-c0c0-42a6-b940-cd3eb639ce31",
+      "job_id": "b2fbce05-b06c-4eb9-8018-84c0d347be5a",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -450,6 +527,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app/audit",
@@ -464,7 +543,7 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "0c9fe8dbe98c05f2d1d018d916247984c8d37a7de9bec72d9a9250f476be8562",
+      "sitemap_sha256": "69d40f6e86076ee37f66d602f9a4d3a697a765a59acdb975bd7ab4affd093fe2",
       "status_codes": {
         "200": 6,
         "404": 3
@@ -481,27 +560,36 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 223.961,
-      "entry_count": 11,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 13,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 285.533,
+      "entry_count": 12,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "65830287-5cea-4b75-9803-6933bf3f0744",
+      "job_id": "5ddb291e-b61f-44bc-974b-a88a7a3d6e66",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 10,
-        "POST": 1
+        "POST": 2
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -513,9 +601,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "5f3d88c483027f1192da0d699fb8641c81840302700af3039ddbc62e85f8c143",
+      "sitemap_sha256": "782ac705cf059ad1a1ef756d9822ad6ab237571ca6abb0824782e0f8c05c8991",
       "status_codes": {
-        "200": 7,
+        "200": 8,
         "404": 3
       },
       "target": "auth-c-complex-form",
@@ -530,27 +618,36 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 225.377,
-      "entry_count": 11,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 12,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 252.168,
+      "entry_count": 12,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "cdf74f0a-93bc-424a-acac-f483210f08d4",
+      "job_id": "09575a27-31ef-41bd-8496-d4837a3c19da",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 10,
-        "POST": 1
+        "POST": 2
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -562,9 +659,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "b021df0ec9263b97207e30b3e158de05c3a168e66a1a3c10376364d2099005ac",
+      "sitemap_sha256": "569ef2bd6ec7128a1eaa5ad80081d9a699c76bc4d1962f2a88fd34c6d8311417",
       "status_codes": {
-        "200": 7,
+        "200": 8,
         "404": 3
       },
       "target": "auth-d-interactive-captcha",
@@ -579,27 +676,36 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 221.312,
-      "entry_count": 11,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 11,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 247.412,
+      "entry_count": 12,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "af89b0f2-9f1c-4d9f-b74f-550837e75466",
+      "job_id": "e64c61f5-7c1c-4e09-a34c-c18d7b8a2e2d",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 10,
-        "POST": 1
+        "POST": 2
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -611,9 +717,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "79bb07b81b7e44de244e17a781df5080e268c5a426e93a535341ddc59dc93cdf",
+      "sitemap_sha256": "bd9276e8f16341aa956dd19ae6fd396a73b037b7a9ab2a15a088c406af86e049",
       "status_codes": {
-        "200": 7,
+        "200": 8,
         "404": 3
       },
       "target": "auth-e-delay-login",
@@ -628,27 +734,36 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 222.777,
-      "entry_count": 12,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 14,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 256.116,
+      "entry_count": 13,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 8,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "eb6e59a3-5cde-4808-a72f-3b49cb7ef52e",
+      "job_id": "492a1a9c-0703-4965-9e2c-077dbd4d1d58",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 11,
-        "POST": 1
+        "POST": 2
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -661,9 +776,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "7f6a5b44f6a8436d549e51e8ad113ea6860fa6d5d678cd55f5847f919b5f78b1",
+      "sitemap_sha256": "a9a08f3e52ae3da39a01825591ed0f6d1da821ed9a466a3001d92226023b3cc1",
       "status_codes": {
-        "200": 8,
+        "200": 10,
         "404": 3
       },
       "target": "auth-f-ocr-captcha",
@@ -678,27 +793,36 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 232.938,
-      "entry_count": 13,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 13,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 259.74,
+      "entry_count": 14,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 8,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "ba8afa74-e162-4e9e-a9aa-794a9c2a2883",
+      "job_id": "c2813996-3c65-4935-8f50-60a7a690761a",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 11,
-        "POST": 2
+        "POST": 3
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -711,9 +835,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "d80151fd44cc6dcab1d6f8ff3816861f811375da933429984fccc6cd4f9e52f0",
+      "sitemap_sha256": "550afcffad75f736e800f361f757aa27b6cceeb558259f06f25c53e52a409868",
       "status_codes": {
-        "200": 8,
+        "200": 10,
         "404": 3
       },
       "target": "auth-g-multi-step",
@@ -721,34 +845,45 @@
     },
     {
       "auth_mode": "llm",
-      "blocked_hits": [],
+      "blocked_hits": [
+        "GET /logout"
+      ],
       "browser_only_entries_found": 0,
       "browser_only_entry_count": 0,
       "capability_by_lane": {},
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 281.846,
-      "entry_count": 12,
+      "discovery_new_entry_count": 2,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 3,
+      "discovery_state_count": 16,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 322.598,
+      "entry_count": 14,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 8,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "05de507a-8465-4308-bbf1-ef4171a28764",
+      "job_id": "5fbf9823-e629-4bb4-a6b1-aca80efb3083",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
-        "GET": 11,
-        "POST": 1
+        "GET": 12,
+        "POST": 2
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -756,14 +891,14 @@
         "/app/reports",
         "/favicon.ico",
         "/login",
+        "/logout",
         "/popup-login",
-        "/robots.txt",
-        "/sitemap.xml"
+        "/robots.txt"
       ],
       "score": null,
-      "sitemap_sha256": "0e725c5da8e48949fc85849d786509afcbb9cc1dc3a584b416885e30780ff67a",
+      "sitemap_sha256": "3e0f330581c816c463771643dd7bf9d450cace594c43ddc52eeddfd039e1a5df",
       "status_codes": {
-        "200": 9,
+        "200": 10,
         "404": 3
       },
       "target": "auth-h-new-window",
@@ -778,14 +913,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 198.028,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 11,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 226.166,
       "entry_count": 12,
       "error": null,
       "expected_entries_found": 8,
       "expected_entry_count": 8,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "03673cc8-8b46-4e18-a535-a4c9205c1921",
+      "job_id": "758b24e4-d319-43f8-ae33-da47c5540910",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -797,6 +938,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app/audit",
@@ -811,7 +954,7 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "9c2f43178339f4f34caac7263b92aede4ec343009c7d4571f27d6b53baf9e549",
+      "sitemap_sha256": "5c75d71f612a6ec332d054af47197b11c11557672e4aac86746f84b780f1374e",
       "status_codes": {
         "200": 9,
         "404": 3
@@ -828,27 +971,37 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 223.768,
-      "entry_count": 11,
+      "discovery_new_entry_count": 2,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 10,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 248.933,
+      "entry_count": 13,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "d96d09df-7860-4622-9b97-fd3bdebad895",
+      "job_id": "bbb62286-a673-416c-ab38-c7ed20d9297b",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 10,
-        "POST": 1
+        "POST": 3
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
+        "/app/actions/update",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -860,9 +1013,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "9540a7f09d3ffd32b81e8a72c093d3eb9f74f61456f4c3941159e05844d51337",
+      "sitemap_sha256": "57d7d859af9f298185f3a38f698e053b30a1ec640928ccf4afe426ba0f8da2a6",
       "status_codes": {
-        "200": 7,
+        "200": 9,
         "404": 3
       },
       "target": "auth-j-xsrf-token",
@@ -877,14 +1030,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 225.86,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 3,
+      "discovery_state_count": 15,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 253.312,
       "entry_count": 11,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "e4e1ac80-5740-4b36-b714-15ebe0ffdfba",
+      "job_id": "d008ab88-b8ea-4221-a21e-0212a3df6f22",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -896,6 +1055,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app/audit",
@@ -909,9 +1070,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "0ee9cad424819185537b14971bc1ebf32abeb53e31bc737d28a1ed6133b825f6",
+      "sitemap_sha256": "40cc96f28fd21707c2430452777ab1610bd4e7f8e26812c3585ddc71d080c1f5",
       "status_codes": {
-        "200": 7,
+        "200": 8,
         "404": 3
       },
       "target": "auth-k-dynamic-fields",
@@ -926,27 +1087,36 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 277.844,
-      "entry_count": 11,
+      "discovery_new_entry_count": 1,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 11,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 298.778,
+      "entry_count": 12,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "25f4e6a5-6612-49dc-bbe8-980eb0f85e01",
+      "job_id": "c0242a77-0d8e-42ea-8c5f-922d043c1763",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
         "GET": 10,
-        "POST": 1
+        "POST": 2
       },
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
+        "/app/actions/create",
         "/app/audit",
         "/app/billing",
         "/app/overview",
@@ -958,9 +1128,9 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "e758cf80db0d4cd702c96e8f066c53f1d95d8c6afb3c2dd0233c7edd872ed2f1",
+      "sitemap_sha256": "2cd1d55aa5894221abe5ff7bc85867e5e367bd2d681f730b39e0fcfc14db6442",
       "status_codes": {
-        "200": 7,
+        "200": 8,
         "404": 3
       },
       "target": "auth-l-security-question",
@@ -975,14 +1145,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 225.352,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 10,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 255.05,
       "entry_count": 11,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "9cbdf7ac-0f2c-46dd-8164-f9e29769cbf5",
+      "job_id": "326c0413-4240-4ed0-ba23-12960478cbe5",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -994,6 +1170,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app/audit",
@@ -1007,7 +1185,7 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "7ea6b36d502f14bf9c09f70cd4e8f849834440ff21b34aaa36e02560f8829797",
+      "sitemap_sha256": "1663d2c0b296a94fd352586a6a4c407e02f4f29942b99f19c0983a8c1ef5cf38",
       "status_codes": {
         "200": 7,
         "404": 3
@@ -1024,14 +1202,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 55.869,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": "fixpoint",
+      "discovery_rounds": 2,
+      "discovery_state_count": 7,
+      "discovery_stop_reason": "complete_round_added_nothing",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 76.762,
       "entry_count": 10,
       "error": null,
       "expected_entries_found": 7,
       "expected_entry_count": 7,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "3375ba1e-6c35-40dd-84c7-b3ab82f5e4e3",
+      "job_id": "0a427dc9-b59c-4f7e-b7af-7e43397f4a18",
       "kind": "repository",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -1042,6 +1226,8 @@
       "missing_expected_entries": [],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/app/audit",
@@ -1055,7 +1241,7 @@
         "/sitemap.xml"
       ],
       "score": null,
-      "sitemap_sha256": "4d3f4de56c6d1318971225c596aac855e6b6f26add3acd5318edd2883cbcf585",
+      "sitemap_sha256": "67520a8c576821e763b603543de5ac3e27edf62f42ed00834bb8a1753ec121bf",
       "status_codes": {
         "200": 7,
         "404": 3
@@ -1072,14 +1258,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "failed",
-      "elapsed_seconds": 622.068,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": null,
+      "discovery_rounds": 0,
+      "discovery_state_count": 0,
+      "discovery_stop_reason": null,
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 620.496,
       "entry_count": 0,
-      "error": "Katana did not exhaust every input queue (1 incomplete)",
+      "error": "Katana pure-headless: Katana did not exhaust every input queue (1 incomplete)",
       "expected_entries_found": 0,
       "expected_entry_count": 1,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "949dd7ae-39be-4afd-9e6a-3715f2070abb",
+      "job_id": "2f667422-3169-45dc-a639-5e56fac3b817",
       "kind": "external",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -1090,6 +1282,8 @@
       ],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [],
       "score": {
         "summary": {
@@ -1121,7 +1315,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:52:07.071Z",
+                "firstHit": "2026-07-23T19:54:26.889Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1139,7 +1333,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:52:15.806Z",
+                "firstHit": "2026-07-23T19:54:34.795Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1157,7 +1351,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.282Z",
+                "firstHit": "2026-07-23T19:46:43.028Z",
                 "hits": 2,
                 "scored": true
               }
@@ -1175,7 +1369,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.276Z",
+                "firstHit": "2026-07-23T19:46:42.030Z",
                 "hits": 2,
                 "scored": true
               }
@@ -1193,7 +1387,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.281Z",
+                "firstHit": "2026-07-23T19:46:42.033Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1211,7 +1405,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.275Z",
+                "firstHit": "2026-07-23T19:46:42.023Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1229,7 +1423,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.277Z",
+                "firstHit": "2026-07-23T19:46:42.025Z",
                 "hits": 2,
                 "scored": true
               }
@@ -1247,7 +1441,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.274Z",
+                "firstHit": "2026-07-23T19:46:42.031Z",
                 "hits": 2,
                 "scored": true
               }
@@ -1265,7 +1459,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.277Z",
+                "firstHit": "2026-07-23T19:46:42.025Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1283,7 +1477,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.290Z",
+                "firstHit": "2026-07-23T19:46:42.024Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1301,7 +1495,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.275Z",
+                "firstHit": "2026-07-23T19:46:39.032Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1319,7 +1513,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:06.274Z",
+                "firstHit": "2026-07-23T19:46:39.025Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1409,7 +1603,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.273Z",
+                "firstHit": "2026-07-23T19:46:43.029Z",
                 "hits": 2,
                 "scored": true
               }
@@ -1463,7 +1657,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.276Z",
+                "firstHit": "2026-07-23T19:46:42.041Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1481,7 +1675,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:47:39.964Z",
+                "firstHit": "2026-07-23T19:50:06.943Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1517,7 +1711,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.279Z",
+                "firstHit": "2026-07-23T19:46:39.031Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1553,7 +1747,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:11.283Z",
+                "firstHit": "2026-07-23T19:46:41.023Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1571,7 +1765,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:11.285Z",
+                "firstHit": "2026-07-23T19:46:41.026Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1607,7 +1801,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:06.276Z",
+                "firstHit": "2026-07-23T19:46:39.024Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1625,7 +1819,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.297Z",
+                "firstHit": "2026-07-23T19:46:40.022Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1643,7 +1837,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.294Z",
+                "firstHit": "2026-07-23T19:46:40.028Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1661,7 +1855,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.279Z",
+                "firstHit": "2026-07-23T19:46:40.027Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1679,7 +1873,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.276Z",
+                "firstHit": "2026-07-23T19:46:40.023Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1697,7 +1891,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.280Z",
+                "firstHit": "2026-07-23T19:46:40.032Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1715,7 +1909,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.279Z",
+                "firstHit": "2026-07-23T19:46:40.025Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1733,7 +1927,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.275Z",
+                "firstHit": "2026-07-23T19:46:40.027Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1751,7 +1945,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.274Z",
+                "firstHit": "2026-07-23T19:46:39.052Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1769,7 +1963,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.277Z",
+                "firstHit": "2026-07-23T19:46:40.025Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1787,7 +1981,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.275Z",
+                "firstHit": "2026-07-23T19:46:40.026Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1805,7 +1999,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:06.277Z",
+                "firstHit": "2026-07-23T19:46:40.024Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1877,7 +2071,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.291Z",
+                "firstHit": "2026-07-23T19:46:43.293Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1895,7 +2089,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.289Z",
+                "firstHit": "2026-07-23T19:46:43.294Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1931,7 +2125,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:08.276Z",
+                "firstHit": "2026-07-23T19:46:43.295Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1949,7 +2143,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:06.287Z",
+                "firstHit": "2026-07-23T19:46:43.294Z",
                 "hits": 1,
                 "scored": true
               }
@@ -1967,7 +2161,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:06.275Z",
+                "firstHit": "2026-07-23T19:46:43.294Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2003,7 +2197,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:50:50.732Z",
+                "firstHit": "2026-07-23T19:53:12.077Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2021,7 +2215,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:10.281Z",
+                "firstHit": "2026-07-23T19:46:41.040Z",
                 "hits": 2,
                 "scored": true
               }
@@ -2039,7 +2233,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:10.282Z",
+                "firstHit": "2026-07-23T19:46:41.032Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2057,7 +2251,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:10.276Z",
+                "firstHit": "2026-07-23T19:46:41.024Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2075,7 +2269,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:10.279Z",
+                "firstHit": "2026-07-23T19:46:41.030Z",
                 "hits": 2,
                 "scored": true
               }
@@ -2093,7 +2287,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:10.280Z",
+                "firstHit": "2026-07-23T19:46:41.036Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2129,7 +2323,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:09.294Z",
+                "firstHit": "2026-07-23T19:46:41.026Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2147,7 +2341,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:07.275Z",
+                "firstHit": "2026-07-23T19:46:39.031Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2165,7 +2359,7 @@
                 "scored": false
               },
               "katana-baseline": {
-                "firstHit": "2026-07-23T15:44:06.274Z",
+                "firstHit": "2026-07-23T19:46:39.022Z",
                 "hits": 1,
                 "scored": true
               }
@@ -2187,46 +2381,55 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "completed",
-      "elapsed_seconds": 55.415,
-      "entry_count": 112,
+      "discovery_new_entry_count": 216,
+      "discovery_outcome": "budget_exhausted",
+      "discovery_rounds": 1,
+      "discovery_state_count": 7,
+      "discovery_stop_reason": "time_budget",
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 370.824,
+      "entry_count": 330,
       "error": null,
       "expected_entries_found": 2,
       "expected_entry_count": 3,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "0e68b499-4e25-44e3-a8dc-886fe2f2c849",
+      "job_id": "77cd7360-195a-4e3d-9055-d31a913e49cc",
       "kind": "external",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
       "ledger_required_count": 0,
       "methods": {
-        "GET": 102,
-        "POST": 10
+        "GET": 304,
+        "POST": 26
       },
       "missing_expected_entries": [
         "GET /rest/products/search"
       ],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [
         "/",
         "/Trident",
-        "/address/edit",
-        "/api/%5C%22/ftp/legal.md%5C%22",
-        "/api/Challenges",
-        "/api/Challenges?key=nftMintChallenge",
-        "/api/Challenges?name=Score%20Board",
-        "/api/Feedbacks",
-        "/api/Quantitys",
-        "/api/Users",
-        "/assets/i18n/%7B%7BblueSky%7D%7D",
-        "/assets/i18n/%7B%7Bquestionnaire%7D%7D"
+        "/Trident/assets/public/assets/public/chunk-5K74DZ2F.js",
+        "/Trident/assets/public/assets/public/chunk-DYXK4NW4.js",
+        "/Trident/assets/public/assets/public/chunk-OKA37M7B.js",
+        "/Trident/assets/public/assets/public/chunk-PX7UKXVL.js",
+        "/Trident/assets/public/assets/public/chunk-QBYXNN7Z.js",
+        "/Trident/assets/public/assets/public/chunk-UNFVUBM2.js",
+        "/Trident/assets/public/assets/public/chunk-VJL3IV3O.js",
+        "/Trident/assets/public/assets/public/chunk-VS3A3LTT.js",
+        "/Trident/assets/public/assets/public/favicon_js.ico",
+        "/Trident/assets/public/assets/public/styles.css"
       ],
       "score": null,
-      "sitemap_sha256": "e61999c26cf463642095f6ad6c52c8cc2b53a93a8243dac7d3d25ec30f892a9b",
+      "sitemap_sha256": "0bbd66b28ee1a211dc97ae8ca29c693efe9c3e517ef706c1d48f19dcc1c7f82f",
       "status_codes": {
-        "200": 84,
-        "401": 3,
+        "200": 282,
+        "400": 1,
+        "401": 4,
         "500": 8
       },
       "target": "juice-shop",
@@ -2241,14 +2444,20 @@
       "capability_marker_count": 0,
       "capability_markers_found": 0,
       "crawl_status": "failed",
-      "elapsed_seconds": 645.278,
+      "discovery_new_entry_count": 0,
+      "discovery_outcome": null,
+      "discovery_rounds": 0,
+      "discovery_state_count": 0,
+      "discovery_stop_reason": null,
+      "discovery_workflow_count": 0,
+      "elapsed_seconds": 643.842,
       "entry_count": 0,
       "error": "Katana pure-headless: Katana did not exhaust every input queue (1 incomplete)",
       "expected_entries_found": 0,
       "expected_entry_count": 4,
       "health_status": 200,
       "isolation_violations": [],
-      "job_id": "342c16f1-50db-4ae0-9da9-2c2966edadaa",
+      "job_id": "cb8c9755-7a36-4b9f-84a2-daa0dd19ef40",
       "kind": "external",
       "ledger_destructive_count": 0,
       "ledger_entry_count": 0,
@@ -2262,6 +2471,8 @@
       ],
       "persisted_result_verified": true,
       "ready": true,
+      "request_sequence_count": 0,
+      "request_sequences_found": 0,
       "sample_paths": [],
       "score": null,
       "sitemap_sha256": null,
@@ -2272,19 +2483,29 @@
   ],
   "schema_version": 1,
   "summary": {
-    "blocked_hits": 2,
+    "blocked_hits": 3,
     "browser_only_declared": 10,
-    "browser_only_found": 1,
-    "capability_markers_declared": 10,
-    "capability_markers_found": 10,
+    "browser_only_found": 10,
+    "capability_markers_declared": 11,
+    "capability_markers_found": 11,
     "completed": 22,
-    "entries": 382,
+    "controlled_completed": 21,
+    "controlled_targets": 21,
+    "discovery_fixpoints": 21,
+    "discovery_new_entries": 237,
+    "entries": 625,
     "isolation_violations": 0,
     "ledger_destructive": 0,
-    "ledger_entries": 235,
-    "ledger_required": 18,
+    "ledger_entries": 709,
+    "ledger_required": 108,
     "persisted_results_verified": 24,
+    "public_canaries": 3,
+    "public_canaries_completed": 1,
+    "qualification_failures": [],
+    "qualification_passed": true,
     "ready": 24,
+    "request_sequences_declared": 5,
+    "request_sequences_found": 5,
     "targets": 24
   }
 }

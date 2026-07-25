@@ -193,5 +193,10 @@
     "acceptable_partial_reasons": [],
     "budgets": {"max_steps": 24, "max_states": 18, "max_duration_seconds": 90},
     "reset_procedure": "POST /_test/reset with the per-run harness token"
+  },
+  "ledger": {
+    "run_header": "X-Crawler-Test-Run",
+    "url_template": "http://localhost:8002/_test/ledger/{run_id}",
+    "harness_header": "X-Test-Harness-Token"
   }
 }

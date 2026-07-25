@@ -1,9 +1,9 @@
 # Test Target Websites
 
-`testsites/` contains 20 small, deterministic websites for crawler testing:
-6 general fixtures and 14 authentication fixtures. Each site has a
-`sitemap.json` that defines the expected crawlable GET surface and destructive
-URLs that normal crawls must not hit.
+`testsites/` contains 21 small, deterministic websites for crawler testing:
+7 general fixtures and 14 authentication fixtures. Each site has a
+`sitemap.json` that defines the expected crawlable surface and destructive or
+session-ending observation markers.
 
 Authenticated sites expose logout controls after login. The sites also include
 small create, update, and delete workflows that return realistic confirmation
@@ -40,11 +40,11 @@ target after both Compose stacks are available:
 uv run python -m scripts.run_phase0_baseline --manage-targets --stop-targets
 ```
 
-Use `--local-only` to exercise just the 20 repository fixtures. The runner
+Use `--local-only` to exercise just the 21 repository fixtures. The runner
 starts a real `uv run tenzai-crawler-server` process with temporary database and
 log paths, submits and polls jobs only through HTTP, restarts the server to
-verify persisted retrieval, checks cross-job isolation and blocked-route
-results, and writes
+verify persisted retrieval, checks cross-job isolation and declared route
+markers, and writes
 `docs/phase0-baseline-report.md` plus `docs/phase0-baseline-results.json`.
 
 The browser-only positive controls for the three enhanced fixtures are opt-in:
@@ -67,8 +67,9 @@ small source manifests, and keeping generated dependency artifacts out of the
 repo prevents `testsites/` fixtures from creating Dependabot alert noise.
 
 In each `sitemap.json`, `entries` are URLs that should be reachable.
-`blocked_entries` are destructive or session-ending URLs that may be visible in
-links, forms, or controls but should not appear in crawler results.
+`blocked_entries` are destructive or session-ending observation markers. The
+runner reports whether they appear; the crawler does not infer a runtime block
+from the fixture declaration.
 
 ## Ports
 
@@ -80,6 +81,7 @@ links, forms, or controls but should not appear in crawler results.
 | `site-d-complex-auth-go` | `8004` | `9104` |
 | `site-e-crawl-trap-ruby` | `8005` | `9105` |
 | `site-f-spa-deno` | `8006` | `9106` |
+| `site-g-discovery-lanes` | `8007` | `9107` |
 | `auth-a-simple-form` | `8101` | `9201` |
 | `auth-b-http-basic` | `8102` | `9202` |
 | `auth-c-complex-form` | `8103` | `9203` |
@@ -111,6 +113,11 @@ Use `http://localhost:<port>` for either direct or gateway access.
   links and a bounded public workspace page.
 - `site-f-spa-deno`: Deno SPA that loads links from `/api/links` and exposes
   client-rendered action forms with server-side POST fallbacks.
+- `site-g-discovery-lanes`: Consolidated lane fixture for standard Katana
+  JavaScript/form extraction, pure-headless rendered navigation, runtime CDP
+  XHR evidence, browser-profile handoff, serial seeds, scoped headers,
+  perpetual traffic, bounded known-file edge cases, and an authenticated
+  known-file expansion discovered only after Katana reaches a subdomain.
 
 ## Auth Fixtures
 

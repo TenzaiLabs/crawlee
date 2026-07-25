@@ -17,11 +17,16 @@
     <p>Controls on this page deliberately mix useful, noisy, misleading, and forbidden actions.</p>
 
     <section>
-      <h2>Bounded runtime detail</h2>
-      <button class="duplicate-detail" type="button">Load detail</button>
-      <button class="duplicate-detail" type="button">Load detail</button>
-      <button id="delayed-detail" type="button" disabled>Load delayed detail</button>
-      <p id="detail-result" aria-live="polite"></p>
+      <h2>Guided runtime detail</h2>
+      <label>
+        Detail mode
+        <select name="guided_mode" id="guided-mode">
+          <option value="">Choose a mode</option>
+          <option value="bounded">Bounded diagnostic</option>
+        </select>
+      </label>
+      <button id="load-guided-detail" type="button" disabled>Load guided detail</button>
+      <p id="guided-detail-result" aria-live="polite"></p>
     </section>
 
     <section>
@@ -49,15 +54,16 @@
 
     <script>
       const endpoint = (...parts) => ["", "api", ...parts].join("/");
-      async function loadDetail() {
-        const response = await fetch(endpoint("gauntlet", "details"));
+      const guidedMode = document.getElementById("guided-mode");
+      const guidedDetail = document.getElementById("load-guided-detail");
+      guidedMode.addEventListener("change", () => {
+        guidedDetail.disabled = guidedMode.value !== "bounded";
+      });
+      guidedDetail.addEventListener("click", async () => {
+        const response = await fetch(endpoint("gauntlet", "guided-details"));
         const data = await response.json();
-        document.getElementById("detail-result").textContent = data.detail;
-      }
-      document.querySelectorAll(".duplicate-detail").forEach((control) => control.addEventListener("click", loadDetail));
-      const delayed = document.getElementById("delayed-detail");
-      setTimeout(() => { delayed.disabled = false; }, 900);
-      delayed.addEventListener("click", loadDetail);
+        document.getElementById("guided-detail-result").textContent = data.detail;
+      });
       const consent = document.getElementById("consent");
       document.getElementById("open-consent").addEventListener("click", () => { consent.hidden = false; });
       document.getElementById("close-consent").addEventListener("click", () => { consent.hidden = true; });

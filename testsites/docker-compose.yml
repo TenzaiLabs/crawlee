@@ -29,6 +29,13 @@ services:
       TEST_HARNESS_TOKEN: ${TEST_HARNESS_TOKEN:-}
     ports:
       - "8006:8000"
+  site-g:
+    build: ./site-g-discovery-lanes
+    environment:
+      TEST_HARNESS_TOKEN: ${TEST_HARNESS_TOKEN:-}
+      DISCOVERY_FIXTURE_HEADER_TOKEN: ${TEST_HARNESS_TOKEN:-}
+    ports:
+      - "8007:8000"
   auth-a:
     build: ./auth-a-simple-form
     ports:
@@ -94,6 +101,7 @@ services:
       - site-d
       - site-e
       - site-f
+      - site-g
       - auth-a
       - auth-b
       - auth-c
@@ -115,6 +123,7 @@ services:
       - "9104:9104"
       - "9105:9105"
       - "9106:9106"
+      - "9107:9107"
       - "9201:9201"
       - "9202:9202"
       - "9203:9203"

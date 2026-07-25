@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
+import shutil
 import signal
 import socket
 import subprocess
@@ -9,10 +11,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
-import shutil
-from dataclasses import dataclass
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent
 
@@ -25,6 +26,7 @@ class SiteConfig:
     env: dict[str, str]
     sitemap_path: Path
     startup_timeout: float = 15.0
+    request_headers: dict[str, str] = field(default_factory=dict)
 
 
 def wait_for_port(host: str, port: int, timeout: float) -> None:
@@ -51,7 +53,10 @@ def request_url(method: str, url: str, headers: dict[str, str] | None = None) ->
         return exc.code
 
 
-def verify_sitemap(sitemap_path: Path) -> list[str]:
+def verify_sitemap(
+    sitemap_path: Path,
+    default_headers: dict[str, str] | None = None,
+) -> list[str]:
     data = json.loads(sitemap_path.read_text())
     entries = data.get("entries", [])
     failures: list[str] = []
@@ -59,7 +64,9 @@ def verify_sitemap(sitemap_path: Path) -> list[str]:
         method = entry.get("method")
         url = entry.get("url")
         expected_status = entry.get("status")
-        headers = entry.get("headers")
+        headers = dict(default_headers or {})
+        if isinstance(entry.get("headers"), dict):
+            headers.update({str(key): str(value) for key, value in entry["headers"].items()})
         if not method or not url or expected_status is None:
             failures.append(f"Invalid entry in {sitemap_path}: {entry}")
             continue
@@ -94,7 +101,11 @@ def run_site(config: SiteConfig) -> list[str]:
             timeout=120,
         )
         if bundle_install.returncode != 0:
-            message = bundle_install.stderr.strip() or bundle_install.stdout.strip() or "bundle install failed"
+            message = (
+                bundle_install.stderr.strip()
+                or bundle_install.stdout.strip()
+                or "bundle install failed"
+            )
             return [f"Bundle install failed: {message}"]
     process = subprocess.Popen(
         config.command,
@@ -106,7 +117,7 @@ def run_site(config: SiteConfig) -> list[str]:
     )
     try:
         wait_for_port("127.0.0.1", int(config.env["PORT"]), config.startup_timeout)
-        return verify_sitemap(config.sitemap_path)
+        return verify_sitemap(config.sitemap_path, config.request_headers)
     except RuntimeError as exc:
         output = ""
         try:
@@ -183,6 +194,7 @@ def auth_pattern_configs(flask_python: str) -> list[SiteConfig]:
 if __name__ == "__main__":
     venv_python = ROOT / ".venv" / "bin" / "python"
     flask_python = str(venv_python) if venv_python.exists() else sys.executable
+    discovery_fixture_token = os.environ.get("TEST_HARNESS_TOKEN") or secrets.token_urlsafe(32)
     configs = [
         SiteConfig(
             name="site-a-static",
@@ -226,6 +238,18 @@ if __name__ == "__main__":
             command=["deno", "run", "--allow-net", "--allow-read", "--allow-env", "server.ts"],
             env={"PORT": "8006"},
             sitemap_path=ROOT / "site-f-spa-deno" / "sitemap.json",
+        ),
+        SiteConfig(
+            name="site-g-discovery-lanes",
+            workdir=ROOT / "site-g-discovery-lanes",
+            command=[flask_python, "app.py"],
+            env={
+                "PORT": "8007",
+                "TEST_HARNESS_TOKEN": discovery_fixture_token,
+                "DISCOVERY_FIXTURE_HEADER_TOKEN": discovery_fixture_token,
+            },
+            sitemap_path=ROOT / "site-g-discovery-lanes" / "sitemap.json",
+            request_headers={"X-Discovery-Token": discovery_fixture_token},
         ),
         *auth_pattern_configs(flask_python),
     ]
