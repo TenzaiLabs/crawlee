@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from app import auth_agent, auth_browser
+from app import auth_agent, auth_browser, auth_traffic
 
 
 def test_needs_auth():
@@ -95,7 +95,7 @@ def test_explicit_probe_candidates_keep_absolute_and_root_relative_same_origin()
         target_url="https://example.com/",
         login_url="https://example.com/login",
         current_url="https://example.com/login",
-    ) == ["https://example.com/app/dashboard?tab=home"]
+    ) == ["https://example.com/app/dashboard?tab=home#section"]
     assert (
         auth_agent._explicit_probe_candidates(
             "https://evil.example.com/dashboard",
@@ -322,7 +322,12 @@ async def test_authenticate_total_timeout_cancels_work(monkeypatch: pytest.Monke
     monkeypatch.setattr(auth_agent, "CRAWLER_AUTH_TIMEOUT_SECONDS", 0.01)
 
     with pytest.raises(auth_agent.AuthenticationError, match="timed out after 0.01 seconds"):
-        await auth_agent.authenticate("https://example.com", {}, auth_agent.asyncio.Event())
+        await auth_agent.authenticate(
+            "https://example.com",
+            {},
+            auth_agent.asyncio.Event(),
+            context=object(),
+        )
     assert cancelled.is_set()
 
 
@@ -344,7 +349,7 @@ async def test_authenticate_operator_cancellation_is_cancelled_error(
     monkeypatch.setattr(auth_agent, "_authenticate_workflow", hanging_workflow)
     cancel_event = auth_agent.asyncio.Event()
     task = auth_agent.asyncio.create_task(
-        auth_agent.authenticate("https://example.com", {}, cancel_event)
+        auth_agent.authenticate("https://example.com", {}, cancel_event, context=object())
     )
     await work_started.wait()
     cancel_event.set()
@@ -390,7 +395,32 @@ async def test_build_tools_remembers_successful_configured_probe(
 
 
 @pytest.mark.asyncio
-async def test_verification_candidates_reject_public_root_for_credentialed_auth() -> None:
+async def test_collect_auth_result_preserves_verified_landing_after_link_discovery() -> None:
+    class FakeContext:
+        async def cookies(self):
+            return []
+
+    class FakePage:
+        url = "https://example.com/"
+
+    class FakeTrafficCapture:
+        captured_headers: list[str] = []
+        redirect_chain: list[str] = []
+
+    result = await auth_agent._collect_auth_result(
+        context=FakeContext(),
+        page=FakePage(),
+        login_url="https://example.com/login",
+        traffic_capture=cast(auth_traffic.AuthTrafficCapture, FakeTrafficCapture()),
+        verified_landing_url="https://example.com/app/dashboard",
+        discovered_urls=["https://example.com/settings"],
+    )
+
+    assert result.landing_url == "https://example.com/app/dashboard"
+
+
+@pytest.mark.asyncio
+async def test_verification_candidates_include_root_for_differential_verification() -> None:
     class FakeResponse:
         status = 200
 
@@ -422,7 +452,131 @@ async def test_verification_candidates_reject_public_root_for_credentialed_auth(
         requires_auth_evidence=True,
     )
 
-    assert candidates == []
+    assert candidates == ["https://example.com/"]
+
+
+@pytest.mark.asyncio
+async def test_verification_requires_clean_context_for_credentialed_auth() -> None:
+    class FakeResponse:
+        status = 200
+
+    class FakePage:
+        def __init__(self, controller) -> None:
+            self.controller = controller
+
+        async def goto(self, url: str, *, wait_until: str):
+            del wait_until
+            self.controller.current_url = url
+            return FakeResponse()
+
+    class FakeController:
+        def __init__(self) -> None:
+            self.current_url = "https://example.com/dashboard"
+            self.active_page = FakePage(self)
+
+        async def _settle(self, page) -> None:
+            del page
+
+        async def collect_link_items(self) -> list[dict[str, str]]:
+            return [{"href": "https://example.com/dashboard", "text": "Dashboard"}]
+
+    result = await auth_agent._verify_authenticated(
+        cast(auth_agent._AuthBrowserController, FakeController()),
+        target_url="https://example.com/",
+        login_url="https://example.com/login",
+        success_indicator=None,
+        requires_auth_evidence=True,
+        probe_url="/",
+    )
+
+    assert result.success is False
+    assert result.reason == (
+        "a clean browser context was unavailable for differential verification"
+    )
+
+
+def _verification_state(
+    *,
+    final_url: str,
+    status: int | None = 200,
+    text: str = "",
+    controls: tuple[str, ...] = (),
+    password: bool = False,
+    responses: tuple[auth_agent._VerificationNetworkResponse, ...] = (),
+) -> auth_agent._VerificationPageState:
+    return auth_agent._VerificationPageState(
+        requested_url=final_url,
+        final_url=final_url,
+        document_status=status,
+        visible_text=text,
+        controls=controls,
+        has_password_input=password,
+        responses=responses,
+    )
+
+
+def test_hash_route_verification_accepts_clean_login_vs_authenticated_ui() -> None:
+    authenticated = _verification_state(
+        final_url="https://example.com/#/reports",
+        status=None,
+        controls=("reports", "members", "log out"),
+    )
+    clean = _verification_state(
+        final_url="https://example.com/#/login",
+        status=None,
+        controls=("log in",),
+        password=True,
+    )
+
+    assert (
+        auth_agent._authenticated_state_evidence(
+            authenticated,
+            clean,
+            target_url="https://example.com/",
+        )
+        == "clean browser was redirected to a login route"
+    )
+
+
+def test_hash_route_verification_rejects_unchanged_public_shell() -> None:
+    public = _verification_state(
+        final_url="https://example.com/#/reports",
+        status=None,
+        text="public reports",
+        controls=("reports", "log in"),
+    )
+
+    assert (
+        auth_agent._authenticated_state_evidence(
+            public,
+            public,
+            target_url="https://example.com/",
+        )
+        is None
+    )
+
+
+def test_spa_verification_accepts_protected_api_status_delta() -> None:
+    endpoint = "https://example.com/api/reports"
+    authenticated = _verification_state(
+        final_url="https://example.com/#/reports",
+        status=None,
+        responses=(auth_agent._VerificationNetworkResponse("GET", endpoint, 200, "fetch"),),
+    )
+    clean = _verification_state(
+        final_url="https://example.com/#/reports",
+        status=None,
+        responses=(auth_agent._VerificationNetworkResponse("GET", endpoint, 401, "fetch"),),
+    )
+
+    assert (
+        auth_agent._authenticated_state_evidence(
+            authenticated,
+            clean,
+            target_url="https://example.com/",
+        )
+        == f"GET {endpoint} returned 200 authenticated and 401 clean"
+    )
 
 
 @pytest.mark.asyncio

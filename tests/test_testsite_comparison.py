@@ -14,6 +14,16 @@ def test_canonical_cases_select_one_case_per_fixture() -> None:
     assert "auth-a-simple-form-dynamic-exclusion" in [case.name for case in cases]
 
 
+def test_controlled_llm_auth_cases_configure_their_protected_probe() -> None:
+    cases = run_testsite_comparison._canonical_cases(gateway=False)
+
+    for case in cases:
+        if case.mode != "llm":
+            continue
+        assert case.auth_config is not None
+        assert case.auth_config["probe_url"] == case.probe_path
+
+
 def test_no_auth_agent_variant_drops_only_llm_auth_config() -> None:
     llm_case = AuthAgentSiteCase(
         "auth-a-simple-form",

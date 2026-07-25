@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app import auth_agent
+from app import auth_agent, browser_session
 
 
 @dataclass(frozen=True)
@@ -165,6 +165,7 @@ def build_cases(*, gateway: bool = False) -> list[AuthAgentSiteCase]:
             url("site-b-login-flask"),
             {
                 "login_url": urljoin(url("site-b-login-flask"), "/login"),
+                "probe_url": "/dashboard",
                 "credentials": {"username": "demo", "password": "password"},
             },
             "/dashboard",
@@ -175,6 +176,7 @@ def build_cases(*, gateway: bool = False) -> list[AuthAgentSiteCase]:
             url("site-d-complex-auth-go"),
             {
                 "login_url": urljoin(url("site-d-complex-auth-go"), "/login"),
+                "probe_url": "/app",
                 "credentials": {"username": "admin", "password": "swordfish"},
                 "instructions": "There are two submit buttons. Click Sign In, not Register.",
             },
@@ -189,6 +191,7 @@ def build_cases(*, gateway: bool = False) -> list[AuthAgentSiteCase]:
             url("auth-a-simple-form"),
             {
                 "login_url": urljoin(url("auth-a-simple-form"), "/login"),
+                "probe_url": "/app/overview",
                 "credentials": {
                     "email": "auth-a-simple-form@auth.local",
                     "password": "pa$$w0rd",
@@ -254,6 +257,7 @@ def build_cases(*, gateway: bool = False) -> list[AuthAgentSiteCase]:
         credentials.update(extra_credentials)
         config: dict[str, Any] = {
             "login_url": urljoin(url(name), "/login"),
+            "probe_url": "/app/overview",
             "credentials": credentials,
         }
         if instructions:
@@ -307,7 +311,17 @@ async def run_case(case: AuthAgentSiteCase, *, timeout: float) -> AuthAgentSiteR
                 error="missing auth_config",
             )
 
-        result = await auth_agent.authenticate(case.target_url, case.auth_config, asyncio.Event())
+        async with browser_session.BrowserSession(f"auth-test-{case.name}") as session:
+            context = await session.connect_playwright(
+                target_url=case.target_url,
+                epoch="authentication",
+            )
+            result = await auth_agent.authenticate(
+                case.target_url,
+                case.auth_config,
+                asyncio.Event(),
+                context=context,
+            )
         headers = _headers_from_lines(result.headers)
         async with httpx.AsyncClient(timeout=timeout) as client:
             status_code = await _probe(client, case, headers=headers)

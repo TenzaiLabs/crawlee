@@ -1,0 +1,600 @@
+diff --git a/cmd/katana/main.go b/cmd/katana/main.go
+index a6d7d1c..dd3b516 100644
+--- a/cmd/katana/main.go
++++ b/cmd/katana/main.go
+@@ -87,6 +87,9 @@ func main() {
+ 			if err := katanaRunner.Close(); err != nil {
+ 				gologger.Error().Msgf("Error closing katana runner: %v\n", err)
+ 			}
++			if err := katanaRunner.WriteTerminalSummary("cancelled"); err != nil {
++				gologger.Error().Msgf("Could not write terminal summary: %s\n", err)
++			}
+ 
+ 			gologger.Info().Msgf("Creating resume file: %s\n", resumeFilename)
+ 			err := katanaRunner.SaveState(resumeFilename)
+@@ -178,6 +181,7 @@ pipelines offering both headless and non-headless crawling.`)
+ 	flagSet.CreateGroup("debug", "Debug",
+ 		flagSet.BoolVarP(&options.HealthCheck, "hc", "health-check", false, "run diagnostic check up"),
+ 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
++		flagSet.StringVar(&options.TerminalSummaryFile, "terminal-summary", "", "file to write machine-readable terminal reasons"),
+ 		flagSet.BoolVar(&options.PprofServer, "pprof-server", false, "enable pprof server"),
+ 	)
+ 
+diff --git a/internal/runner/banner.go b/internal/runner/banner.go
+index 0505925..507f13a 100644
+--- a/internal/runner/banner.go
++++ b/internal/runner/banner.go
+@@ -12,7 +12,7 @@ var banner = (`
+ /_/\_\\_,_/\__/\_,_/_//_/\_,_/							 
+ `)
+ 
+-var version = "v1.6.1"
++var version = "v1.6.1-tenzai.2"
+ 
+ // showBanner is used to show the banner to the user
+ func showBanner() {
+diff --git a/internal/runner/executer.go b/internal/runner/executer.go
+index 3f6d99b..5b5c60d 100644
+--- a/internal/runner/executer.go
++++ b/internal/runner/executer.go
+@@ -1,9 +1,12 @@
+ package runner
+ 
+ import (
++	"context"
++	"errors"
+ 	"strings"
+ 
+ 	"github.com/projectdiscovery/gologger"
++	"github.com/projectdiscovery/katana/pkg/engine"
+ 	"github.com/projectdiscovery/utils/errkit"
+ 	urlutil "github.com/projectdiscovery/utils/url"
+ 	"github.com/remeh/sizedwaitgroup"
+@@ -33,6 +36,7 @@ func (r *Runner) ExecuteCrawling() error {
+ 	for _, input := range inputs {
+ 		if !r.networkpolicy.Validate(input) {
+ 			gologger.Info().Msgf("Skipping excluded host %s", input)
++			r.RecordTerminalResult(input, "input_failure", errkit.New("input excluded by network policy"))
+ 			continue
+ 		}
+ 		wg.Add()
+@@ -40,14 +44,23 @@ func (r *Runner) ExecuteCrawling() error {
+ 		go func(input string) {
+ 			defer wg.Done()
+ 
+-			if err := r.crawler.Crawl(input); err != nil {
+-				gologger.Warning().Msgf("Could not crawl %s: %s", input, err)
++			crawlErr := r.crawler.Crawl(input)
++			reason := "queue_exhausted"
++			if crawlErr != nil {
++				gologger.Warning().Msgf("Could not crawl %s: %s", input, crawlErr)
++				switch {
++				case errors.Is(crawlErr, engine.ErrCrawlTimeout), errors.Is(crawlErr, context.DeadlineExceeded):
++					reason = "crawl_timeout"
++				default:
++					reason = "input_failure"
++				}
+ 			}
++			r.RecordTerminalResult(input, reason, crawlErr)
+ 			r.state.InFlightUrls.Delete(input)
+ 		}(input)
+ 	}
+ 	wg.Wait()
+-	return nil
++	return r.WriteTerminalSummary("completed")
+ }
+ 
+ // scheme less urls are skipped and are required for headless mode and other purposes
+diff --git a/internal/runner/runner.go b/internal/runner/runner.go
+index 4fe5e64..21f20d3 100644
+--- a/internal/runner/runner.go
++++ b/internal/runner/runner.go
+@@ -3,7 +3,11 @@ package runner
+ import (
+ 	"encoding/json"
+ 	"os"
++	"path/filepath"
++	"sort"
+ 	"strconv"
++	"sync"
++	"time"
+ 
+ 	"github.com/projectdiscovery/gologger"
+ 	"github.com/projectdiscovery/katana/pkg/engine"
+@@ -25,18 +29,33 @@ import (
+ // Runner creates the required resources for crawling
+ // and executes the crawl process.
+ type Runner struct {
+-	crawlerOptions *types.CrawlerOptions
+-	stdin          bool
+-	crawler        engine.Engine
+-	options        *types.Options
+-	state          *RunnerState
+-	networkpolicy  *networkpolicy.NetworkPolicy
++	crawlerOptions  *types.CrawlerOptions
++	stdin           bool
++	crawler         engine.Engine
++	options         *types.Options
++	state           *RunnerState
++	networkpolicy   *networkpolicy.NetworkPolicy
++	terminalMu      sync.Mutex
++	terminalResults map[string]TerminalResult
+ }
+ 
+ type RunnerState struct {
+ 	InFlightUrls *mapsutil.SyncLockMap[string, struct{}]
+ }
+ 
++type TerminalResult struct {
++	Input  string `json:"input"`
++	Reason string `json:"reason"`
++	Error  string `json:"error,omitempty"`
++}
++
++type TerminalSummary struct {
++	SchemaVersion int              `json:"schema_version"`
++	Status        string           `json:"status"`
++	GeneratedAt   string           `json:"generated_at"`
++	Inputs        []TerminalResult `json:"inputs"`
++}
++
+ // New returns a new crawl runner structure
+ func New(options *types.Options) (*Runner, error) {
+ 	// create the resume configuration structure
+@@ -93,7 +112,7 @@ func New(options *types.Options) (*Runner, error) {
+ 	var crawler engine.Engine
+ 
+ 	switch {
+-case options.ChromeWSUrl != "":
++	case options.ChromeWSUrl != "":
+ 		// When connecting to existing browser via WebSocket URL,
+ 		// use pure headless engine with advanced crawling features
+ 		crawler, err = headless.New(crawlerOptions)
+@@ -136,17 +155,66 @@ case options.ChromeWSUrl != "":
+ 
+ 	np, _ := networkpolicy.New(npOptions)
+ 	runner := &Runner{
+-		options:        options,
+-		stdin:          fileutil.HasStdin(),
+-		crawlerOptions: crawlerOptions,
+-		crawler:        crawler,
+-		state:          &RunnerState{InFlightUrls: mapsutil.NewSyncLockMap[string, struct{}]()},
+-		networkpolicy:  np,
++		options:         options,
++		stdin:           fileutil.HasStdin(),
++		crawlerOptions:  crawlerOptions,
++		crawler:         crawler,
++		state:           &RunnerState{InFlightUrls: mapsutil.NewSyncLockMap[string, struct{}]()},
++		networkpolicy:   np,
++		terminalResults: make(map[string]TerminalResult),
+ 	}
+ 
+ 	return runner, nil
+ }
+ 
++func (r *Runner) RecordTerminalResult(input, reason string, crawlErr error) {
++	result := TerminalResult{Input: input, Reason: reason}
++	if crawlErr != nil {
++		result.Error = crawlErr.Error()
++	}
++	r.terminalMu.Lock()
++	r.terminalResults[input] = result
++	r.terminalMu.Unlock()
++}
++
++func (r *Runner) WriteTerminalSummary(status string) error {
++	if r.options.TerminalSummaryFile == "" {
++		return nil
++	}
++	r.terminalMu.Lock()
++	results := make([]TerminalResult, 0, len(r.terminalResults))
++	for _, result := range r.terminalResults {
++		results = append(results, result)
++	}
++	if status == "cancelled" {
++		for _, input := range mapsutil.GetKeys(r.state.InFlightUrls.GetAll()) {
++			if _, exists := r.terminalResults[input]; !exists {
++				results = append(results, TerminalResult{Input: input, Reason: "cancelled"})
++			}
++		}
++	}
++	r.terminalMu.Unlock()
++	sort.Slice(results, func(i, j int) bool { return results[i].Input < results[j].Input })
++	summary := TerminalSummary{
++		SchemaVersion: 1,
++		Status:        status,
++		GeneratedAt:   time.Now().UTC().Format(time.RFC3339Nano),
++		Inputs:        results,
++	}
++	data, err := json.MarshalIndent(summary, "", "  ")
++	if err != nil {
++		return err
++	}
++	if err := os.MkdirAll(filepath.Dir(r.options.TerminalSummaryFile), 0o755); err != nil {
++		return err
++	}
++	temporaryPath := r.options.TerminalSummaryFile + ".tmp"
++	if err := os.WriteFile(temporaryPath, append(data, '\n'), 0o600); err != nil {
++		return err
++	}
++	return os.Rename(temporaryPath, r.options.TerminalSummaryFile)
++}
++
+ // Close closes the runner releasing resources
+ func (r *Runner) Close() error {
+ 	return multierr.Combine(
+diff --git a/internal/runner/terminal_test.go b/internal/runner/terminal_test.go
+new file mode 100644
+index 0000000..62b5a1c
+--- /dev/null
++++ b/internal/runner/terminal_test.go
+@@ -0,0 +1,34 @@
++package runner
++
++import (
++	"encoding/json"
++	"errors"
++	"os"
++	"path/filepath"
++	"testing"
++
++	"github.com/projectdiscovery/katana/pkg/types"
++	"github.com/stretchr/testify/require"
++)
++
++func TestWriteTerminalSummary(t *testing.T) {
++	path := filepath.Join(t.TempDir(), "terminal.json")
++	runner := &Runner{
++		options:         &types.Options{TerminalSummaryFile: path},
++		terminalResults: make(map[string]TerminalResult),
++	}
++	runner.RecordTerminalResult("https://one.example", "queue_exhausted", nil)
++	runner.RecordTerminalResult("https://two.example", "input_failure", errors.New("failed"))
++
++	require.NoError(t, runner.WriteTerminalSummary("completed"))
++	data, err := os.ReadFile(path)
++	require.NoError(t, err)
++	var summary TerminalSummary
++	require.NoError(t, json.Unmarshal(data, &summary))
++	require.Equal(t, 1, summary.SchemaVersion)
++	require.Equal(t, "completed", summary.Status)
++	require.Equal(t, []TerminalResult{
++		{Input: "https://one.example", Reason: "queue_exhausted"},
++		{Input: "https://two.example", Reason: "input_failure", Error: "failed"},
++	}, summary.Inputs)
++}
+diff --git a/pkg/engine/engine.go b/pkg/engine/engine.go
+index 30c11e1..0cdef58 100644
+--- a/pkg/engine/engine.go
++++ b/pkg/engine/engine.go
+@@ -1,5 +1,12 @@
+ package engine
+ 
++import "errors"
++
++var (
++	ErrCrawlTimeout = errors.New("crawl timeout")
++	ErrMaxFailures  = errors.New("maximum consecutive failures reached")
++)
++
+ type Engine interface {
+ 	Crawl(string) error
+ 	Close() error
+diff --git a/pkg/engine/headless/browser/browser.go b/pkg/engine/headless/browser/browser.go
+index 7235474..4e810dc 100644
+--- a/pkg/engine/headless/browser/browser.go
++++ b/pkg/engine/headless/browser/browser.go
+@@ -53,10 +53,11 @@ type LauncherOptions struct {
+ 	Trace               bool
+ 	CookieConsentBypass bool
+ 	PageLoadStrategy    string
+-	ChromeWSUrl         string // WebSocket URL to connect to existing Chrome
+-	DOMWaitTime         int    // Time in seconds to wait for DOM (used with domcontentloaded strategy)
+-	UserDataDir         string // User-provided chrome data directory to preserve sessions
+-	ChromeUser          *user.User // optional chrome user to use
++	ChromeWSUrl         string            // WebSocket URL to connect to existing Chrome
++	DOMWaitTime         int               // Time in seconds to wait for DOM (used with domcontentloaded strategy)
++	UserDataDir         string            // User-provided chrome data directory to preserve sessions
++	Headers             map[string]string // custom headers applied to pure-headless pages
++	ChromeUser          *user.User        // optional chrome user to use
+ 	UserArguments       map[string]string // user-supplied Chrome flags via -headless-options
+ 
+ 	ScopeValidator  ScopeValidator
+@@ -71,11 +72,11 @@ func NewLauncher(opts LauncherOptions) (*Launcher, error) {
+ 	if opts.PageLoadStrategy == "" {
+ 		opts.PageLoadStrategy = "heuristic"
+ 	}
+-	
++
+ 	if opts.DOMWaitTime <= 0 {
+ 		opts.DOMWaitTime = 5
+ 	}
+-	
++
+ 	l := &Launcher{
+ 		opts:        opts,
+ 		browserPool: rod.NewPool[BrowserPage](opts.MaxBrowsers),
+@@ -111,7 +112,7 @@ func (l *Launcher) shouldPreserveUserDataDir(tempDir string) bool {
+ 
+ func (l *Launcher) launchBrowserWithDataDir(userDataDir string) (*rod.Browser, error) {
+ 	var launcherURL string
+-	
++
+ 	// If ChromeWSUrl is provided, connect to existing Chrome instead of launching new one
+ 	if l.opts.ChromeWSUrl != "" {
+ 		launcherURL = l.opts.ChromeWSUrl
+@@ -247,17 +248,17 @@ var defaultWaitOptions = WaitOptions{
+ func (b *BrowserPage) WaitPageLoadHeurisitics() error {
+ 	// Respect the page load strategy from launcher options
+ 	strategy := b.launcher.opts.PageLoadStrategy
+-	
++
+ 	switch strategy {
+ 	case "none":
+ 		// Don't wait at all, return immediately
+ 		return nil
+-		
++
+ 	case "load":
+ 		// Just wait for the load event
+ 		chained := b.Timeout(15 * time.Second)
+ 		return chained.WaitLoad()
+-		
++
+ 	case "domcontentloaded":
+ 		// WaitLoad checks document.readyState via JS, so it's safe to call
+ 		// after Navigate() has already started (no race with missed events).
+@@ -267,14 +268,14 @@ func (b *BrowserPage) WaitPageLoadHeurisitics() error {
+ 			time.Sleep(time.Duration(b.launcher.opts.DOMWaitTime) * time.Second)
+ 		}
+ 		return nil
+-		
++
+ 	case "networkidle":
+ 		// Wait for network activity to stop
+ 		chained := b.Timeout(15 * time.Second)
+ 		_ = chained.WaitLoad()
+ 		_ = chained.WaitIdle(2 * time.Second)
+ 		return nil
+-		
++
+ 	case "heuristic":
+ 		fallthrough
+ 	default:
+@@ -363,7 +364,7 @@ func (l *Launcher) createBrowserPageFunc() (*BrowserPage, error) {
+ 	// since we're connecting to an existing browser
+ 	var tempDir string
+ 	shouldCleanupTempDir := false
+-	
++
+ 	if l.opts.ChromeWSUrl == "" {
+ 		if l.opts.UserDataDir != "" {
+ 			// Use user-provided data directory (preserve sessions/cookies)
+@@ -413,6 +414,9 @@ func (l *Launcher) createBrowserPageFunc() (*BrowserPage, error) {
+ 	if err != nil {
+ 		return nil, errors.Wrap(err, "could not create new page")
+ 	}
++	if err := l.applyHeaders(page); err != nil {
++		return nil, errors.Wrap(err, "could not apply custom headers")
++	}
+ 
+ 	successfulPageCreation := false
+ 	defer func() {
+@@ -462,6 +466,27 @@ func (l *Launcher) createBrowserPageFunc() (*BrowserPage, error) {
+ 	return browserPage, nil
+ }
+ 
++func (l *Launcher) applyHeaders(page *rod.Page) error {
++	if len(l.opts.Headers) == 0 {
++		return nil
++	}
++	var extraHeaders []string
++	for name, value := range l.opts.Headers {
++		if strings.EqualFold(name, "User-Agent") {
++			if err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: value}); err != nil {
++				return err
++			}
++			continue
++		}
++		extraHeaders = append(extraHeaders, name, value)
++	}
++	if len(extraHeaders) == 0 {
++		return nil
++	}
++	_, err := page.SetExtraHeaders(extraHeaders)
++	return err
++}
++
+ // GetPageFromPool returns a page from the pool
+ func (l *Launcher) GetPageFromPool() (*BrowserPage, error) {
+ 	browserPage, err := l.browserPool.Get(l.createBrowserPageFunc)
+diff --git a/pkg/engine/headless/browser/browser_test.go b/pkg/engine/headless/browser/browser_test.go
+index 0491457..3edacca 100644
+--- a/pkg/engine/headless/browser/browser_test.go
++++ b/pkg/engine/headless/browser/browser_test.go
+@@ -61,6 +61,13 @@ func TestNewLauncherDefaults(t *testing.T) {
+ 		require.NoError(t, err)
+ 		require.Equal(t, "ws://localhost:9222/devtools/browser/abc", l.opts.ChromeWSUrl)
+ 	})
++
++	t.Run("custom headers are preserved for pure headless pages", func(t *testing.T) {
++		headers := map[string]string{"X-Discovery-Token": "runtime-value"}
++		l, err := NewLauncher(LauncherOptions{MaxBrowsers: 1, Headers: headers})
++		require.NoError(t, err)
++		require.Equal(t, headers, l.opts.Headers)
++	})
+ }
+ 
+ func TestLauncherIncognitoAndProfilePreservation(t *testing.T) {
+diff --git a/pkg/engine/headless/crawler/crawler.go b/pkg/engine/headless/crawler/crawler.go
+index 5e4fa47..b865732 100644
+--- a/pkg/engine/headless/crawler/crawler.go
++++ b/pkg/engine/headless/crawler/crawler.go
+@@ -13,12 +13,13 @@ import (
+ 	"time"
+ 
+ 	"github.com/adrianbrad/queue"
+-	"github.com/happyhackingspace/dit"
+ 	"github.com/go-rod/rod"
+ 	"github.com/go-rod/rod/lib/proto"
+ 	"github.com/go-rod/rod/lib/utils"
++	"github.com/happyhackingspace/dit"
+ 	"github.com/pkg/errors"
+ 	"github.com/projectdiscovery/gologger"
++	"github.com/projectdiscovery/katana/pkg/engine"
+ 	"github.com/projectdiscovery/katana/pkg/engine/headless/browser"
+ 	"github.com/projectdiscovery/katana/pkg/engine/headless/captcha"
+ 	"github.com/projectdiscovery/katana/pkg/engine/headless/crawler/diagnostics"
+@@ -59,6 +60,7 @@ type Options struct {
+ 	ChromeWSUrl         string
+ 	DOMWaitTime         int
+ 	UserDataDir         string
++	Headers             map[string]string
+ 
+ 	// EnableDiagnostics enables the diagnostics mode
+ 	// which writes diagnostic information to a directory
+@@ -74,8 +76,8 @@ type Options struct {
+ 	CaptchaHandler  *captcha.Handler
+ 	UserArguments   map[string]string
+ 
+-	AuthUsername   string
+-	AuthPassword   string
++	AuthUsername  string
++	AuthPassword  string
+ 	DitClassifier *dit.Classifier
+ }
+ 
+@@ -119,6 +121,7 @@ func New(opts Options) (*Crawler, error) {
+ 		ChromeWSUrl:         opts.ChromeWSUrl,
+ 		DOMWaitTime:         opts.DOMWaitTime,
+ 		UserDataDir:         opts.UserDataDir,
++		Headers:             opts.Headers,
+ 		Proxy:               opts.Proxy,
+ 		UserArguments:       opts.UserArguments,
+ 	})
+@@ -227,7 +230,7 @@ func (c *Crawler) Crawl(URL string) error {
+ 		select {
+ 		case <-crawlTimeout:
+ 			c.logger.Debug("Max crawl duration reached, stopping crawl")
+-			return nil
++			return engine.ErrCrawlTimeout
+ 		default:
+ 			// Check for too many failures
+ 			if c.options.MaxFailureCount > 0 && consecutiveFailures >= c.options.MaxFailureCount {
+@@ -236,7 +239,7 @@ func (c *Crawler) Crawl(URL string) error {
+ 					slog.Int("max_allowed", c.options.MaxFailureCount),
+ 					slog.Int("remaining_actions", c.crawlQueue.Size()),
+ 				)
+-				return nil
++				return engine.ErrMaxFailures
+ 			}
+ 
+ 			action, err := crawlQueue.Get()
+diff --git a/pkg/engine/headless/headless.go b/pkg/engine/headless/headless.go
+index 3ec4967..0d85efe 100644
+--- a/pkg/engine/headless/headless.go
++++ b/pkg/engine/headless/headless.go
+@@ -121,6 +121,7 @@ func (h *Headless) Crawl(URL string) error {
+ 		AutomaticFormFill: h.options.Options.AutomaticFormFill,
+ 		PageLoadStrategy:  h.options.Options.PageLoadStrategy,
+ 		ChromeWSUrl:       h.options.Options.ChromeWSUrl,
++		Headers:           h.options.Options.ParseCustomHeaders(),
+ 		DOMWaitTime:       h.options.Options.DOMWaitTime,
+ 		RequestCallback: func(rr *output.Result) {
+ 			if rr == nil || rr.Request == nil {
+@@ -179,7 +180,7 @@ func (h *Headless) Crawl(URL string) error {
+ 		Trace:               h.options.Options.EnableDiagnostics,
+ 		CookieConsentBypass: true,
+ 		UserArguments:       h.options.Options.ParseHeadlessOptionalArguments(),
+-		DitClassifier:      h.options.DitClassifier,
++		DitClassifier:       h.options.DitClassifier,
+ 	}
+ 
+ 	if creds := h.options.Options.AuthCredentials; creds != "" {
+diff --git a/pkg/types/options.go b/pkg/types/options.go
+index f3babc3..45ed56d 100644
+--- a/pkg/types/options.go
++++ b/pkg/types/options.go
+@@ -82,6 +82,8 @@ type Options struct {
+ 	FieldScope string
+ 	// OutputFile is the file to write output to
+ 	OutputFile string
++	// TerminalSummaryFile receives machine-readable per-input completion reasons.
++	TerminalSummaryFile string
+ 	// KnownFiles enables crawling of knows files like robots.txt, sitemap.xml, etc
+ 	KnownFiles string
+ 	// Fields is the fields to format in output
+@@ -197,7 +199,7 @@ type Options struct {
+ 	// MaxOnclickLinks is the maximum number of onclick links to process per page (default: 10)
+ 	MaxOnclickLinks int
+ 	// PageLoadStrategy specifies how to wait for pages to load (heuristic, load, domcontentloaded, networkidle, none)
+-	PageLoadStrategy      string
++	PageLoadStrategy string
+ 	// DOMWaitTime is the time in seconds to wait after domcontentloaded strategy (default: 5)
+ 	DOMWaitTime           int
+ 	CaptchaSolverProvider string
+diff --git a/pkg/engine/parser/parser_generic.go b/pkg/engine/parser/parser_generic.go
+index 832b03a..f70163c 100644
+--- a/pkg/engine/parser/parser_generic.go
++++ b/pkg/engine/parser/parser_generic.go
+@@ -55,10 +55,11 @@ func scriptContentJsluiceParser(resp *navigation.Response) (navigationRequests [
+ 
+ // scriptJSFileJsluiceParser parses endpoints using jsluice from js file pages
+ func scriptJSFileJsluiceParser(resp *navigation.Response) (navigationRequests []*navigation.Request) {
+-	// Only process javascript file based on path or content type
+-	// CSS, JS are supported for relative endpoint extraction.
++	// JSLuice builds a JavaScript syntax tree and can consume unbounded memory
++	// when fed large CSS bundles. CSS relative endpoints remain covered by the
++	// regex parser enabled by -jc.
+ 	contentType := resp.Resp.Header.Get("Content-Type")
+-	if !stringsutil.HasSuffixAny(resp.Resp.Request.URL.Path, ".js", ".css") && !strings.Contains(contentType, "/javascript") {
++	if !isJsluiceJavaScriptResponse(resp.Resp.Request.URL.Path, contentType) {
+ 		return
+ 	}
+ 	// Skip common js libraries
+@@ -72,3 +73,8 @@ func scriptJSFileJsluiceParser(resp *navigation.Response) (navigationRequests []
+ 	}
+ 	return
+ }
++
++func isJsluiceJavaScriptResponse(path, contentType string) bool {
++	return stringsutil.HasSuffixAny(strings.ToLower(path), ".js") ||
++		strings.Contains(strings.ToLower(contentType), "/javascript")
++}
+diff --git a/pkg/engine/parser/parser_generic_test.go b/pkg/engine/parser/parser_generic_test.go
+new file mode 100644
+index 0000000..f51a4ae
+--- /dev/null
++++ b/pkg/engine/parser/parser_generic_test.go
+@@ -0,0 +1,31 @@
++//go:build !(386 || windows)
++
++package parser
++
++import "testing"
++
++func TestIsJsluiceJavaScriptResponse(t *testing.T) {
++	t.Parallel()
++
++	tests := []struct {
++		name        string
++		path        string
++		contentType string
++		want        bool
++	}{
++		{name: "javascript extension", path: "/assets/app.js", contentType: "text/plain", want: true},
++		{name: "javascript content type", path: "/assets/bundle", contentType: "application/javascript; charset=utf-8", want: true},
++		{name: "case insensitive", path: "/assets/APP.JS", contentType: "TEXT/PLAIN", want: true},
++		{name: "stylesheet", path: "/assets/styles.css", contentType: "text/css", want: false},
++		{name: "misnamed javascript", path: "/assets/styles.css", contentType: "application/javascript", want: true},
++	}
++
++	for _, test := range tests {
++		t.Run(test.name, func(t *testing.T) {
++			t.Parallel()
++			if got := isJsluiceJavaScriptResponse(test.path, test.contentType); got != test.want {
++				t.Fatalf("isJsluiceJavaScriptResponse(%q, %q) = %t, want %t", test.path, test.contentType, got, test.want)
++			}
++		})
++	}
++}

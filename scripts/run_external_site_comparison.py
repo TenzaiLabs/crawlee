@@ -49,7 +49,6 @@ class ExternalResult:
     generated_exclusions: dict[str, Any] | None = None
     job_id: str | None = None
     error: str | None = None
-    log_path: str | None = None
     katana_log_path: str | None = None
     stderr_log_path: str | None = None
 
@@ -205,14 +204,12 @@ def _prepare_artifact_dir(args: argparse.Namespace) -> Path:
 def _job_log_paths(log_dir: Path, job_id: str | None) -> dict[str, str | None]:
     if not job_id:
         return {
-            "log_path": None,
             "katana_log_path": None,
             "stderr_log_path": None,
         }
     log_path = log_dir / f"{job_id}.jsonl"
     return {
-        "log_path": str(log_path),
-        "katana_log_path": str(log_path) + ".katana",
+        "katana_log_path": str(log_path),
         "stderr_log_path": str(log_path) + ".stderr",
     }
 
@@ -329,10 +326,6 @@ async def run_cases(cases: list[ExternalCase], args: argparse.Namespace) -> list
     _configure_runtime_environment(args, artifact_dir)
     main = _import_main_app()
     scope_config = _build_scope_config(args)
-    if args.cdp_url:
-        scope_config["cdp_url"] = args.cdp_url
-    if args.no_incognito:
-        scope_config["no_incognito"] = True
     results: list[ExternalResult] = []
     transport = httpx.ASGITransport(app=main.app)
     async with main.lifespan(main.app):
@@ -403,7 +396,6 @@ def write_json(path: Path, results: list[ExternalResult], args: argparse.Namespa
         "config": {
             "crawl_duration": args.crawl_duration,
             "max_depth": args.max_depth,
-            "max_pages": args.max_pages,
             "headless": args.headless,
             "include_cmt": args.include_cmt,
             "artifact_dir": getattr(args, "artifact_dir", None),
@@ -442,7 +434,7 @@ def write_report(path: Path, results: list[ExternalResult], args: argparse.Names
         "## Run Configuration",
         "",
         f"- Crawl duration: `{args.crawl_duration}`.",
-        f"- Max depth/pages: `{args.max_depth}` / `{args.max_pages}`.",
+        f"- Max depth: `{args.max_depth}`.",
         f"- Headless Katana hybrid mode: `{args.headless}`.",
         f"- Artifact directory: `{getattr(args, 'artifact_dir', None)}`.",
         f"- Job DB: `{getattr(args, 'db_path', None)}`.",
@@ -489,8 +481,6 @@ def write_report(path: Path, results: list[ExternalResult], args: argparse.Names
             lines.append(f"- url count: `{result.entry_count}`")
             if result.error:
                 lines.append(f"- error: `{result.error}`")
-            if result.log_path:
-                lines.append(f"- proxify log: `{result.log_path}`")
             if result.katana_log_path:
                 lines.append(f"- katana log: `{result.katana_log_path}`")
             if result.stderr_log_path:
@@ -570,7 +560,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report", default=str(REPORT_PATH))
     parser.add_argument("--json-output", default=str(JSON_PATH))
     parser.add_argument("--max-depth", type=int, default=2)
-    parser.add_argument("--max-pages", type=int, default=25)
     parser.add_argument("--rate-limit", type=int, default=5)
     parser.add_argument("--concurrency", type=int, default=5)
     parser.add_argument("--parallelism", type=int, default=5)

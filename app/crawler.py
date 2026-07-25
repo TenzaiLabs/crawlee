@@ -4,39 +4,68 @@ import asyncio
 import ipaddress
 import json
 import logging
+import os
 import re
-from collections import deque
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from pathlib import Path
+from typing import Any, Literal
+from urllib.parse import urlparse
 
-from .common import coerce_int, is_host_in_scope, open_text_writer
+from .common import coerce_int, open_text_reader, open_text_writer
 from .log_records import sanitize_record
-from .process import run_safe_subprocess
-from .scope_config import _coerce_bool, validate_scope_config
-from .settings import CRAWLER_SUBPROCESS_TIMEOUT_SECONDS
+from .process import ProcessMemoryBudget, run_safe_subprocess
+from .scope_config import validate_scope_config
+from .settings import (
+    CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS,
+    CRAWLER_SUBPROCESS_TIMEOUT_SECONDS,
+)
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EXCLUSION_PATTERNS = [
-    "logout",
-    "signout",
-    "log-out",
-    "sign-out",
-    "delete",
-    "remove",
-    "unsubscribe",
-    "deactivate",
-]
-DEFAULT_CRAWL_DURATION = "5m"
+DEFAULT_CRAWL_DURATION = "10m"
+KATANA_MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+KATANA_SIMILARITY_THRESHOLD = 10
+PURE_HEADLESS_PAGE_LOAD_STRATEGY = "domcontentloaded"
+PURE_HEADLESS_DOM_WAIT_SECONDS = 2
+
+KatanaLane = Literal["standard", "pure-headless"]
+KatanaCompletion = Literal["complete", "partial"]
+_COMPLETED_TERMINAL_REASONS = {"queue_exhausted", "crawl_timeout", "input_failure"}
 
 
-@dataclass
+class KatanaRunError(RuntimeError):
+    pass
+
+
+class KatanaProcessDeadlineExceeded(KatanaRunError):
+    pass
+
+
+class KatanaTerminalSummaryError(KatanaRunError):
+    pass
+
+
+@dataclass(frozen=True)
 class CrawlConfig:
     target_url: str
-    scope_config: dict | None = None
+    scope_config: dict[str, Any] | None = None
     headers: list[str] | None = None
     extra_seed_urls: list[str] | None = None
-    dynamic_exclude_patterns: list[str] | None = None
+    cdp_url: str | None = None
+
+
+@dataclass(frozen=True)
+class KatanaRunResult:
+    lane: KatanaLane
+    terminal_summary: dict[str, Any]
+    outcome: KatanaCompletion = "complete"
+
+    def evidence(self) -> dict[str, Any]:
+        return {
+            "lane": self.lane,
+            "outcome": self.outcome,
+            "terminal_summary": self.terminal_summary,
+        }
 
 
 def _unique_patterns(patterns: list[str]) -> list[str]:
@@ -49,234 +78,278 @@ def _unique_patterns(patterns: list[str]) -> list[str]:
     return ordered
 
 
-def blocked_urls_to_exclude_patterns(
-    blocked_urls: list[str] | None,
-    *,
-    target_url: str,
-    base_url: str | None = None,
-) -> list[str]:
-    """Convert URL hints into safe Katana out-of-scope regex snippets."""
-    if not blocked_urls:
-        return []
-
-    patterns: list[str] = []
-    base = base_url or target_url
-    for blocked_url in blocked_urls:
-        url_text = str(blocked_url).strip()
-        if not url_text or len(url_text) > 2048:
-            continue
-
-        parsed = urlparse(urljoin(base, url_text))
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-            continue
-        if not is_host_in_scope(parsed.hostname, target_url):
-            continue
-
-        path = parsed.path.rstrip("/")
-        if not path:
-            continue
-
-        patterns.append(f"{re.escape(path)}(?:$|[/?#])")
-
-    return _unique_patterns(patterns)
-
-
 def build_exclusion_patterns(config: CrawlConfig) -> list[str]:
+    """Return only caller-supplied Katana filters.
+
+    The server does not infer destructive routes or convert authentication-agent
+    observations into crawl policy.
+    """
+
     scope_config = config.scope_config or {}
+    filters: list[str] = []
     extra_filters = scope_config.get("exclude_filters")
-    filters: list[str] = DEFAULT_EXCLUSION_PATTERNS.copy()
     if isinstance(extra_filters, list):
         filters.extend(str(item) for item in extra_filters if item)
-
     exclude_regex = scope_config.get("exclude_regex")
     if exclude_regex:
         filters.append(str(exclude_regex))
-
-    if config.dynamic_exclude_patterns:
-        filters.extend(str(pattern) for pattern in config.dynamic_exclude_patterns if pattern)
-
     return _unique_patterns(filters)
 
 
-def build_katana_command(
+def crawl_inputs(config: CrawlConfig) -> list[str]:
+    return [config.target_url, *(config.extra_seed_urls or [])]
+
+
+def _crawl_scope(config: CrawlConfig) -> str | None:
+    scope_config = config.scope_config or {}
+    configured = scope_config.get("crawl_scope")
+    if configured:
+        return str(configured)
+    host = urlparse(config.target_url).hostname or ""
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return None
+    return re.escape(host)
+
+
+def _base_katana_command(
     config: CrawlConfig,
-    proxy_url: str = "http://127.0.0.1:8888",
+    *,
+    terminal_summary_path: str,
 ) -> list[str]:
     scope_config = config.scope_config or {}
     validate_scope_config(scope_config)
-
     depth = coerce_int(scope_config.get("max_depth"), 5)
-    rate_limit = coerce_int(scope_config.get("rate_limit"), 10)
     field_scope = scope_config.get("field_scope", "rdn")
     if not isinstance(field_scope, str) or not field_scope:
         field_scope = "rdn"
 
-    command = [
-        "katana",
-        "-u",
-        config.target_url,
-        "-proxy",
-        proxy_url,
-        "-silent",
-        "-jsonl",
-        "-known-files",
-        "all",
-        "-jc",
-        "-jsl",
-        "-no-color",
-        "-verbose",
-        "-fs",
-        field_scope,
-        "-d",
-        str(depth),
-        "-rl",
-        str(rate_limit),
-    ]
-
-    for seed_url in config.extra_seed_urls or []:
+    command = ["katana"]
+    for seed_url in crawl_inputs(config):
         command.extend(["-u", seed_url])
+    command.extend(
+        [
+            "-silent",
+            "-jsonl",
+            "-no-color",
+            "-duc",
+            "-fs",
+            field_scope,
+            "-d",
+            str(depth),
+            "-ct",
+            str(scope_config.get("crawl_duration", DEFAULT_CRAWL_DURATION)),
+            "-terminal-summary",
+            terminal_summary_path,
+        ]
+    )
 
-    crawl_scope = scope_config.get("crawl_scope")
-    if not crawl_scope:
-        # For IP-based targets, rdn/dn field-scope doesn't constrain crawling
-        # properly — katana follows every external link it discovers.
-        # Auto-add a -cs regex so only URLs matching the target IP are crawled.
-        parsed = urlparse(config.target_url)
-        host = parsed.hostname or ""
-        try:
-            ipaddress.ip_address(host)
-            crawl_scope = re.escape(host)
-        except ValueError:
-            pass
+    crawl_scope = _crawl_scope(config)
     if crawl_scope:
-        command.extend(["-cs", str(crawl_scope)])
-
-    filters = build_exclusion_patterns(config)
-    if filters:
-        command.extend(["-crawl-out-scope", "|".join(filters)])
-
-    concurrency = scope_config.get("concurrency")
-    if concurrency is not None:
-        command.extend(["-c", str(coerce_int(concurrency, 10))])
-
-    parallelism = scope_config.get("parallelism")
-    if parallelism is not None:
-        command.extend(["-p", str(coerce_int(parallelism, 10))])
-
-    crawl_duration = scope_config.get("crawl_duration", DEFAULT_CRAWL_DURATION)
-    command.extend(["-ct", str(crawl_duration)])
-
-    headless = _coerce_bool(scope_config.get("headless", True))
-    cdp_url = scope_config.get("cdp_url") or scope_config.get("chrome_ws_url")
-    if isinstance(cdp_url, str) and cdp_url:
-        # Reuse an existing Chrome instance instead of starting a new one.
-        # Katana flag name: -cwu, -chrome-ws-url.
-        command.extend(["-cwu", cdp_url])
-
-    if headless:
-        command.append("-hybrid")
-        if _coerce_bool(scope_config.get("no_incognito")):
-            command.append("-no-incognito")
-        command.extend(
-            [
-                "-headless-options",
-                f"proxy-server={proxy_url},proxy-bypass-list=<-loopback>",
-            ]
-        )
-
-    if _coerce_bool(scope_config.get("system_chrome")):
-        command.append("-system-chrome")
-
-    system_chrome_path = scope_config.get("system_chrome_path")
-    if isinstance(system_chrome_path, str) and system_chrome_path:
-        command.extend(["-system-chrome-path", system_chrome_path])
-
+        command.extend(["-cs", crawl_scope])
+    exclusions = build_exclusion_patterns(config)
+    if exclusions:
+        command.extend(["-crawl-out-scope", "|".join(exclusions)])
     request_timeout = scope_config.get("timeout")
     if request_timeout is not None:
         command.extend(["-timeout", str(coerce_int(request_timeout, 10))])
-
     for header in config.headers or []:
         command.extend(["-H", header])
-
-    logger.debug("Built katana command for target_url=%s", config.target_url)
     return command
+
+
+def build_standard_katana_command(
+    config: CrawlConfig,
+    *,
+    terminal_summary_path: str,
+) -> list[str]:
+    command = _base_katana_command(config, terminal_summary_path=terminal_summary_path)
+    command.extend(
+        [
+            "-jc",
+            "-jsl",
+            "-fx",
+            "-kb",
+            "-td",
+            "-fsu",
+            "-fst",
+            str(KATANA_SIMILARITY_THRESHOLD),
+            "-mrs",
+            str(KATANA_MAX_RESPONSE_BYTES),
+        ]
+    )
+    scope_config = config.scope_config or {}
+    command.extend(["-rl", str(coerce_int(scope_config.get("rate_limit"), 10))])
+    concurrency = scope_config.get("concurrency")
+    if concurrency is not None:
+        command.extend(["-c", str(coerce_int(concurrency, 10))])
+    parallelism = scope_config.get("parallelism")
+    if parallelism is not None:
+        command.extend(["-p", str(coerce_int(parallelism, 10))])
+    return command
+
+
+def build_pure_headless_katana_command(
+    config: CrawlConfig,
+    *,
+    terminal_summary_path: str,
+) -> list[str]:
+    if not config.cdp_url:
+        raise ValueError("pure-headless Katana requires the server-owned CDP endpoint")
+    command = _base_katana_command(config, terminal_summary_path=terminal_summary_path)
+    command.extend(
+        [
+            "-cwu",
+            config.cdp_url,
+            "-p",
+            "1",
+            "-xhr",
+            "-kb",
+            "-fsu",
+            "-fst",
+            str(KATANA_SIMILARITY_THRESHOLD),
+            "-mfc",
+            "0",
+            "-pls",
+            PURE_HEADLESS_PAGE_LOAD_STRATEGY,
+            "-dwt",
+            str(PURE_HEADLESS_DOM_WAIT_SECONDS),
+        ]
+    )
+    return command
+
+
+def build_katana_command(
+    config: CrawlConfig,
+    *,
+    lane: KatanaLane = "standard",
+    terminal_summary_path: str = "katana-terminal-summary.json",
+) -> list[str]:
+    if lane == "standard":
+        return build_standard_katana_command(
+            config,
+            terminal_summary_path=terminal_summary_path,
+        )
+    return build_pure_headless_katana_command(
+        config,
+        terminal_summary_path=terminal_summary_path,
+    )
+
+
+def _load_terminal_summary(path: str, expected_inputs: list[str]) -> dict[str, Any]:
+    if not os.path.exists(path):
+        raise KatanaTerminalSummaryError("Katana did not write its terminal summary")
+    try:
+        with open_text_reader(path) as handle:
+            summary = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise KatanaTerminalSummaryError("Katana terminal summary is not valid JSON") from exc
+    if not isinstance(summary, dict):
+        raise KatanaTerminalSummaryError("Katana terminal summary must be an object")
+    if summary.get("schema_version") != 1 or summary.get("status") != "completed":
+        raise KatanaTerminalSummaryError("Katana terminal summary is not completed schema v1")
+    inputs = summary.get("inputs")
+    if not isinstance(inputs, list) or not inputs:
+        raise KatanaTerminalSummaryError("Katana terminal summary has no input records")
+    actual_inputs: set[str] = set()
+    for item in inputs:
+        if not isinstance(item, dict) or not isinstance(item.get("input"), str):
+            raise KatanaTerminalSummaryError("Katana terminal summary has an invalid input record")
+        input_url = item["input"]
+        actual_inputs.add(input_url)
+        reason = item.get("reason")
+        if reason not in _COMPLETED_TERMINAL_REASONS:
+            raise KatanaTerminalSummaryError(
+                f"Katana terminal summary has unknown input reason {reason!r}"
+            )
+    expected = set(expected_inputs)
+    if actual_inputs != expected:
+        raise KatanaTerminalSummaryError(
+            "Katana terminal input set differs from the submitted seed batch"
+        )
+    return summary
+
+
+def _terminal_outcome(summary: dict[str, Any]) -> KatanaCompletion:
+    inputs = summary["inputs"]
+    return "complete" if all(item["reason"] == "queue_exhausted" for item in inputs) else "partial"
 
 
 async def run_crawl(
     config: CrawlConfig,
+    *,
+    lane: KatanaLane = "standard",
+    output_path: str,
+    terminal_summary_path: str | None = None,
     cancel_event: asyncio.Event | None = None,
-    log_path: str | None = None,
-) -> None:
-    logger.info("Starting crawl for target_url=%s", config.target_url)
-    scope_config = config.scope_config or {}
-    max_pages = coerce_int(scope_config.get("max_pages"), 0)
-    stop_event = asyncio.Event() if max_pages > 0 else None
-    page_count = 0
-    recent_output: deque[str] = deque(maxlen=20)
-    katana_log = log_path + ".katana" if log_path else None
-    log_file = open_text_writer(katana_log) if katana_log else None
+    memory_budget: ProcessMemoryBudget | None = None,
+) -> KatanaRunResult:
+    logger.info("Starting %s crawl for target_url=%s", lane, config.target_url)
+    terminal_path = terminal_summary_path or f"{output_path}.terminal.json"
+    Path(terminal_path).unlink(missing_ok=True)
+    malformed_json_lines = 0
+    log_file = open_text_writer(output_path)
 
     async def _on_output(line: str) -> None:
-        nonlocal page_count
+        nonlocal malformed_json_lines
         stripped = line.strip()
-        recent_output.append(stripped)
-        if log_file and stripped.startswith("{"):
-            try:
-                record = json.loads(stripped)
-            except json.JSONDecodeError:
-                log_file.write(stripped + "\n")
-            else:
-                if isinstance(record, dict):
-                    stripped = json.dumps(sanitize_record(record))
-                log_file.write(stripped + "\n")
-            log_file.flush()
-        if stop_event is None:
+        if not stripped.startswith("{"):
             return
-        page_count += 1
-        if page_count >= max_pages:
-            stop_event.set()
-            logger.info("Reached max_pages=%d, stopping katana crawl", max_pages)
+        try:
+            record = json.loads(stripped)
+        except json.JSONDecodeError:
+            malformed_json_lines += 1
+            return
+        if not isinstance(record, dict):
+            malformed_json_lines += 1
+            return
+        log_file.write(json.dumps(sanitize_record(record), ensure_ascii=False) + "\n")
+        log_file.flush()
 
-    headless = _coerce_bool(scope_config.get("headless", True))
-    env: dict[str, str] | None = None
-    if headless:
-        env = {
-            "HTTP_PROXY": "http://127.0.0.1:8888",
-            "HTTPS_PROXY": "http://127.0.0.1:8888",
-            "NO_PROXY": "",
-        }
-
-    stderr_log = log_path + ".stderr" if log_path else None
     try:
-        result = await run_safe_subprocess(
-            build_katana_command(config),
-            timeout=CRAWLER_SUBPROCESS_TIMEOUT_SECONDS,
-            on_output=_on_output,
-            cancel_event=cancel_event,
-            stop_event=stop_event,
-            env=env,
-            stderr_path=stderr_log,
-        )
+        try:
+            async with asyncio.timeout(CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS):
+                result = await run_safe_subprocess(
+                    build_katana_command(
+                        config,
+                        lane=lane,
+                        terminal_summary_path=terminal_path,
+                    ),
+                    timeout=CRAWLER_SUBPROCESS_TIMEOUT_SECONDS,
+                    on_output=_on_output,
+                    cancel_event=cancel_event,
+                    memory_budget=memory_budget,
+                    diagnostic_tail_bytes=0,
+                )
+        except TimeoutError as exc:
+            raise KatanaProcessDeadlineExceeded(
+                f"Katana {lane} process exceeded its wall-clock deadline"
+            ) from exc
     finally:
-        if log_file:
-            log_file.close()
+        log_file.close()
 
     if cancel_event is not None and cancel_event.is_set():
-        logger.info("Crawl ended due to cancellation for target_url=%s", config.target_url)
-        return
-    if stop_event is not None and stop_event.is_set():
-        logger.info(
-            "Crawl ended because max_pages limit was hit for target_url=%s",
-            config.target_url,
-        )
-        return
+        raise asyncio.CancelledError
     if result.exit_code != 0:
-        output_tail = "\n".join(recent_output).strip()
-        detail = output_tail if output_tail else result.output.strip()
-        logger.warning(
-            "Katana exited non-zero code=%d target_url=%s",
-            result.exit_code,
-            config.target_url,
+        raise KatanaRunError(f"Katana {lane} exited with code {result.exit_code}")
+    if malformed_json_lines:
+        raise KatanaRunError(
+            f"Katana {lane} emitted {malformed_json_lines} malformed JSON record(s)"
         )
-        raise RuntimeError(f"Katana exited with code {result.exit_code}: {detail}")
-    logger.info("Crawl finished successfully for target_url=%s", config.target_url)
+    try:
+        terminal_summary = _load_terminal_summary(terminal_path, crawl_inputs(config))
+    except KatanaTerminalSummaryError as exc:
+        raise KatanaTerminalSummaryError(f"Katana {lane}: {exc}") from exc
+    outcome = _terminal_outcome(terminal_summary)
+    logger.info(
+        "Crawl finished for target_url=%s lane=%s outcome=%s",
+        config.target_url,
+        lane,
+        outcome,
+    )
+    return KatanaRunResult(
+        lane=lane,
+        terminal_summary=terminal_summary,
+        outcome=outcome,
+    )

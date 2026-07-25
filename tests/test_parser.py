@@ -1,24 +1,15 @@
 from __future__ import annotations
 
-import importlib
 import json
 from pathlib import Path
 
 import pytest
 
+from app import parser
 
-def test_parse_log_dedupes_and_builds_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
 
-    monkeypatch.setenv("CRAWLER_LOG_DIR", str(log_dir))
-
-    from app import db, parser
-
-    importlib.reload(db)
-    importlib.reload(parser)
-
-    log_path = log_dir / "job-1.jsonl"
+def test_parse_katana_log_dedupes_and_builds_tree(tmp_path: Path):
+    log_path = tmp_path / "job-1.jsonl"
     entries = [
         {
             "request": {"method": "GET", "url": "https://example.com/a"},
@@ -41,26 +32,15 @@ def test_parse_log_dedupes_and_builds_tree(tmp_path: Path, monkeypatch: pytest.M
         for entry in entries:
             handle.write(json.dumps(entry) + "\n")
 
-    sitemap = parser.parse_log("job-1")
+    sitemap = parser.parse_katana_log(str(log_path))
     assert len(sitemap["entries"]) == 2
     assert "a" in sitemap["tree"]["children"]
 
 
-def test_parse_log_keeps_response_status_over_request_only_katana_duplicate(
+def test_parse_katana_log_keeps_response_status_over_request_only_duplicate(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ):
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
-
-    monkeypatch.setenv("CRAWLER_LOG_DIR", str(log_dir))
-
-    from app import db, parser
-
-    importlib.reload(db)
-    importlib.reload(parser)
-
-    log_path = log_dir / "job-1.jsonl.katana"
+    log_path = tmp_path / "job-1.jsonl"
     entries = [
         {
             "request": {
@@ -87,7 +67,7 @@ def test_parse_log_keeps_response_status_over_request_only_katana_duplicate(
         for entry in entries:
             handle.write(json.dumps(entry) + "\n")
 
-    sitemap = parser.parse_log("job-1", "https://example.com")
+    sitemap = parser.parse_katana_log(str(log_path), "https://example.com")
 
     assert sitemap["entries"] == [
         {
@@ -100,26 +80,232 @@ def test_parse_log_keeps_response_status_over_request_only_katana_duplicate(
     ]
 
 
-def test_parse_log_strict_mode_rejects_missing_artifacts(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-):
-    from app import parser
+def test_parse_katana_log_does_not_merge_adjacent_legacy_artifacts(tmp_path: Path):
+    log_path = tmp_path / "job-1.jsonl"
+    log_path.write_text(
+        json.dumps(
+            {
+                "request": {
+                    "method": "GET",
+                    "endpoint": "https://example.com/direct-katana",
+                }
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "job-1.jsonl.katana").write_text(
+        json.dumps(
+            {
+                "request": {
+                    "method": "GET",
+                    "endpoint": "https://example.com/legacy-sidecar",
+                }
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
-    monkeypatch.setattr(parser.db, "LOG_DIR", str(tmp_path))
+    sitemap = parser.parse_katana_log(str(log_path), "https://example.com")
 
-    with pytest.raises(parser.CrawlArtifactsMissingError, match="No crawl artifacts"):
-        parser.parse_log("missing-job", "https://example.com", require_artifacts=True)
+    assert [entry["url"] for entry in sitemap["entries"]] == ["https://example.com/direct-katana"]
 
 
-def test_parse_log_strict_mode_rejects_all_corrupt_artifacts(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-):
-    from app import parser
+def test_parse_katana_log_rejects_missing_artifact(tmp_path: Path):
+    with pytest.raises(parser.CrawlArtifactsMissingError, match="artifact not found"):
+        parser.parse_katana_log(
+            str(tmp_path / "missing-job.jsonl"),
+            "https://example.com",
+        )
 
-    monkeypatch.setattr(parser.db, "LOG_DIR", str(tmp_path))
-    (tmp_path / "corrupt-job.jsonl").write_text("not-json\nstill-not-json\n", encoding="utf-8")
+
+def test_parse_katana_log_rejects_corrupt_artifact(tmp_path: Path):
+    log_path = tmp_path / "corrupt-job.jsonl"
+    log_path.write_text("not-json\nstill-not-json\n", encoding="utf-8")
 
     with pytest.raises(parser.CrawlArtifactsCorruptError, match="no valid JSON"):
-        parser.parse_log("corrupt-job", "https://example.com", require_artifacts=True)
+        parser.parse_katana_log(
+            str(log_path),
+            "https://example.com",
+        )
+
+
+def test_parse_katana_evidence_retains_lane_and_candidate_features(tmp_path: Path) -> None:
+    log_path = tmp_path / "standard.jsonl"
+    log_path.write_text(
+        json.dumps(
+            {
+                "request": {
+                    "method": "GET",
+                    "endpoint": "https://example.com/login",
+                    "tag": "js",
+                    "attribute": "regex",
+                    "source": "https://example.com/app.js",
+                },
+                "response": {
+                    "status_code": 200,
+                    "knowledgebase": {"PageType": "login"},
+                    "technologies": ["Example Framework"],
+                    "forms": [{"method": "POST", "action": "/session"}],
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert parser.parse_katana_evidence(
+        str(log_path), lane="standard", target_url="https://example.com"
+    ) == [
+        {
+            "lane": "standard",
+            "method": "GET",
+            "url": "https://example.com/login",
+            "status": 200,
+            "content_type": None,
+            "timestamp": None,
+            "tag": "js",
+            "attribute": "regex",
+            "source": "https://example.com/app.js",
+            "features": {
+                "knowledgebase": {"PageType": "login"},
+                "technologies": ["Example Framework"],
+                "forms": [{"method": "POST", "action": "/session"}],
+            },
+        }
+    ]
+
+
+def test_merge_baseline_uses_exact_method_url_and_join_safe_cdp_responses() -> None:
+    standard = parser.build_sitemap(
+        [
+            {
+                "method": "GET",
+                "url": "https://example.com/shared",
+                "status": None,
+                "content_type": None,
+                "timestamp": "standard-time",
+            },
+            {
+                "method": "POST",
+                "url": "https://example.com/shared",
+                "status": 202,
+                "content_type": "application/json",
+                "timestamp": None,
+            },
+        ]
+    )
+    pure = parser.build_sitemap(
+        [
+            {
+                "method": "GET",
+                "url": "https://example.com/shared",
+                "status": 200,
+                "content_type": "text/html",
+                "timestamp": "pure-time",
+            }
+        ]
+    )
+    browser = {
+        "requests": [
+            {
+                "method": "GET",
+                "url": "https://example.com/runtime-a",
+                "session_id": "session-a",
+                "request_id": "1",
+                "observed_at": "request-a",
+            },
+            {
+                "method": "GET",
+                "url": "https://example.com/runtime-b",
+                "session_id": "session-b",
+                "request_id": "1",
+                "observed_at": "request-b",
+            },
+            {
+                "method": "GET",
+                "url": "data:text/plain,ignored",
+                "session_id": "session-a",
+                "request_id": "2",
+                "observed_at": "ignored",
+            },
+        ],
+        "responses": [
+            {
+                "url": "https://example.com/runtime-a",
+                "session_id": "session-a",
+                "request_id": "1",
+                "status": 201,
+                "mime_type": "application/json",
+            },
+            {
+                "url": "https://example.com/runtime-b",
+                "session_id": "session-b",
+                "request_id": "1",
+                "status": 204,
+                "mime_type": "text/plain",
+            },
+        ],
+    }
+    known_files = {
+        "documents": [
+            {
+                "url": "https://example.com/sitemap.xml",
+                "status": 200,
+                "content_type": "application/xml",
+                "observed_at": "known-time",
+            },
+            {
+                "url": "https://evil.test/sitemap.xml",
+                "status": 200,
+                "content_type": "application/xml",
+                "observed_at": "ignored",
+            },
+        ]
+    }
+
+    sitemap = parser.merge_baseline_sitemap(
+        target_url="https://example.com",
+        katana_sitemaps=[standard, pure],
+        browser_evidence=browser,
+        known_file_evidence=known_files,
+    )
+
+    assert sitemap["entries"] == [
+        {
+            "method": "GET",
+            "url": "https://example.com/shared",
+            "status": 200,
+            "content_type": "text/html",
+            "timestamp": "standard-time",
+        },
+        {
+            "method": "POST",
+            "url": "https://example.com/shared",
+            "status": 202,
+            "content_type": "application/json",
+            "timestamp": None,
+        },
+        {
+            "method": "GET",
+            "url": "https://example.com/sitemap.xml",
+            "status": 200,
+            "content_type": "application/xml",
+            "timestamp": "known-time",
+        },
+        {
+            "method": "GET",
+            "url": "https://example.com/runtime-a",
+            "status": 201,
+            "content_type": "application/json",
+            "timestamp": "request-a",
+        },
+        {
+            "method": "GET",
+            "url": "https://example.com/runtime-b",
+            "status": 204,
+            "content_type": "text/plain",
+            "timestamp": "request-b",
+        },
+    ]

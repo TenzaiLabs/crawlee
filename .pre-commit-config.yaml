@@ -11,7 +11,10 @@ repos:
       - id: check-yaml
       - id: detect-private-key
       - id: end-of-file-fixer
+      # Unified diffs must preserve whitespace from the upstream source so the
+      # vendored Katana patch remains byte-for-byte applicable.
       - id: trailing-whitespace
+        exclude: ^third_party/katana/.*\.patch$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.20

@@ -27,9 +27,11 @@ load_dotenv()
 from . import db, orchestrator, parser  # noqa: E402
 from .auth_config import AuthConfigValidationError, validate_auth_config  # noqa: E402
 from .common import sanitize_log_value  # noqa: E402
-from .job_status import INTERRUPTED_JOB_STATUSES, TERMINAL_JOB_STATUSES  # noqa: E402
+from .job_status import TERMINAL_JOB_STATUSES  # noqa: E402
 from .models import (  # noqa: E402
     CancellationStatus,
+    DiscoveryConfig,
+    DiscoveryResult,
     JobCancelResponse,
     JobCreateRequest,
     JobCreateResponse,
@@ -38,6 +40,7 @@ from .models import (  # noqa: E402
     JobResultMetadata,
     JobStatus,
     JobSummary,
+    ResultCompleteness,
 )
 from .scope_config import ScopeConfigValidationError, validate_scope_config  # noqa: E402
 
@@ -60,7 +63,22 @@ def _result_metadata(row: Any) -> JobResultMetadata | None:
     size_bytes = row["result_size_bytes"]
     if entry_count is None or size_bytes is None:
         return None
-    return JobResultMetadata(entry_count=entry_count, size_bytes=size_bytes)
+    completeness = ResultCompleteness.complete
+    warnings: list[str] = []
+    if "crawl_evidence" in row.keys() and row["crawl_evidence"] is not None:
+        evidence = db.loads_json(row["crawl_evidence"])
+        if isinstance(evidence, dict):
+            with contextlib.suppress(ValueError):
+                completeness = ResultCompleteness(str(evidence.get("completeness", "complete")))
+            raw_warnings = evidence.get("warnings")
+            if isinstance(raw_warnings, list):
+                warnings = [str(item) for item in raw_warnings]
+    return JobResultMetadata(
+        entry_count=entry_count,
+        size_bytes=size_bytes,
+        completeness=completeness,
+        warnings=warnings,
+    )
 
 
 def _duration_seconds(created_at: str, finished_at: str | None) -> float | None:
@@ -98,7 +116,7 @@ def _decode_persisted_sitemap(job_id: str, serialized: str) -> dict[str, Any]:
         logger.error("Persisted sitemap is corrupt for job_id=%s", sanitize_log_value(job_id))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Completed job result is corrupt",
+            detail="Persisted job result is corrupt",
         ) from exc
     try:
         return parser.validate_sitemap(sitemap)
@@ -109,11 +127,11 @@ def _decode_persisted_sitemap(job_id: str, serialized: str) -> dict[str, Any]:
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Completed job result is corrupt",
+            detail="Persisted job result is corrupt",
         ) from exc
 
 
-async def _read_completed_sitemap(row: Any) -> tuple[dict[str, Any], JobResultMetadata]:
+async def _read_persisted_sitemap(row: Any) -> tuple[dict[str, Any], JobResultMetadata]:
     job_id = row["job_id"]
     serialized = row["sitemap"]
     if serialized is not None:
@@ -124,48 +142,10 @@ async def _read_completed_sitemap(row: Any) -> tuple[dict[str, Any], JobResultMe
             metadata = JobResultMetadata(entry_count=entry_count, size_bytes=size_bytes)
         return sitemap, metadata
 
-    try:
-        sitemap = await asyncio.to_thread(
-            parser.parse_log,
-            job_id,
-            row["target_url"],
-            require_artifacts=True,
-        )
-    except (parser.CrawlArtifactsMissingError, parser.CrawlArtifactsCorruptError) as exc:
-        logger.error("Completed legacy job has unavailable result artifacts job_id=%s", job_id)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                "Completed job result is unavailable"
-                if isinstance(exc, parser.CrawlArtifactsMissingError)
-                else "Completed job result is corrupt"
-            ),
-        ) from exc
-
-    serialized, entry_count, size_bytes = orchestrator.serialize_sitemap(sitemap)
-    await db.execute_rowcount(
-        """
-        UPDATE jobs
-        SET sitemap = ?, result_entry_count = ?, result_size_bytes = ?
-        WHERE job_id = ? AND status = ? AND sitemap IS NULL
-        """,
-        (serialized, entry_count, size_bytes, job_id, JobStatus.completed.value),
-    )
-    persisted = await db.fetch_one(
-        "SELECT sitemap, result_entry_count, result_size_bytes FROM jobs WHERE job_id = ?",
-        (job_id,),
-    )
-    if persisted is None or persisted["sitemap"] is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Completed job result could not be persisted",
-        )
-    return (
-        _decode_persisted_sitemap(job_id, persisted["sitemap"]),
-        JobResultMetadata(
-            entry_count=persisted["result_entry_count"],
-            size_bytes=persisted["result_size_bytes"],
-        ),
+    logger.error("Terminal job has no persisted sitemap job_id=%s", job_id)
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Terminal job result is unavailable",
     )
 
 
@@ -180,11 +160,9 @@ async def lifespan(_: FastAPI):
             faulthandler.register(signal.SIGUSR2, all_threads=True)
         logger.debug("Faulthandler enabled with SIGUSR2 stack dump support")
 
-    missing = [binary for binary in ("katana", "proxify") if shutil.which(binary) is None]
-    if missing:
-        missing_list = ", ".join(missing)
-        logger.warning("Missing required binaries in PATH: %s", missing_list)
-        raise RuntimeError(f"Missing required binaries in PATH: {missing_list}")
+    if shutil.which("katana") is None:
+        logger.warning("Missing required binary in PATH: katana")
+        raise RuntimeError("Missing required binary in PATH: katana")
 
     # Ensure the asyncio child watcher is attached to the *running* loop.
     #
@@ -203,15 +181,7 @@ async def lifespan(_: FastAPI):
     await db.init_db()
     logger.info("Database initialized")
 
-    interrupted = "', '".join(INTERRUPTED_JOB_STATUSES)
-    await db.execute(
-        f"""
-        UPDATE jobs
-        SET status = '{JobStatus.failed_interrupted.value}'
-        WHERE status IN ('{interrupted}')
-        """
-    )
-    logger.info("Marked interrupted in-flight jobs as failed_interrupted")
+    await orchestrator.recover_interrupted_jobs()
     orchestrator.start_drainer()
     yield
     logger.info("Shutting down crawler service lifespan")
@@ -389,6 +359,7 @@ async def create_job(payload: JobCreateRequest) -> JobCreateResponse:
         ) from exc
 
     job_id = str(uuid.uuid4())
+    discovery = payload.discovery or DiscoveryConfig()
     await db.execute(
         """
         INSERT INTO jobs (
@@ -397,17 +368,19 @@ async def create_job(payload: JobCreateRequest) -> JobCreateResponse:
             target_url,
             scope_config,
             auth_config,
+            discovery_config,
             error,
             created_at,
             finished_at
         )
-        VALUES (?, 'queued', ?, ?, ?, NULL, datetime('now'), NULL)
+        VALUES (?, 'queued', ?, ?, ?, ?, NULL, datetime('now'), NULL)
         """,
         (
             job_id,
             str(payload.target_url),
             db.dumps_json(payload.scope_config),
             db.dumps_json(payload.auth_config),
+            discovery.model_dump_json(),
         ),
     )
     orchestrator.enqueue_job(job_id)
@@ -432,7 +405,7 @@ async def list_jobs(
         rows_cursor = await conn.execute(
             f"""
             SELECT j.job_id, j.status, j.target_url, j.error, j.created_at, j.finished_at,
-                   j.result_entry_count, j.result_size_bytes,
+                   j.result_entry_count, j.result_size_bytes, j.crawl_evidence,
                    CASE WHEN j.status = 'queued' THEN (
                        SELECT COUNT(1)
                        FROM jobs q
@@ -479,9 +452,11 @@ async def get_job(job_id: str) -> JobResponse:
 
     sitemap = None
     result_metadata = _result_metadata(row)
-    if row["status"] == JobStatus.completed.value:
-        logger.debug("Job %s is completed, reading persisted sitemap", log_job_id)
-        sitemap, result_metadata = await _read_completed_sitemap(row)
+    if row["status"] == JobStatus.completed.value or (
+        row["status"] == JobStatus.cancelled.value and row["sitemap"] is not None
+    ):
+        logger.debug("Job %s has a persisted terminal sitemap", log_job_id)
+        sitemap, result_metadata = await _read_persisted_sitemap(row)
 
     return JobResponse(
         job_id=row["job_id"],
@@ -489,12 +464,19 @@ async def get_job(job_id: str) -> JobResponse:
         target_url=row["target_url"],
         scope_config=db.loads_json(row["scope_config"]),
         auth_config=db.loads_json(row["auth_config"]),
+        discovery=DiscoveryConfig.model_validate_json(row["discovery_config"]),
         error=row["error"],
         created_at=row["created_at"],
         finished_at=row["finished_at"],
         duration_seconds=_duration_seconds(row["created_at"], row["finished_at"]),
         queue_position=await _queue_position(row),
         generated_exclusions=db.loads_json(row["generated_exclusions"]),
+        discovery_result=(
+            DiscoveryResult.model_validate(db.loads_json(row["discovery_result"]))
+            if row["discovery_result"] is not None
+            else None
+        ),
+        evidence=db.loads_json(row["crawl_evidence"]),
         result_metadata=result_metadata,
         sitemap=sitemap,
     )

@@ -13,6 +13,10 @@ DB_PATH = os.getenv("CRAWLER_DB_PATH", "/data/jobs.db")
 LOG_DIR = os.getenv("CRAWLER_LOG_DIR", "/data/logs")
 logger = logging.getLogger(__name__)
 
+DEFAULT_DISCOVERY_CONFIG_JSON = (
+    '{"enabled":true,"max_rounds":3,"max_actions":100,"max_llm_pages":25}'
+)
+
 
 def ensure_data_dirs() -> None:
     logger.debug("Ensuring data directories exist db_path=%s log_dir=%s", DB_PATH, LOG_DIR)
@@ -44,10 +48,17 @@ async def init_db() -> None:
                 target_url TEXT NOT NULL,
                 scope_config TEXT,
                 auth_config TEXT,
+                discovery_config TEXT NOT NULL DEFAULT
+                    '{"enabled":true,"max_rounds":3,"max_actions":100,"max_llm_pages":25}',
                 error TEXT,
                 created_at TEXT NOT NULL,
                 finished_at TEXT,
                 generated_exclusions TEXT,
+                baseline_sitemap TEXT,
+                discovery_checkpoint_sitemap TEXT,
+                discovery_checkpoint_progress TEXT,
+                crawl_evidence TEXT,
+                discovery_result TEXT,
                 sitemap TEXT,
                 result_entry_count INTEGER,
                 result_size_bytes INTEGER
@@ -57,15 +68,32 @@ async def init_db() -> None:
         cursor = await conn.execute("PRAGMA table_info(jobs)")
         columns = {row[1] for row in await cursor.fetchall()}
         await cursor.close()
-        migrations = {
-            "generated_exclusions": "TEXT",
-            "sitemap": "TEXT",
-            "result_entry_count": "INTEGER",
-            "result_size_bytes": "INTEGER",
+        required_columns = {
+            "job_id",
+            "status",
+            "target_url",
+            "scope_config",
+            "auth_config",
+            "discovery_config",
+            "error",
+            "created_at",
+            "finished_at",
+            "generated_exclusions",
+            "baseline_sitemap",
+            "discovery_checkpoint_sitemap",
+            "discovery_checkpoint_progress",
+            "crawl_evidence",
+            "discovery_result",
+            "sitemap",
+            "result_entry_count",
+            "result_size_bytes",
         }
-        for column, column_type in migrations.items():
-            if column not in columns:
-                await conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {column_type}")
+        missing_columns = sorted(required_columns - columns)
+        if missing_columns:
+            raise RuntimeError(
+                "Incompatible jobs database schema; recreate the database. Missing columns: "
+                + ", ".join(missing_columns)
+            )
         await conn.commit()
     logger.info("Database schema initialization complete")
 

@@ -1,16 +1,12 @@
 """In-browser traffic capture for authentication flows.
 
-Hooks into Playwright page events to capture Authorization headers,
-cookies, and SAML/SSO traffic without depending on the proxy.  Also
-provides a route handler that bypasses the proxy for requests that
-carry a body (POST/PUT/PATCH) to work around the Proxify body-drop bug
-while still routing GETs through the proxy for logging.
+Hooks into Playwright page events to capture auth-relevant headers and
+SAML/SSO traffic directly from the authentication browser.
 """
 
 from __future__ import annotations
 
 import logging
-import time
 from urllib.parse import urlparse
 
 from .common import is_host_in_scope, redact_header_value
@@ -33,126 +29,6 @@ _HEADER_CANONICAL: dict[str, str] = {
 
 # URL path substrings that signal SAML / SSO / OAuth traffic.
 _SSO_URL_MARKERS = ("saml", "sso", "adfs", "oauth", "openid", "auth/realms", "cas/login")
-
-# Methods whose body Proxify corrupts during forwarding.
-_BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-
-
-# ---------------------------------------------------------------------------
-# Set-Cookie parser (minimal, for syncing cookies back into the context)
-# ---------------------------------------------------------------------------
-
-
-def _parse_set_cookie(header_value: str, request_url: str) -> dict | None:
-    """Parse a ``Set-Cookie`` header into a Playwright-compatible cookie dict.
-
-    Returns *None* when the header cannot be meaningfully parsed.
-    """
-    if not header_value:
-        return None
-
-    parts = [p.strip() for p in header_value.split(";")]
-    if not parts:
-        return None
-
-    # First part is name=value.
-    eq_idx = parts[0].find("=")
-    if eq_idx < 1:
-        return None
-
-    name = parts[0][:eq_idx]
-    value = parts[0][eq_idx + 1 :]
-
-    parsed_url = urlparse(request_url)
-    cookie: dict = {
-        "name": name,
-        "value": value,
-        "domain": parsed_url.hostname or "",
-        "path": "/",
-    }
-
-    for part in parts[1:]:
-        if "=" in part:
-            attr_name, _, attr_value = part.partition("=")
-            attr_name = attr_name.strip().lower()
-            attr_value = attr_value.strip()
-            if attr_name == "domain":
-                cookie["domain"] = attr_value.lstrip(".")
-            elif attr_name == "path":
-                cookie["path"] = attr_value
-            elif attr_name == "samesite":
-                canonical = attr_value.capitalize()
-                if canonical in ("Strict", "Lax", "None"):
-                    cookie["sameSite"] = canonical
-            elif attr_name == "max-age":
-                try:
-                    cookie["expires"] = int(time.time()) + int(attr_value)
-                except ValueError:
-                    pass
-        else:
-            lower = part.lower()
-            if lower == "secure":
-                cookie["secure"] = True
-            elif lower == "httponly":
-                cookie["httpOnly"] = True
-
-    return cookie
-
-
-# ---------------------------------------------------------------------------
-# Route handler: bypass proxy for body-carrying requests
-# ---------------------------------------------------------------------------
-
-
-async def proxy_bypass_route_handler(route, context) -> None:  # noqa: ANN001
-    """Playwright route handler that sends POST/PUT/PATCH directly.
-
-    GET/HEAD/OPTIONS requests are forwarded via ``route.continue_()`` so they
-    still flow through the configured proxy (Proxify) for traffic logging.
-
-    For body-carrying methods the request is replayed with ``route.fetch()``
-    (which bypasses the browser proxy) and the response — including any
-    ``Set-Cookie`` headers — is synced back into *context*.
-    """
-    request = route.request
-    if request.method not in _BODY_METHODS:
-        await route.continue_()
-        return
-
-    try:
-        # Replay the request directly (not through the proxy).
-        # all_headers() includes Cookie and other browser-added headers.
-        all_headers = await request.all_headers()
-        response = await route.fetch(
-            headers=all_headers,
-            max_redirects=0,  # let the browser follow redirects normally
-        )
-
-        # Sync Set-Cookie headers from the direct response into the browser
-        # context so subsequent requests carry the new cookies.
-        for header in await response.headers_array():
-            if header["name"].lower() == "set-cookie":
-                cookie = _parse_set_cookie(header["value"], request.url)
-                if cookie:
-                    try:
-                        await context.add_cookies([cookie])
-                    except Exception:
-                        logger.debug(
-                            "Failed to sync Set-Cookie back to context: %s",
-                            header["value"][:80],
-                        )
-
-        await route.fulfill(response=response)
-    except Exception as exc:
-        # Fallback: let it go through the proxy (body may be corrupted but
-        # at least the request isn't lost).
-        logger.debug("POST proxy-bypass failed, falling back to proxy: %s", exc)
-        await route.continue_()
-
-
-# ---------------------------------------------------------------------------
-# In-browser traffic capture
-# ---------------------------------------------------------------------------
 
 
 class AuthTrafficCapture:

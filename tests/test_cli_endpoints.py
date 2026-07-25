@@ -55,6 +55,62 @@ async def test_create_get_cancel_flow(app):
 
 
 @pytest.mark.asyncio
+async def test_cancelled_job_exposes_persisted_checkpoint_sitemap(app):
+    sitemap = {
+        "entries": [{"method": "GET", "url": "https://example.com/revealed"}],
+        "tree": {"children": {}, "pages": []},
+        "discovery": {
+            "outcome": "interrupted",
+            "rounds": 1,
+            "new_entry_count": 1,
+            "state_count": 2,
+            "workflow_count": 1,
+            "stop_reason": "cancelled_after_checkpoint",
+        },
+    }
+    serialized, entry_count, size_bytes = main.orchestrator.serialize_sitemap(sitemap)
+    await main.db.execute(
+        """
+        INSERT INTO jobs (
+            job_id, status, target_url, discovery_config, created_at, finished_at,
+            sitemap, discovery_result, result_entry_count, result_size_bytes, crawl_evidence
+        )
+        VALUES (?, 'cancelled', ?, ?, datetime('now'), datetime('now'), ?, ?, ?, ?, ?)
+        """,
+        (
+            "cancelled-with-checkpoint",
+            "https://example.com",
+            main.DiscoveryConfig().model_dump_json(),
+            serialized,
+            main.db.dumps_json(sitemap["discovery"]),
+            entry_count,
+            size_bytes,
+            main.db.dumps_json(
+                {
+                    "completeness": "partial",
+                    "warnings": ["Katana pure-headless baseline had not completed"],
+                }
+            ),
+        ),
+    )
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/jobs/cancelled-with-checkpoint")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "cancelled"
+    assert payload["sitemap"] == sitemap
+    assert payload["result_metadata"] == {
+        "entry_count": entry_count,
+        "size_bytes": size_bytes,
+        "completeness": "partial",
+        "warnings": ["Katana pure-headless baseline had not completed"],
+    }
+
+
+@pytest.mark.asyncio
 async def test_multiple_jobs_queued(app):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -65,6 +121,66 @@ async def test_multiple_jobs_queued(app):
         assert resp2.status_code == 201
 
         assert resp1.json()["job_id"] != resp2.json()["job_id"]
+
+
+@pytest.mark.asyncio
+async def test_discovery_config_defaults_is_persisted_and_returned(app):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        created = await client.post("/jobs", json={"target_url": "https://example.com"})
+        response = await client.get(f"/jobs/{created.json()['job_id']}")
+
+    assert created.status_code == 201
+    assert response.status_code == 200
+    assert response.json()["discovery"] == {
+        "enabled": True,
+        "max_rounds": 3,
+        "max_actions": 100,
+        "max_llm_pages": 25,
+    }
+
+
+@pytest.mark.asyncio
+async def test_discovery_config_accepts_lower_limits_and_rejects_server_cap_excess(app):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        accepted = await client.post(
+            "/jobs",
+            json={
+                "target_url": "https://example.com",
+                "discovery": {
+                    "enabled": False,
+                    "max_rounds": 1,
+                    "max_actions": 5,
+                    "max_llm_pages": 2,
+                },
+            },
+        )
+        accepted_job = await client.get(f"/jobs/{accepted.json()['job_id']}")
+        too_many_rounds = await client.post(
+            "/jobs",
+            json={
+                "target_url": "https://example.com",
+                "discovery": {"max_rounds": 4},
+            },
+        )
+        unknown_field = await client.post(
+            "/jobs",
+            json={
+                "target_url": "https://example.com",
+                "discovery": {"model": "operator-selected"},
+            },
+        )
+
+    assert accepted.status_code == 201
+    assert accepted_job.json()["discovery"] == {
+        "enabled": False,
+        "max_rounds": 1,
+        "max_actions": 5,
+        "max_llm_pages": 2,
+    }
+    assert too_many_rounds.status_code == 422
+    assert unknown_field.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -107,40 +223,30 @@ async def test_list_jobs_includes_terminal_history(app):
 
 
 @pytest.mark.asyncio
-async def test_scope_config_requires_headless(app):
+@pytest.mark.parametrize(
+    "server_owned_key,value",
+    [
+        ("headless", False),
+        ("cdp_url", "ws://127.0.0.1:9222/devtools/browser/abc"),
+        ("chrome_ws_url", "ws://127.0.0.1:9222/devtools/browser/abc"),
+        ("system_chrome", True),
+        ("system_chrome_path", "/usr/bin/chromium"),
+        ("no_incognito", True),
+        ("max_pages", 500),
+    ],
+)
+async def test_scope_config_rejects_server_owned_browser_options(app, server_owned_key: str, value):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             "/jobs",
             json={
                 "target_url": "https://example.com",
-                "scope_config": {
-                    "headless": False,
-                    "cdp_url": "ws://127.0.0.1:9222/devtools/browser/abc",
-                },
+                "scope_config": {server_owned_key: value},
             },
         )
         assert response.status_code == 422
-        assert "headless" in response.text
-
-
-@pytest.mark.asyncio
-async def test_scope_config_cdp_url_mutually_exclusive(app):
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/jobs",
-            json={
-                "target_url": "https://example.com",
-                "scope_config": {
-                    "headless": True,
-                    "cdp_url": "ws://127.0.0.1:9222/devtools/browser/abc",
-                    "system_chrome": True,
-                },
-            },
-        )
-        assert response.status_code == 422
-        assert "mutually" in response.text
+        assert "Unknown scope_config keys" in response.text
 
 
 @pytest.mark.asyncio
@@ -205,7 +311,7 @@ async def test_get_job_reads_persisted_sitemap_without_reparsing(
 
     monkeypatch.setattr(
         main.parser,
-        "parse_log",
+        "parse_katana_log",
         lambda *args, **kwargs: pytest.fail("persisted results must not be reparsed"),
     )
 
@@ -221,6 +327,8 @@ async def test_get_job_reads_persisted_sitemap_without_reparsing(
     assert first.json()["result_metadata"] == {
         "entry_count": 1,
         "size_bytes": size_bytes,
+        "completeness": "complete",
+        "warnings": [],
     }
 
 
@@ -309,11 +417,16 @@ async def test_list_jobs_filters_and_paginates_history(app):
     assert payload["limit"] == 1
     assert payload["offset"] == 1
     assert [job["job_id"] for job in payload["jobs"]] == ["job-0"]
-    assert payload["jobs"][0]["result_metadata"] == {"entry_count": 0, "size_bytes": 100}
+    assert payload["jobs"][0]["result_metadata"] == {
+        "entry_count": 0,
+        "size_bytes": 100,
+        "completeness": "complete",
+        "warnings": [],
+    }
 
 
 @pytest.mark.asyncio
-async def test_get_legacy_completed_job_backfills_sitemap(app, monkeypatch: pytest.MonkeyPatch):
+async def test_completed_job_does_not_backfill_from_legacy_logs(app) -> None:
     await main.db.execute(
         """
         INSERT INTO jobs (job_id, status, target_url, created_at, finished_at)
@@ -321,25 +434,17 @@ async def test_get_legacy_completed_job_backfills_sitemap(app, monkeypatch: pyte
         """,
         ("legacy-job", "https://example.com"),
     )
-    calls = 0
-    sitemap = {"entries": [], "tree": {"children": {}, "pages": []}}
-
-    def fake_parse(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        assert kwargs["require_artifacts"] is True
-        return sitemap
-
-    monkeypatch.setattr(main.parser, "parse_log", fake_parse)
+    legacy_log = Path(main.db.LOG_DIR) / "legacy-job.jsonl"
+    legacy_log.write_text(
+        '{"request":{"method":"GET","url":"https://example.com/"}}\n',
+        encoding="utf-8",
+    )
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        assert (await client.get("/jobs/legacy-job")).status_code == 200
-        assert (await client.get("/jobs/legacy-job")).status_code == 200
+        response = await client.get("/jobs/legacy-job")
 
-    assert calls == 1
-    row = await main.db.fetch_one("SELECT sitemap FROM jobs WHERE job_id = ?", ("legacy-job",))
-    assert row is not None
-    assert main.db.loads_json(row["sitemap"]) == sitemap
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Terminal job result is unavailable"
 
 
 @pytest.mark.asyncio
@@ -357,7 +462,7 @@ async def test_get_completed_job_without_result_returns_clear_error(app):
         response = await client.get("/jobs/missing-result")
 
     assert response.status_code == 500
-    assert response.json()["detail"] == "Completed job result is unavailable"
+    assert response.json()["detail"] == "Terminal job result is unavailable"
 
 
 @pytest.mark.asyncio
@@ -375,4 +480,4 @@ async def test_get_completed_job_with_invalid_persisted_shape_returns_error(app)
         response = await client.get("/jobs/invalid-result")
 
     assert response.status_code == 500
-    assert response.json()["detail"] == "Completed job result is corrupt"
+    assert response.json()["detail"] == "Persisted job result is corrupt"

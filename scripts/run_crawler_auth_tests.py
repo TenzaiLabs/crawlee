@@ -54,7 +54,6 @@ def _import_main_app() -> Any:
         "app.db",
         "app.parser",
         "app.process",
-        "app.proxy",
         "app.crawler",
         "app.orchestrator",
         "app.main",
@@ -80,13 +79,11 @@ def _select_cases(cases: list[Any], *, names: list[str], modes: list[str]) -> li
 def _build_scope_config(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "max_depth": args.max_depth,
-        "max_pages": args.max_pages,
         "rate_limit": args.rate_limit,
         "concurrency": args.concurrency,
         "parallelism": args.parallelism,
         "crawl_duration": args.crawl_duration,
         "timeout": args.request_timeout,
-        "headless": args.headless,
     }
 
 
@@ -416,7 +413,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--db-path", help="SQLite DB path. Defaults to a temp directory.")
     parser.add_argument("--log-dir", help="Crawler log directory. Defaults to a temp directory.")
     parser.add_argument("--max-depth", type=int, default=3)
-    parser.add_argument("--max-pages", type=int, default=80)
     parser.add_argument("--rate-limit", type=int, default=20)
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--parallelism", type=int, default=10)

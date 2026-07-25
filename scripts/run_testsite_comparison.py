@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
-import importlib
 import json
 import os
 import statistics
@@ -108,22 +107,6 @@ def _configure_runtime_environment(args: argparse.Namespace, temp_dir: Path) -> 
     os.environ["CRAWLER_LOG_DIR"] = str(temp_dir / "logs")
     os.environ["CRAWLER_SUBPROCESS_TIMEOUT"] = str(args.subprocess_timeout)
     os.environ["CRAWLER_AUTH_ATTEMPTS"] = str(args.auth_attempts)
-
-
-def _disable_safety_guards() -> None:
-    crawler = importlib.import_module("app.crawler")
-    crawler.DEFAULT_EXCLUSION_PATTERNS = []
-
-    def blocked_urls_to_exclude_patterns(
-        blocked_urls: list[str] | None,
-        *,
-        target_url: str,
-        base_url: str | None = None,
-    ) -> list[str]:
-        return []
-
-    exclude_converter_name = "blocked_urls_to_exclude_patterns"
-    setattr(crawler, exclude_converter_name, blocked_urls_to_exclude_patterns)
 
 
 def _entry_count(sitemap: dict[str, Any] | None) -> int:
@@ -281,8 +264,6 @@ async def _run_variant(
     try:
         _configure_runtime_environment(args, temp_dir)
         main = _import_main_app()
-        if not variant.safety_guards_enabled:
-            _disable_safety_guards()
         scope_config = _build_scope_config(args)
         results: list[ComparisonResult] = []
         transport = httpx.ASGITransport(app=main.app)
@@ -466,7 +447,6 @@ def _write_json(path: Path, results: list[ComparisonResult], args: argparse.Name
             "gateway": args.gateway,
             "crawl_duration": args.crawl_duration,
             "max_depth": args.max_depth,
-            "max_pages": args.max_pages,
             "headless": args.headless,
             "runs": args.runs,
             "variants": [variant.key for variant in variants],
@@ -511,9 +491,9 @@ def _write_report(
         f"- Sites: `{total_sites}` canonical fixtures from `testsites/`.",
         f"- Runs per selected site/variant: `{args.runs}`.",
         f"- Crawl duration: `{args.crawl_duration}`.",
-        f"- Max depth/pages: `{args.max_depth}` / `{args.max_pages}`.",
+        f"- Max depth: `{args.max_depth}`.",
         f"- Headless Katana hybrid mode: `{args.headless}`.",
-        "- Safety guards: default dangerous-path exclusions plus auth-recorded blocked URLs.",
+        "- The crawler applies no inferred destructive-route exclusions.",
         (
             "- No-auth-agent variant keeps manual `Authorization` headers because header-only "
             "auth does not invoke the AI auth agent."
@@ -656,7 +636,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--json-output", default=str(JSON_PATH))
     parser.add_argument("--runs", type=int, default=1, help="Repeat each selected site/variant.")
     parser.add_argument("--max-depth", type=int, default=3)
-    parser.add_argument("--max-pages", type=int, default=80)
     parser.add_argument("--rate-limit", type=int, default=20)
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--parallelism", type=int, default=10)

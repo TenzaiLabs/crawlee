@@ -1,219 +1,154 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from pathlib import Path
 
 import pytest
 
 from app import crawler
-from app.process import SubprocessResult
+from app.process import ProcessMemoryBudget, SubprocessResult
 
 
-def test_build_katana_command_defaults():
-    config = crawler.CrawlConfig(target_url="https://example.com")
-    command = crawler.build_katana_command(config)
-
-    assert "katana" in command[0]
-    assert "-u" in command
-    assert "https://example.com" in command
-    assert "-proxy" in command
-    assert "http://127.0.0.1:8888" in command
-    assert command[command.index("-known-files") + 1] == "all"
-    assert "-jc" in command
-    assert "-jsl" in command
-    assert "-no-color" in command
-    assert "-verbose" in command
-    assert "-fs" in command
-    assert "rdn" in command
-    assert "-d" in command
-    assert "-rl" in command
-    assert command[command.index("-ct") + 1] == "5m"
-    assert "-crawl-out-scope" in command
-    cos_index = command.index("-crawl-out-scope") + 1
-    assert "logout" in command[cos_index]
+def _flag_value(command: list[str], flag: str) -> str:
+    return command[command.index(flag) + 1]
 
 
-def test_build_katana_command_overrides():
+def test_standard_command_assigns_static_analysis_and_classification_flags() -> None:
+    config = crawler.CrawlConfig(
+        target_url="https://example.com",
+        extra_seed_urls=["https://example.com/seed", "https://example.com/seed"],
+    )
+
+    command = crawler.build_standard_katana_command(
+        config,
+        terminal_summary_path="/tmp/standard-terminal.json",
+    )
+
+    assert command.count("-u") == 3
+    assert all(flag in command for flag in ("-jc", "-jsl", "-fx", "-kb", "-td"))
+    assert all(flag in command for flag in ("-fsu", "-fst", "-mrs", "-duc"))
+    assert _flag_value(command, "-fst") == "10"
+    assert _flag_value(command, "-mrs") == str(5 * 1024 * 1024)
+    assert _flag_value(command, "-ct") == "10m"
+    assert _flag_value(command, "-terminal-summary") == "/tmp/standard-terminal.json"
+    assert all(
+        flag not in command
+        for flag in ("-cwu", "-xhr", "-hybrid", "-known-files", "-kf", "-fpt", "-iqp")
+    )
+    assert "-crawl-out-scope" not in command
+
+
+def test_standard_command_honors_explicit_scope_and_client_limits_only() -> None:
     config = crawler.CrawlConfig(
         target_url="https://example.com",
         scope_config={
             "max_depth": 2,
             "rate_limit": 5,
-            "exclude_filters": ["/admin"],
-            "crawl_scope": "app",
+            "concurrency": 3,
+            "parallelism": 2,
+            "exclude_filters": ["/admin", "/admin"],
+            "exclude_regex": "/danger-zone",
+            "crawl_scope": "example\\.com$",
             "crawl_duration": "90s",
+            "timeout": 20,
         },
         headers=["Cookie: session=abc"],
     )
-    command = crawler.build_katana_command(config)
 
-    assert command[command.index("-d") + 1] == "2"
-    assert command[command.index("-rl") + 1] == "5"
-    assert command[command.index("-cs") + 1] == "app"
-    assert command[command.index("-ct") + 1] == "90s"
-    assert "-H" in command
+    command = crawler.build_katana_command(
+        config,
+        lane="standard",
+        terminal_summary_path="terminal.json",
+    )
+
+    assert _flag_value(command, "-d") == "2"
+    assert _flag_value(command, "-rl") == "5"
+    assert _flag_value(command, "-c") == "3"
+    assert _flag_value(command, "-p") == "2"
+    assert _flag_value(command, "-cs") == r"example\.com$"
+    assert _flag_value(command, "-ct") == "90s"
+    assert _flag_value(command, "-timeout") == "20"
+    assert _flag_value(command, "-crawl-out-scope") == "/admin|/danger-zone"
+    assert _flag_value(command, "-H") == "Cookie: session=abc"
+    assert crawler.build_exclusion_patterns(config) == ["/admin", "/danger-zone"]
 
 
-def test_build_katana_command_js_parsing_is_always_enabled_without_headless():
+def test_pure_headless_command_uses_shared_chrome_and_browser_flags() -> None:
     config = crawler.CrawlConfig(
         target_url="https://example.com",
-        scope_config={"headless": False},
+        cdp_url="ws://127.0.0.1:9222/devtools/browser/abc",
     )
 
-    command = crawler.build_katana_command(config)
-
-    assert "-jc" in command
-    assert "-jsl" in command
-    assert "-hybrid" not in command
-
-
-def test_blocked_urls_to_exclude_patterns_normalizes_safe_same_scope_urls():
-    patterns = crawler.blocked_urls_to_exclude_patterns(
-        [
-            "https://example.com/logout?next=/",
-            "/account/delete/",
-            "/account/delete",
-            "javascript:alert(1)",
-            "mailto:test@example.com",
-            "https://evil.test/logout",
-            "https://example.com/#logout",
-        ],
-        target_url="https://example.com",
-        base_url="https://example.com/app/dashboard",
+    command = crawler.build_pure_headless_katana_command(
+        config,
+        terminal_summary_path="terminal.json",
     )
 
-    assert patterns == [
-        "/logout(?:$|[/?#])",
-        "/account/delete(?:$|[/?#])",
-    ]
-
-
-def test_build_katana_command_merges_dynamic_exclude_patterns():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "exclude_filters": ["/admin"],
-            "exclude_regex": "/danger-zone",
-        },
-        dynamic_exclude_patterns=["/account/delete(?:$|[/?#])", "/admin"],
-    )
-    command = crawler.build_katana_command(config)
-    exclusions = command[command.index("-crawl-out-scope") + 1]
-
-    assert "logout" in exclusions
-    assert "/admin" in exclusions
-    assert "/danger-zone" in exclusions
-    assert "/account/delete(?:$|[/?#])" in exclusions
-    assert exclusions.count("/admin") == 1
-
-
-def test_build_exclusion_patterns_matches_katana_out_of_scope_filters():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "exclude_filters": ["/admin"],
-            "exclude_regex": "/danger-zone",
-        },
-        dynamic_exclude_patterns=["/account/delete(?:$|[/?#])", "/admin"],
+    assert _flag_value(command, "-cwu") == config.cdp_url
+    assert _flag_value(command, "-p") == "1"
+    assert _flag_value(command, "-pls") == "domcontentloaded"
+    assert _flag_value(command, "-dwt") == "2"
+    assert _flag_value(command, "-mfc") == "0"
+    assert all(flag in command for flag in ("-xhr", "-kb", "-fsu", "-fst"))
+    assert all(
+        flag not in command for flag in ("-jc", "-jsl", "-fx", "-td", "-mrs", "-rl", "-known-files")
     )
 
-    patterns = crawler.build_exclusion_patterns(config)
-    command = crawler.build_katana_command(config)
 
-    assert patterns == [
-        *crawler.DEFAULT_EXCLUSION_PATTERNS,
-        "/admin",
-        "/danger-zone",
-        "/account/delete(?:$|[/?#])",
-    ]
-    assert command[command.index("-crawl-out-scope") + 1] == "|".join(patterns)
+def test_pure_headless_command_requires_internal_cdp_endpoint() -> None:
+    with pytest.raises(ValueError, match="server-owned CDP"):
+        crawler.build_pure_headless_katana_command(
+            crawler.CrawlConfig(target_url="https://example.com"),
+            terminal_summary_path="terminal.json",
+        )
 
 
-def test_build_katana_command_headless_with_cdp_url():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "headless": True,
-            "cdp_url": "ws://127.0.0.1:9222/devtools/browser/abc",
-        },
+def test_ip_target_gets_explicit_katana_scope() -> None:
+    command = crawler.build_standard_katana_command(
+        crawler.CrawlConfig(target_url="http://127.0.0.1:8000"),
+        terminal_summary_path="terminal.json",
     )
 
-    command = crawler.build_katana_command(config)
-    assert "-hybrid" in command
-    assert command[command.index("-cwu") + 1].startswith("ws://")
-    assert "-system-chrome" not in command
+    assert _flag_value(command, "-cs") == r"127\.0\.0\.1"
 
 
-def test_build_katana_command_headless_with_no_incognito():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "headless": True,
-            "no_incognito": True,
-        },
+def _write_terminal(command: list[str], *, reason: str = "queue_exhausted") -> None:
+    inputs = [command[index + 1] for index, value in enumerate(command) if value == "-u"]
+    terminal_path = Path(_flag_value(command, "-terminal-summary"))
+    terminal_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "status": "completed",
+                "generated_at": "2026-07-23T00:00:00Z",
+                "inputs": [
+                    {"input": input_url, "reason": reason} for input_url in sorted(set(inputs))
+                ],
+            }
+        )
     )
-
-    command = crawler.build_katana_command(config)
-    assert "-hybrid" in command
-    assert "-no-incognito" in command
-
-
-def test_build_katana_command_headless_with_system_chrome():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "headless": True,
-            "system_chrome": True,
-            "system_chrome_path": "/usr/bin/chromium",
-        },
-    )
-
-    command = crawler.build_katana_command(config)
-    assert "-hybrid" in command
-    assert "-system-chrome" in command
-    assert command[command.index("-system-chrome-path") + 1] == "/usr/bin/chromium"
-    assert "-cwu" not in command
-
-
-def test_build_katana_command_browser_options_require_headless():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "headless": False,
-            "cdp_url": "ws://127.0.0.1:9222/devtools/browser/abc",
-        },
-    )
-    with pytest.raises(ValueError, match="headless"):
-        crawler.build_katana_command(config)
-
-
-def test_build_katana_command_cdp_url_mutually_exclusive_with_system_chrome():
-    config = crawler.CrawlConfig(
-        target_url="https://example.com",
-        scope_config={
-            "headless": True,
-            "cdp_url": "ws://127.0.0.1:9222/devtools/browser/abc",
-            "system_chrome": True,
-        },
-    )
-    with pytest.raises(ValueError, match="mutually exclusive"):
-        crawler.build_katana_command(config)
 
 
 @pytest.mark.asyncio
-async def test_run_crawl_redacts_sensitive_headers_in_katana_sidecar(
-    tmp_path,
+async def test_run_crawl_sanitizes_artifact_and_requires_queue_exhaustion(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    budget = ProcessMemoryBudget(1024)
+
     async def fake_run_safe_subprocess(
-        _cmd,
+        command,
         *,
         timeout,
         on_output=None,
         cancel_event=None,
-        stop_event=None,
-        env=None,
-        stderr_path=None,
+        memory_budget=None,
+        diagnostic_tail_bytes=None,
     ):
+        assert timeout > 0
+        assert memory_budget is budget
+        assert diagnostic_tail_bytes == 0
         assert on_output is not None
         await on_output(
             json.dumps(
@@ -229,19 +164,102 @@ async def test_run_crawl_redacts_sensitive_headers_in_katana_sidecar(
                 }
             )
         )
+        _write_terminal(command)
         return SubprocessResult(exit_code=0, output="")
 
     monkeypatch.setattr(crawler, "run_safe_subprocess", fake_run_safe_subprocess)
     log_path = tmp_path / "job.jsonl"
 
-    await crawler.run_crawl(
-        crawler.CrawlConfig(
-            target_url="https://example.com",
-            scope_config={"headless": False},
-        ),
-        log_path=str(log_path),
+    result = await crawler.run_crawl(
+        crawler.CrawlConfig(target_url="https://example.com"),
+        lane="standard",
+        output_path=str(log_path),
+        memory_budget=budget,
     )
 
-    sidecar = log_path.with_name(log_path.name + ".katana").read_text()
-    assert "Cookie: [redacted]" in sidecar
-    assert "session=abc" not in sidecar
+    artifact = log_path.read_text()
+    assert "Cookie: [redacted]" in artifact
+    assert "session=abc" not in artifact
+    assert result.lane == "standard"
+    assert result.terminal_summary["inputs"][0]["reason"] == "queue_exhausted"
+
+
+@pytest.mark.asyncio
+async def test_run_crawl_returns_partial_result_for_budget_exhaustion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_run_safe_subprocess(command, **_kwargs):
+        _write_terminal(command, reason="crawl_timeout")
+        return SubprocessResult(exit_code=0, output="")
+
+    monkeypatch.setattr(crawler, "run_safe_subprocess", fake_run_safe_subprocess)
+
+    result = await crawler.run_crawl(
+        crawler.CrawlConfig(target_url="https://example.com"),
+        output_path=str(tmp_path / "job.jsonl"),
+    )
+
+    assert result.outcome == "partial"
+    assert result.terminal_summary["inputs"][0]["reason"] == "crawl_timeout"
+
+
+@pytest.mark.asyncio
+async def test_run_crawl_rejects_unknown_terminal_reason(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_run_safe_subprocess(command, **_kwargs):
+        _write_terminal(command, reason="unexpected_reason")
+        return SubprocessResult(exit_code=0, output="")
+
+    monkeypatch.setattr(crawler, "run_safe_subprocess", fake_run_safe_subprocess)
+
+    with pytest.raises(
+        crawler.KatanaTerminalSummaryError,
+        match="unknown input reason",
+    ):
+        await crawler.run_crawl(
+            crawler.CrawlConfig(target_url="https://example.com"),
+            output_path=str(tmp_path / "job.jsonl"),
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_crawl_identifies_lane_when_terminal_summary_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_run_safe_subprocess(_command, **_kwargs):
+        return SubprocessResult(exit_code=0, output="")
+
+    monkeypatch.setattr(crawler, "run_safe_subprocess", fake_run_safe_subprocess)
+
+    with pytest.raises(
+        crawler.KatanaTerminalSummaryError,
+        match="Katana standard: Katana did not write its terminal summary",
+    ):
+        await crawler.run_crawl(
+            crawler.CrawlConfig(target_url="https://example.com"),
+            lane="standard",
+            output_path=str(tmp_path / "job.jsonl"),
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_crawl_enforces_process_wall_clock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def stalled_process(*_args, **_kwargs):
+        await asyncio.sleep(60)
+        return SubprocessResult(exit_code=0, output="")
+
+    monkeypatch.setattr(crawler, "run_safe_subprocess", stalled_process)
+    monkeypatch.setattr(crawler, "CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS", 0.01)
+
+    with pytest.raises(crawler.KatanaProcessDeadlineExceeded):
+        await crawler.run_crawl(
+            crawler.CrawlConfig(target_url="https://example.com"),
+            output_path=str(tmp_path / "job.jsonl"),
+        )

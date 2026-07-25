@@ -94,8 +94,7 @@ def test_job_log_paths_are_derived_from_job_id(tmp_path) -> None:
     paths = run_external_site_comparison._job_log_paths(tmp_path, "job-123")
 
     assert paths == {
-        "log_path": str(tmp_path / "job-123.jsonl"),
-        "katana_log_path": str(tmp_path / "job-123.jsonl.katana"),
+        "katana_log_path": str(tmp_path / "job-123.jsonl"),
         "stderr_log_path": str(tmp_path / "job-123.jsonl.stderr"),
     }
 
@@ -125,7 +124,6 @@ def test_write_report_includes_generated_exclusions(tmp_path) -> None:
     args = argparse.Namespace(
         crawl_duration="60s",
         max_depth=3,
-        max_pages=100,
         headless=True,
         artifact_dir="/tmp/crawler-external-comparison-test",
         db_path="/tmp/crawler-external-comparison-test/jobs.db",

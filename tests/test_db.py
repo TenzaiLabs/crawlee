@@ -9,7 +9,7 @@ from app import db
 
 
 @pytest.mark.asyncio
-async def test_init_db_migrates_legacy_jobs_schema_idempotently(
+async def test_init_db_rejects_legacy_jobs_schema_without_migrating(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -33,17 +33,13 @@ async def test_init_db_migrates_legacy_jobs_schema_idempotently(
     monkeypatch.setattr(db, "DB_PATH", str(db_path))
     monkeypatch.setattr(db, "LOG_DIR", str(tmp_path / "logs"))
 
-    await db.init_db()
-    await db.init_db()
+    with pytest.raises(RuntimeError, match="recreate the database"):
+        await db.init_db()
 
     async with db.connect() as conn:
         cursor = await conn.execute("PRAGMA table_info(jobs)")
         columns = {row[1] for row in await cursor.fetchall()}
         await cursor.close()
 
-    assert {
-        "generated_exclusions",
-        "sitemap",
-        "result_entry_count",
-        "result_size_bytes",
-    } <= columns
+    assert "discovery_config" not in columns
+    assert "baseline_sitemap" not in columns

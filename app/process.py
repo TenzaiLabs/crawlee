@@ -14,11 +14,124 @@ from .settings import CRAWLER_SUBPROCESS_GRACE_SECONDS, CRAWLER_SUBPROCESS_POLL_
 
 logger = logging.getLogger(__name__)
 
+SUBPROCESS_DIAGNOSTIC_TAIL_BYTES = 64 * 1024
+
 
 @dataclass(frozen=True)
 class SubprocessResult:
     exit_code: int
     output: str
+
+
+class ProcessMemoryLimitExceeded(RuntimeError):
+    pass
+
+
+def _process_tree_rss_bytes(root_pids: tuple[int, ...]) -> int:
+    """Return resident bytes for root process groups and their descendants."""
+
+    roots = set(root_pids)
+    if not roots:
+        return 0
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    processes: dict[int, tuple[int, int, int]] = {}
+    try:
+        entries = os.scandir("/proc")
+    except OSError:
+        return 0
+    with entries:
+        for entry in entries:
+            if not entry.name.isdigit():
+                continue
+            pid = int(entry.name)
+            try:
+                with open(f"/proc/{pid}/stat") as stat_file:
+                    stat = stat_file.read()
+                with open(f"/proc/{pid}/statm") as statm_file:
+                    statm = statm_file.read().split()
+                fields = stat[stat.rfind(")") + 2 :].split()
+                ppid = int(fields[1])
+                process_group = int(fields[2])
+                resident_bytes = int(statm[1]) * page_size
+            except OSError, ValueError, IndexError:
+                continue
+            processes[pid] = (ppid, process_group, resident_bytes)
+
+    selected = {pid for pid, (_, process_group, _) in processes.items() if process_group in roots}
+    selected.update(pid for pid in roots if pid in processes)
+    while True:
+        descendants = {pid for pid, (ppid, _, _) in processes.items() if ppid in selected}
+        expanded = selected | descendants
+        if expanded == selected:
+            break
+        selected = expanded
+    return sum(processes[pid][2] for pid in selected)
+
+
+class ProcessMemoryBudget:
+    """One resident-memory ceiling shared by all process trees in a crawler job."""
+
+    def __init__(self, limit_bytes: int, *, poll_interval_seconds: float = 0.5) -> None:
+        if limit_bytes < 1:
+            raise ValueError("process memory limit must be positive")
+        self.limit_bytes = limit_bytes
+        self.poll_interval_seconds = poll_interval_seconds
+        self.exceeded = asyncio.Event()
+        self.observed_bytes = 0
+        self._root_pids: set[int] = set()
+        self._monitor_task: asyncio.Task[None] | None = None
+
+    @property
+    def failure_message(self) -> str:
+        return (
+            "Job process memory ceiling exceeded "
+            f"({self.observed_bytes} > {self.limit_bytes} bytes)"
+        )
+
+    def register(self, pid: int) -> None:
+        self.raise_if_exceeded()
+        self._root_pids.add(pid)
+
+    def unregister(self, pid: int) -> None:
+        self._root_pids.discard(pid)
+
+    def raise_if_exceeded(self) -> None:
+        if self.exceeded.is_set():
+            raise ProcessMemoryLimitExceeded(self.failure_message)
+
+    async def start(self) -> None:
+        if self._monitor_task is not None:
+            return
+        self._monitor_task = asyncio.create_task(self._monitor())
+
+    async def stop(self) -> None:
+        task = self._monitor_task
+        self._monitor_task = None
+        if task is None:
+            return
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    async def _monitor(self) -> None:
+        while True:
+            await asyncio.sleep(self.poll_interval_seconds)
+            roots = tuple(self._root_pids)
+            resident_bytes = await asyncio.to_thread(_process_tree_rss_bytes, roots)
+            self.observed_bytes = max(self.observed_bytes, resident_bytes)
+            if resident_bytes <= self.limit_bytes:
+                continue
+            logger.warning(
+                "Job process memory ceiling exceeded resident_bytes=%d limit_bytes=%d roots=%s",
+                resident_bytes,
+                self.limit_bytes,
+                sorted(roots),
+            )
+            self.exceeded.set()
+            for pid in roots:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(pid, signal.SIGKILL)
+            return
 
 
 async def _terminate_process_group(process: asyncio.subprocess.Process) -> None:
@@ -43,33 +156,45 @@ async def run_safe_subprocess(
     on_output: Callable[[str], Awaitable[None]] | None = None,
     cancel_event: asyncio.Event | None = None,
     stop_event: asyncio.Event | None = None,
-    env: dict[str, str] | None = None,
     stderr_path: str | None = None,
+    memory_budget: ProcessMemoryBudget | None = None,
+    diagnostic_tail_bytes: int = SUBPROCESS_DIAGNOSTIC_TAIL_BYTES,
 ) -> SubprocessResult:
+    if diagnostic_tail_bytes < 0:
+        raise ValueError("diagnostic_tail_bytes must not be negative")
     command_parts = [str(part) for part in cmd]
     logger.info("Starting subprocess cmd=%s", redact_command(command_parts))
-    subprocess_env: dict[str, str] | None = None
-    if env:
-        subprocess_env = {**os.environ, **env}
-
     stderr_file = open(stderr_path, "a") if stderr_path else None
+    if memory_budget is not None:
+        memory_budget.raise_if_exceeded()
     try:
         process = await asyncio.create_subprocess_exec(
             *command_parts,
             stdout=asyncio.subprocess.PIPE,
             stderr=stderr_file or asyncio.subprocess.DEVNULL,
             start_new_session=True,
-            env=subprocess_env,
-            limit=10 * 1024 * 1024,  # 10 MiB – proxify can emit very long lines
+            limit=10 * 1024 * 1024,  # Katana JSONL responses can produce very long lines.
         )
     except BaseException:
         if stderr_file:
             stderr_file.close()
         raise
+    if memory_budget is not None:
+        try:
+            memory_budget.register(process.pid)
+        except BaseException:
+            await _kill_process_group(process)
+            await process.wait()
+            if stderr_file:
+                stderr_file.close()
+            raise
 
     wait_task = asyncio.create_task(process.wait())
 
-    output_lines: list[str] = []
+    # stdout is normally streamed to ``on_output``. Keep only a bounded tail for
+    # diagnostics so a verbose subprocess cannot duplicate its complete output
+    # in the server process.
+    diagnostic_tail = bytearray()
     last_output = time.monotonic()
 
     async def _read_stream(stream: asyncio.StreamReader | None) -> None:
@@ -92,7 +217,14 @@ async def run_safe_subprocess(
             if not line:
                 return
             text = line.decode("utf-8", errors="replace")
-            output_lines.append(text)
+            if diagnostic_tail_bytes:
+                if len(line) >= diagnostic_tail_bytes:
+                    diagnostic_tail[:] = line[-diagnostic_tail_bytes:]
+                else:
+                    diagnostic_tail.extend(line)
+                    excess = len(diagnostic_tail) - diagnostic_tail_bytes
+                    if excess > 0:
+                        del diagnostic_tail[:excess]
             last_output = time.monotonic()
             if on_output is not None:
                 await on_output(text)
@@ -168,7 +300,10 @@ async def run_safe_subprocess(
     try:
         readers_done_at: float | None = None
         while True:
-            if wait_task.done():
+            # asyncio's Process.wait() can remain pending until inherited pipe
+            # descriptors reach EOF, even after the direct child has exited.
+            # returncode is updated by the child watcher independently.
+            if wait_task.done() or process.returncode is not None:
                 break
             if stdout_task.done():
                 if readers_done_at is None:
@@ -188,10 +323,14 @@ async def run_safe_subprocess(
         raise
     finally:
         await _finalize()
+        if memory_budget is not None:
+            memory_budget.unregister(process.pid)
         if stderr_file:
             stderr_file.close()
 
-    output = "".join(output_lines)
+    output = diagnostic_tail.decode("utf-8", errors="replace")
+    if memory_budget is not None:
+        memory_budget.raise_if_exceeded()
     exit_code = process.returncode
     if exit_code is None and wait_task.done() and not wait_task.cancelled():
         with contextlib.suppress(Exception):

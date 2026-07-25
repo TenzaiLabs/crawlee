@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 
 from .auth_config import AuthConfigValidationError, validate_auth_config
+from .models import DiscoveryConfig
 from .scope_config import ScopeConfigValidationError, validate_scope_config
 
 logger = logging.getLogger(__name__)
@@ -94,15 +95,22 @@ def _build_auth_config(args: argparse.Namespace) -> dict[str, Any] | None:
 
 def _build_scope_config(args: argparse.Namespace) -> dict[str, Any] | None:
     scope_config = _load_scope_config_from_json_input(args)
-    if getattr(args, "headless", False):
-        scope_config["headless"] = True
-    if getattr(args, "cdp_url", None):
-        scope_config["cdp_url"] = args.cdp_url
-    if getattr(args, "system_chrome", False):
-        scope_config["system_chrome"] = True
-    if getattr(args, "system_chrome_path", None):
-        scope_config["system_chrome_path"] = args.system_chrome_path
     return scope_config or None
+
+
+def _build_discovery_config(args: argparse.Namespace) -> dict[str, Any] | None:
+    discovery: dict[str, Any] = {}
+    if getattr(args, "disable_discovery", False):
+        discovery["enabled"] = False
+    for argument, field in (
+        ("discovery_max_rounds", "max_rounds"),
+        ("discovery_max_actions", "max_actions"),
+        ("discovery_max_llm_pages", "max_llm_pages"),
+    ):
+        value = getattr(args, argument, None)
+        if value is not None:
+            discovery[field] = value
+    return discovery or None
 
 
 async def create_job(
@@ -110,6 +118,7 @@ async def create_job(
     target_url: str,
     scope_config: dict[str, Any] | None = None,
     auth_config: dict[str, Any] | None = None,
+    discovery: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     logger.info("CLI create_job target_url=%s", target_url)
     payload: dict[str, Any] = {"target_url": target_url}
@@ -117,6 +126,8 @@ async def create_job(
         payload["scope_config"] = scope_config
     if auth_config:
         payload["auth_config"] = auth_config
+    if discovery:
+        payload["discovery"] = discovery
     response = await client.post("/jobs", json=payload)
     if response.is_error:
         try:
@@ -196,36 +207,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a JSON file containing a full scope_config object",
     )
     create_parser.add_argument(
-        "--headless",
-        action="store_true",
-        help=(
-            "Enable headless browser crawling "
-            "(required for --cdp-url/--system-chrome/--system-chrome-path)"
-        ),
-    )
-    create_parser.add_argument(
-        "--cdp-url",
-        dest="cdp_url",
-        default=None,
-        help="CDP WebSocket URL to reuse an existing Chrome instance (requires --headless)",
-    )
-    create_parser.add_argument(
-        "--system-chrome",
-        action="store_true",
-        help=(
-            "Use system Chrome/Chromium for headless crawling "
-            "(requires --headless; mutually exclusive with --cdp-url)"
-        ),
-    )
-    create_parser.add_argument(
-        "--system-chrome-path",
-        default=None,
-        help=(
-            "Path to Chrome/Chromium binary "
-            "(requires --headless; mutually exclusive with --cdp-url)"
-        ),
-    )
-    create_parser.add_argument(
         "--auth-config-json",
         default=None,
         help="Full auth_config JSON object string for advanced options",
@@ -247,6 +228,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Login URL for AI-auth mode",
     )
+    create_parser.add_argument(
+        "--disable-discovery",
+        action="store_true",
+        help="Disable browser-guided discovery after the Katana baseline",
+    )
+    create_parser.add_argument("--discovery-max-rounds", type=int, default=None)
+    create_parser.add_argument("--discovery-max-actions", type=int, default=None)
+    create_parser.add_argument("--discovery-max-llm-pages", type=int, default=None)
 
     list_parser = subparsers.add_parser("list", help="List current and previously completed jobs")
     list_parser.add_argument(
@@ -256,6 +245,7 @@ def build_parser() -> argparse.ArgumentParser:
             "pending",
             "authenticating",
             "crawling",
+            "discovering",
             "processing",
             "completed",
             "failed",
@@ -281,11 +271,16 @@ async def _run(
     args: argparse.Namespace,
     scope_config: dict[str, Any] | None,
     auth_config: dict[str, Any] | None,
+    discovery: dict[str, Any] | None,
 ) -> dict[str, Any]:
     async with httpx.AsyncClient(base_url=args.base_url, timeout=args.timeout) as client:
         if args.command == "create":
             return await create_job(
-                client, args.target_url, scope_config=scope_config, auth_config=auth_config
+                client,
+                args.target_url,
+                scope_config=scope_config,
+                auth_config=auth_config,
+                discovery=discovery,
             )
         if args.command == "list":
             return await list_jobs(
@@ -305,6 +300,7 @@ def main() -> int:
 
     scope_config = None
     auth_config = None
+    discovery = None
     if args.command == "create":
         try:
             scope_config = _build_scope_config(args)
@@ -318,8 +314,15 @@ def main() -> int:
         except (AuthConfigValidationError, ValueError) as exc:
             logger.warning("CLI auth config validation failed: %s", exc)
             parser.error(str(exc))
+        try:
+            discovery = _build_discovery_config(args)
+            if discovery is not None:
+                DiscoveryConfig.model_validate(discovery)
+        except ValueError as exc:
+            logger.warning("CLI discovery config validation failed: %s", exc)
+            parser.error(str(exc))
 
-    payload = asyncio.run(_run(args, scope_config, auth_config))
+    payload = asyncio.run(_run(args, scope_config, auth_config, discovery))
     _print_json(payload)
     return 0
 

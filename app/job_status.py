@@ -7,6 +7,7 @@ ACTIVE_JOB_STATUSES = {
     JobStatus.pending.value,
     JobStatus.authenticating.value,
     JobStatus.crawling.value,
+    JobStatus.discovering.value,
     JobStatus.processing.value,
 }
 
@@ -19,7 +20,9 @@ TERMINAL_JOB_STATUSES = {
 
 INTERRUPTED_JOB_STATUSES = {
     JobStatus.queued.value,
+    JobStatus.pending.value,
     JobStatus.authenticating.value,
     JobStatus.crawling.value,
+    JobStatus.discovering.value,
     JobStatus.processing.value,
 }

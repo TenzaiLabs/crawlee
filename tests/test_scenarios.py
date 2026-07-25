@@ -49,8 +49,8 @@ async def _local_testsite() -> AsyncIterator[str]:
 async def test_happy_path_crawl_succeeds(app_with_orchestrator):
     if os.getenv("RUN_E2E") != "1":
         pytest.skip("Set RUN_E2E=1 to run end-to-end crawl scenario")
-    if shutil.which("katana") is None or shutil.which("proxify") is None:
-        pytest.skip("End-to-end crawl requires katana and proxify binaries")
+    if shutil.which("katana") is None:
+        pytest.skip("End-to-end crawl requires the katana binary")
     async with _local_testsite() as target_url:
         transport = httpx.ASGITransport(app=app_with_orchestrator)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -59,11 +59,10 @@ async def test_happy_path_crawl_succeeds(app_with_orchestrator):
                 json={
                     "target_url": target_url,
                     "scope_config": {
-                        "headless": False,
                         "max_depth": 2,
-                        "max_pages": 25,
                         "crawl_duration": "20s",
                     },
+                    "discovery": {"enabled": False},
                 },
             )
             response.raise_for_status()

@@ -11,10 +11,6 @@ def _scope_args(**overrides):
     base = {
         "scope_config_json": None,
         "scope_config_file": None,
-        "headless": False,
-        "cdp_url": None,
-        "system_chrome": False,
-        "system_chrome_path": None,
     }
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -31,6 +27,17 @@ def _auth_args(**overrides):
     return argparse.Namespace(**base)
 
 
+def _discovery_args(**overrides):
+    base = {
+        "disable_discovery": False,
+        "discovery_max_rounds": None,
+        "discovery_max_actions": None,
+        "discovery_max_llm_pages": None,
+    }
+    base.update(overrides)
+    return argparse.Namespace(**base)
+
+
 def test_build_scope_config_from_json_string() -> None:
     args = _scope_args(scope_config_json='{"max_depth":2,"exclude_filters":["/logout"]}')
 
@@ -41,20 +48,12 @@ def test_build_scope_config_from_json_string() -> None:
 
 def test_build_scope_config_from_json_file(tmp_path) -> None:
     path = tmp_path / "scope.json"
-    path.write_text('{"rate_limit":5,"max_pages":100}', encoding="utf-8")
+    path.write_text('{"rate_limit":5,"parallelism":4}', encoding="utf-8")
     args = _scope_args(scope_config_file=str(path))
 
     scope_config = cli._build_scope_config(args)
 
-    assert scope_config == {"rate_limit": 5, "max_pages": 100}
-
-
-def test_build_scope_config_merges_flag_overrides() -> None:
-    args = _scope_args(scope_config_json='{"headless":false}', headless=True, system_chrome=True)
-
-    scope_config = cli._build_scope_config(args)
-
-    assert scope_config == {"headless": True, "system_chrome": True}
+    assert scope_config == {"rate_limit": 5, "parallelism": 4}
 
 
 def test_build_scope_config_rejects_both_json_sources() -> None:
@@ -76,6 +75,24 @@ def test_build_scope_config_rejects_invalid_json() -> None:
 
     with pytest.raises(ValueError, match="Invalid --scope-config-json"):
         cli._build_scope_config(args)
+
+
+def test_build_discovery_config_from_cli_limits() -> None:
+    discovery = cli._build_discovery_config(
+        _discovery_args(
+            disable_discovery=True,
+            discovery_max_rounds=1,
+            discovery_max_actions=10,
+            discovery_max_llm_pages=2,
+        )
+    )
+
+    assert discovery == {
+        "enabled": False,
+        "max_rounds": 1,
+        "max_actions": 10,
+        "max_llm_pages": 2,
+    }
 
 
 # --- auth_config tests ---

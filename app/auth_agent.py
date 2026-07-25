@@ -12,7 +12,6 @@ from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
 import llm
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-from playwright.async_api import async_playwright
 
 from . import auth_browser, auth_log_extract, auth_model, auth_secrets, auth_traffic
 from .common import coerce_int
@@ -62,6 +61,25 @@ class _VerificationResult:
 class _VerificationMemory:
     probe_url: str | None = None
     result: _VerificationResult | None = None
+
+
+@dataclass(frozen=True)
+class _VerificationNetworkResponse:
+    method: str
+    url: str
+    status: int
+    resource_type: str
+
+
+@dataclass(frozen=True)
+class _VerificationPageState:
+    requested_url: str
+    final_url: str
+    document_status: int | None
+    visible_text: str
+    controls: tuple[str, ...]
+    has_password_input: bool
+    responses: tuple[_VerificationNetworkResponse, ...]
 
 
 class AuthenticationError(RuntimeError):
@@ -237,29 +255,19 @@ def _is_same_origin(url: str, base_url: str) -> bool:
 
 def _is_login_like_url(url: str) -> bool:
     parsed = urlparse(url)
-    haystack = f"{parsed.path}?{parsed.query}".lower()
+    haystack = f"{parsed.path}?{parsed.query}#{parsed.fragment}".lower()
     return any(marker in haystack for marker in _LOGIN_PATH_MARKERS)
-
-
-def _is_target_root(url: str, target_url: str) -> bool:
-    if not _is_same_origin(url, target_url):
-        return False
-    parsed_url = urlparse(url)
-    parsed_target = urlparse(target_url)
-    url_path = parsed_url.path.rstrip("/") or "/"
-    target_path = parsed_target.path.rstrip("/") or "/"
-    return url_path == target_path == "/" and not parsed_url.query
 
 
 def _is_unsafe_auth_url(url: str) -> bool:
     parsed = urlparse(url)
-    haystack = f"{parsed.path}?{parsed.query}".lower()
+    haystack = f"{parsed.path}?{parsed.query}#{parsed.fragment}".lower()
     return any(marker in haystack for marker in _AUTH_UNSAFE_LINK_MARKERS)
 
 
 def _looks_like_authenticated_url(url: str) -> bool:
     parsed = urlparse(url)
-    haystack = f"{parsed.path}?{parsed.query}".lower()
+    haystack = f"{parsed.path}?{parsed.query}#{parsed.fragment}".lower()
     if _is_login_like_url(url) or _is_unsafe_auth_url(url):
         return False
     return any(marker in haystack for marker in _AUTHENTICATED_LINK_MARKERS)
@@ -296,7 +304,7 @@ def _with_trailing_slash_variant(url: str) -> list[str]:
                         f"{path}/",
                         parsed.params,
                         parsed.query,
-                        "",
+                        parsed.fragment,
                     )
                 )
             )
@@ -320,21 +328,23 @@ def _origin_base(url: str) -> str:
     return urlunparse((parsed.scheme, parsed.netloc, "/", "", "", ""))
 
 
-def _same_normalized_url(left: str, right: str) -> bool:
-    left_parsed = urlparse(_strip_fragment(left))
-    right_parsed = urlparse(_strip_fragment(right))
+def _same_browser_route(left: str, right: str) -> bool:
+    left_parsed = urlparse(left)
+    right_parsed = urlparse(right)
     return (
         left_parsed.scheme.lower(),
         left_parsed.netloc.lower(),
         left_parsed.path.rstrip("/") or "/",
         left_parsed.params,
         left_parsed.query,
+        left_parsed.fragment,
     ) == (
         right_parsed.scheme.lower(),
         right_parsed.netloc.lower(),
         right_parsed.path.rstrip("/") or "/",
         right_parsed.params,
         right_parsed.query,
+        right_parsed.fragment,
     )
 
 
@@ -364,7 +374,7 @@ def _explicit_probe_candidates(
 
     candidates: list[str] = []
     for candidate in bases_and_paths:
-        for variant in _with_trailing_slash_variant(_strip_fragment(candidate)):
+        for variant in _with_trailing_slash_variant(candidate):
             parsed = urlparse(variant)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 continue
@@ -798,7 +808,7 @@ def _link_item_is_auth_candidate(item: dict[str, str], target_url: str) -> bool:
         return False
 
     parsed = urlparse(href)
-    haystack = f"{parsed.path}?{parsed.query} {item.get('text', '')}".lower()
+    haystack = (f"{parsed.path}?{parsed.query}#{parsed.fragment} {item.get('text', '')}").lower()
     return any(marker in haystack for marker in _AUTHENTICATED_LINK_MARKERS)
 
 
@@ -814,10 +824,6 @@ def _strong_current_url_candidate(
     if _is_login_like_url(current_url) or _is_unsafe_auth_url(current_url):
         return None
     if current_url == login_url:
-        return None
-    if not requires_auth_evidence:
-        return current_url
-    if _is_target_root(current_url, target_url):
         return None
     return current_url
 
@@ -880,6 +886,232 @@ async def _verification_candidates(
     return _dedupe_urls(candidates)
 
 
+_LOGIN_CONTROL_MARKERS = (
+    "log in",
+    "login",
+    "sign in",
+    "signin",
+)
+_AUTHENTICATED_CONTROL_MARKERS = (
+    "account",
+    "admin",
+    "dashboard",
+    "log out",
+    "logout",
+    "members",
+    "profile",
+    "reports",
+    "settings",
+    "sign out",
+    "signout",
+    "workspace",
+)
+_AUTH_DENIAL_TEXT_MARKERS = (
+    "access denied",
+    "authentication required",
+    "forbidden",
+    "not authorized",
+    "please log in",
+    "please login",
+    "please sign in",
+    "unauthorized",
+)
+_AUTH_NETWORK_RESOURCE_TYPES = {"document", "fetch", "xhr"}
+
+
+def _normalized_text(value: str) -> str:
+    return " ".join(str(value).casefold().split())
+
+
+def _contains_marker(values: Iterable[str], markers: tuple[str, ...]) -> bool:
+    return any(marker in value for value in values for marker in markers)
+
+
+def _state_has_login_challenge(state: _VerificationPageState) -> bool:
+    if state.has_password_input or _is_login_like_url(state.final_url):
+        return True
+    return _contains_marker(state.controls, _LOGIN_CONTROL_MARKERS)
+
+
+def _state_has_authenticated_controls(state: _VerificationPageState) -> bool:
+    return _contains_marker(state.controls, _AUTHENTICATED_CONTROL_MARKERS)
+
+
+def _state_has_denial(state: _VerificationPageState) -> bool:
+    if state.document_status in {401, 403}:
+        return True
+    return _contains_marker((state.visible_text,), _AUTH_DENIAL_TEXT_MARKERS)
+
+
+def _network_authentication_delta(
+    authenticated: _VerificationPageState,
+    unauthenticated: _VerificationPageState,
+) -> str | None:
+    authenticated_statuses = {
+        (response.method, _strip_fragment(response.url)): response.status
+        for response in authenticated.responses
+        if response.resource_type in _AUTH_NETWORK_RESOURCE_TYPES
+    }
+    for response in unauthenticated.responses:
+        if response.resource_type not in _AUTH_NETWORK_RESOURCE_TYPES:
+            continue
+        if response.status not in {401, 403}:
+            continue
+        endpoint = (response.method, _strip_fragment(response.url))
+        authenticated_status = authenticated_statuses.get(endpoint)
+        if authenticated_status is not None and 200 <= authenticated_status < 400:
+            return (
+                f"{response.method} {_strip_fragment(response.url)} returned "
+                f"{authenticated_status} authenticated and {response.status} clean"
+            )
+    return None
+
+
+def _authenticated_state_evidence(
+    authenticated: _VerificationPageState,
+    unauthenticated: _VerificationPageState,
+    *,
+    target_url: str,
+) -> str | None:
+    if not _is_same_origin(authenticated.final_url, target_url):
+        return None
+    if authenticated.document_status is not None and authenticated.document_status >= 400:
+        return None
+    if _is_login_like_url(authenticated.final_url) or _state_has_denial(authenticated):
+        return None
+
+    network_delta = _network_authentication_delta(authenticated, unauthenticated)
+    if network_delta is not None:
+        return network_delta
+    if not _is_same_origin(unauthenticated.final_url, target_url):
+        return "clean browser was redirected out of the target origin"
+    if _is_login_like_url(unauthenticated.final_url):
+        return "clean browser was redirected to a login route"
+    if _state_has_denial(unauthenticated):
+        return "clean browser was denied while the authenticated browser was not"
+    if (
+        _state_has_login_challenge(unauthenticated)
+        and not _state_has_login_challenge(authenticated)
+        and _state_has_authenticated_controls(authenticated)
+    ):
+        return "clean browser showed login controls while authenticated controls were visible"
+    return None
+
+
+async def _capture_verification_ui(page: Any) -> tuple[str, tuple[str, ...], bool]:
+    visible_text: list[str] = []
+    controls: list[str] = []
+    has_password_input = False
+    for frame in page.frames:
+        try:
+            payload = await frame.evaluate(
+                r"""
+                () => {
+                  const visible = (element) => {
+                    if (!element) return false;
+                    const style = window.getComputedStyle(element);
+                    if (!style || style.display === 'none' || style.visibility === 'hidden') {
+                      return false;
+                    }
+                    const rect = element.getBoundingClientRect();
+                    return rect.width > 0 && rect.height > 0;
+                  };
+                  const normalize = (value) => (value || '').toString()
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                  const controls = Array.from(document.querySelectorAll(
+                    'a[href], button, [role="button"], input[type="submit"], input[type="button"]'
+                  ))
+                    .filter(visible)
+                    .slice(0, 160)
+                    .map(element => normalize([
+                      element.innerText,
+                      element.value,
+                      element.getAttribute('aria-label'),
+                      element.getAttribute('href'),
+                    ].filter(Boolean).join(' ')));
+                  return {
+                    text: normalize(document.body ? document.body.innerText : '').slice(0, 12000),
+                    controls,
+                    hasPassword: Array.from(document.querySelectorAll('input[type="password"]'))
+                      .some(visible),
+                  };
+                }
+                """
+            )
+        except PlaywrightTimeoutError, PlaywrightError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        text = payload.get("text")
+        if isinstance(text, str) and text.strip():
+            visible_text.append(_normalized_text(text))
+        frame_controls = payload.get("controls")
+        if isinstance(frame_controls, list):
+            controls.extend(
+                _normalized_text(item)
+                for item in frame_controls
+                if isinstance(item, str) and item.strip()
+            )
+        has_password_input = has_password_input or payload.get("hasPassword") is True
+    return " ".join(visible_text), tuple(controls), has_password_input
+
+
+async def _probe_verification_page(
+    controller: _AuthBrowserController,
+    page: Any,
+    candidate: str,
+) -> _VerificationPageState:
+    responses: list[_VerificationNetworkResponse] = []
+
+    def record_response(response: Any) -> None:
+        try:
+            url = str(response.url)
+            if not _is_same_origin(url, controller.target_url):
+                return
+            request = response.request
+            responses.append(
+                _VerificationNetworkResponse(
+                    method=str(request.method).upper(),
+                    url=url,
+                    status=int(response.status),
+                    resource_type=str(request.resource_type).casefold(),
+                )
+            )
+        except Exception:
+            return
+
+    page.on("response", record_response)
+    response = None
+    try:
+        response = await page.goto(candidate, wait_until="domcontentloaded")
+        await controller._settle(page)
+        visible_text, controls, has_password_input = await _capture_verification_ui(page)
+        return _VerificationPageState(
+            requested_url=candidate,
+            final_url=str(page.url or ""),
+            document_status=(int(response.status) if response is not None else None),
+            visible_text=visible_text,
+            controls=controls,
+            has_password_input=has_password_input,
+            responses=tuple(responses),
+        )
+    finally:
+        with contextlib.suppress(Exception):
+            page.remove_listener("response", record_response)
+
+
+async def _new_clean_verification_context(controller: _AuthBrowserController) -> Any | None:
+    context = getattr(controller, "context", None)
+    browser = getattr(context, "browser", None)
+    if browser is None:
+        return None
+    try:
+        return await browser.new_context(ignore_https_errors=True)
+    except PlaywrightTimeoutError, PlaywrightError:
+        return None
+
+
 async def _verify_authenticated(
     controller: _AuthBrowserController,
     *,
@@ -908,39 +1140,82 @@ async def _verify_authenticated(
     if not candidates:
         return _VerificationResult(success=False, reason="no authenticated probe URLs available")
 
-    failures: list[str] = []
-    for candidate in candidates[:20]:
-        try:
-            response = await controller.active_page.goto(candidate, wait_until="domcontentloaded")
-            await controller._settle(controller.active_page)
-        except (PlaywrightTimeoutError, PlaywrightError) as exc:
-            failures.append(f"{candidate}: navigation error {exc}")
-            continue
-
-        final_url = controller.current_url
-        status = response.status if response is not None else None
-        if status in {401, 403} or (status is not None and status >= 400):
-            failures.append(f"{candidate}: status={status} final={final_url}")
-            continue
-        is_explicit_probe_url = any(
-            _same_normalized_url(final_url, probe_candidate)
-            for probe_candidate in explicit_probe_candidates
+    clean_context = (
+        await _new_clean_verification_context(controller) if requires_auth_evidence else None
+    )
+    if requires_auth_evidence and clean_context is None:
+        return _VerificationResult(
+            success=False,
+            reason="a clean browser context was unavailable for differential verification",
         )
-        if _is_login_like_url(final_url) and not is_explicit_probe_url:
-            failures.append(f"{candidate}: redirected to login final={final_url}")
-            continue
-        if not _is_same_origin(final_url, target_url):
-            failures.append(f"{candidate}: out-of-origin final={final_url}")
-            continue
 
-        if success_indicator and not await _success_indicator_matches(
-            controller,
-            success_indicator,
-        ):
-            failures.append(f"{candidate}: success indicator not visible")
-            continue
+    failures: list[str] = []
+    try:
+        for candidate in candidates[:20]:
+            try:
+                authenticated = await _probe_verification_page(
+                    controller,
+                    controller.active_page,
+                    candidate,
+                )
+            except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                failures.append(f"{candidate}: authenticated navigation error {exc}")
+                continue
 
-        return _VerificationResult(success=True, landing_url=final_url)
+            final_url = authenticated.final_url
+            status = authenticated.document_status
+            if status in {401, 403} or (status is not None and status >= 400):
+                failures.append(f"{candidate}: status={status} final={final_url}")
+                continue
+            is_explicit_probe_url = any(
+                _same_browser_route(final_url, probe_candidate)
+                for probe_candidate in explicit_probe_candidates
+            )
+            if _is_login_like_url(final_url) and not is_explicit_probe_url:
+                failures.append(f"{candidate}: redirected to login final={final_url}")
+                continue
+            if not _is_same_origin(final_url, target_url):
+                failures.append(f"{candidate}: out-of-origin final={final_url}")
+                continue
+
+            if success_indicator and not await _success_indicator_matches(
+                controller,
+                success_indicator,
+            ):
+                failures.append(f"{candidate}: success indicator not visible")
+                continue
+            if not requires_auth_evidence:
+                return _VerificationResult(success=True, landing_url=final_url)
+
+            assert clean_context is not None
+            clean_page = await clean_context.new_page()
+            try:
+                unauthenticated = await _probe_verification_page(
+                    controller,
+                    clean_page,
+                    candidate,
+                )
+            except (PlaywrightTimeoutError, PlaywrightError) as exc:
+                failures.append(f"{candidate}: clean navigation error {exc}")
+                continue
+            finally:
+                with contextlib.suppress(Exception):
+                    await clean_page.close()
+
+            evidence = _authenticated_state_evidence(
+                authenticated,
+                unauthenticated,
+                target_url=target_url,
+            )
+            if evidence is None:
+                failures.append(f"{candidate}: no authenticated-versus-clean state difference")
+                continue
+            logger.info("Authentication verified using differential evidence: %s", evidence)
+            return _VerificationResult(success=True, landing_url=final_url)
+    finally:
+        if clean_context is not None:
+            with contextlib.suppress(Exception):
+                await clean_context.close()
 
     reason = "; ".join(failures[:5]) if failures else "all probes failed"
     return _VerificationResult(success=False, reason=reason)
@@ -952,6 +1227,7 @@ async def _collect_auth_result(
     page: Any,
     login_url: str,
     traffic_capture: auth_traffic.AuthTrafficCapture,
+    verified_landing_url: str | None = None,
     blocked_urls: list[str] | None = None,
     discovered_urls: list[str] | None = None,
 ) -> AuthResult:
@@ -976,7 +1252,7 @@ async def _collect_auth_result(
             traffic_capture.redirect_chain,
         )
 
-    landing_url = _extract_landing_url(page, login_url)
+    landing_url = verified_landing_url or _extract_landing_url(page, login_url)
     logger.info(
         "Auth result: %d header(s), landing_url=%s blocked_urls=%d discovered_urls=%d",
         len(headers),
@@ -1286,7 +1562,10 @@ async def _run_auth_with_retries(
 
 
 async def _authenticate_workflow(
-    target_url: str, auth_config: dict, cancel_event: asyncio.Event
+    target_url: str,
+    auth_config: dict,
+    cancel_event: asyncio.Event,
+    context: Any,
 ) -> AuthResult:
     if not isinstance(auth_config, dict):
         raise TypeError("auth_config must be a dict")
@@ -1296,18 +1575,10 @@ async def _authenticate_workflow(
     prepared = _prepare_auth_config(target_url, auth_config)
     configured_model = _configure_model(auth_config)
 
-    playwright = None
-    browser = None
-    context = None
+    traffic_capture = auth_traffic.AuthTrafficCapture(target_url)
     try:
-        playwright = await async_playwright().start()
-        browser = await playwright.chromium.launch(headless=True)
-        context = await browser.new_context(ignore_https_errors=True)
         page = await context.new_page()
 
-        # Auth browsing is direct. Proxify stays in the Katana crawl path; routing
-        # login traffic through it has caused body/protocol corruption on forms.
-        traffic_capture = auth_traffic.AuthTrafficCapture(target_url)
         traffic_capture.attach(page)
         context.on("page", traffic_capture.attach)
 
@@ -1385,23 +1656,21 @@ async def _authenticate_workflow(
             page=controller.active_page,
             login_url=prepared.login_url,
             traffic_capture=traffic_capture,
+            verified_landing_url=verification.landing_url,
             blocked_urls=blocked_urls,
             discovered_urls=discovered_urls,
         )
     finally:
-        for resource, method_name in (
-            (context, "close"),
-            (browser, "close"),
-            (playwright, "stop"),
-        ):
-            if resource is None:
-                continue
-            with contextlib.suppress(Exception, asyncio.CancelledError):
-                await asyncio.wait_for(getattr(resource, method_name)(), timeout=3.0)
+        with contextlib.suppress(Exception):
+            context.remove_listener("page", traffic_capture.attach)
 
 
 async def authenticate(
-    target_url: str, auth_config: dict, cancel_event: asyncio.Event
+    target_url: str,
+    auth_config: dict,
+    cancel_event: asyncio.Event,
+    *,
+    context: Any,
 ) -> AuthResult:
     """Run authentication under one total deadline and an operator cancellation supervisor."""
     if not isinstance(auth_config, dict):
@@ -1409,7 +1678,9 @@ async def authenticate(
     if cancel_event.is_set():
         raise asyncio.CancelledError
 
-    work = asyncio.create_task(_authenticate_workflow(target_url, auth_config, cancel_event))
+    work = asyncio.create_task(
+        _authenticate_workflow(target_url, auth_config, cancel_event, context)
+    )
     cancellation = asyncio.create_task(cancel_event.wait())
     try:
         done, _ = await asyncio.wait(
