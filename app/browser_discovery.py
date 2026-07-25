@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field, replace
 from enum import StrEnum
 from typing import Any, Protocol
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
@@ -78,6 +78,7 @@ class DiscoveryCandidate:
     url: str
     score: int
     reason: str
+    source_ui_fingerprint: str | None = None
 
 
 @dataclass
@@ -95,6 +96,7 @@ class DiscoveryRoundResult:
     budget_exhausted: bool = False
     model_budget_exhausted: bool = False
     model_failure_count: int = 0
+    candidate_count: int = 0
 
 
 class DiscoveryAdapter(Protocol):
@@ -249,6 +251,77 @@ def select_candidates(
         score, reason = _candidate_score(record)
         candidates.append(DiscoveryCandidate(url, score, reason))
     return sorted(candidates, key=lambda candidate: candidate.score, reverse=True)
+
+
+def _ui_surface_fingerprint(state: DiscoveryPageState) -> str:
+    """Fingerprint rendered UI independently of the current URL or element refs."""
+
+    payload = {
+        "title": state.title,
+        "text": _normalized_text(state.visible_text),
+        "frames": [
+            {
+                "title": frame.title,
+                "text": _normalized_text(frame.visible_text),
+                "main": frame.main,
+            }
+            for frame in state.frames
+        ],
+        "controls": [
+            {
+                "tag": control.tag,
+                "type": control.type,
+                "role": control.role,
+                "name": control.name,
+                "label": control.label,
+                "text": control.text,
+                "href": control.href,
+                "form_method": control.form_method,
+                "form_action": control.form_action,
+                "disabled": control.disabled,
+                "selected_value": control.selected_value,
+                "options": control.options,
+            }
+            for control in state.controls
+        ],
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def same_document_hash_candidates(state: DiscoveryPageState) -> list[DiscoveryCandidate]:
+    """Return visible fragment links that may represent client-side routes."""
+
+    current = urlparse(state.url)
+    if current.scheme not in {"http", "https"}:
+        return []
+    current_document = current._replace(fragment="").geturl()
+    source_ui_fingerprint = _ui_surface_fingerprint(state)
+    candidates: list[DiscoveryCandidate] = []
+    seen: set[str] = set()
+    for control in state.controls:
+        if control.tag != "a" and control.role != "link":
+            continue
+        resolved = urljoin(state.url, control.href)
+        parsed = urlparse(resolved)
+        if (
+            not parsed.fragment
+            or parsed.scheme not in {"http", "https"}
+            or parsed._replace(fragment="").geturl() != current_document
+            or resolved == state.url
+            or resolved in seen
+        ):
+            continue
+        seen.add(resolved)
+        candidates.append(
+            DiscoveryCandidate(
+                url=resolved,
+                score=85,
+                reason="same-document-hash",
+                source_ui_fingerprint=source_ui_fingerprint,
+            )
+        )
+    return candidates
 
 
 def _normalized_text(value: str, *, limit: int = 4000) -> str:
@@ -621,8 +694,14 @@ async def run_discovery_round(
     response_start = len(observer.responses) if observer is not None else 0
     acted_controls: set[tuple[str, str]] = set()
     known_seed_urls = set(known_get_urls or ())
+    candidate_queue = list(candidates)
+    scheduled_candidate_urls = {candidate.url for candidate in candidate_queue}
+    result.candidate_count = len(candidate_queue)
 
-    for candidate in candidates:
+    candidate_index = 0
+    while candidate_index < len(candidate_queue):
+        candidate = candidate_queue[candidate_index]
+        candidate_index += 1
         if result.processed_pages >= max_pages or result.action_count >= max_actions:
             result.budget_exhausted = True
             break
@@ -641,6 +720,29 @@ async def run_discovery_round(
                     raise asyncio.CancelledError
                 state = next_state or await capture_page_state(page)
                 next_state = None
+                if (
+                    candidate.source_ui_fingerprint is not None
+                    and _ui_surface_fingerprint(state) == candidate.source_ui_fingerprint
+                ):
+                    result.diagnostics.append(
+                        {
+                            "kind": "same-document-fragment-no-ui-change",
+                            "url": candidate.url,
+                        }
+                    )
+                    break
+                if (
+                    candidate.reason == "same-document-hash"
+                    and candidate.url not in known_seed_urls
+                ):
+                    known_seed_urls.add(candidate.url)
+                    result.stable_get_seeds.append(candidate.url)
+                for hash_candidate in same_document_hash_candidates(state):
+                    if hash_candidate.url in scheduled_candidate_urls:
+                        continue
+                    scheduled_candidate_urls.add(hash_candidate.url)
+                    candidate_queue.append(hash_candidate)
+                    result.candidate_count = len(candidate_queue)
                 state_key = (state.url, state.fingerprint)
                 if state_key in processed_states:
                     break

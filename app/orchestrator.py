@@ -707,7 +707,7 @@ async def run_browser_guided_discovery(
 
         round_record: dict[str, Any] = {
             "round": round_number,
-            "candidate_count": len(candidates),
+            "candidate_count": round_result.candidate_count,
             "processed_page_count": round_result.processed_pages,
             "state_count": round_result.state_count,
             "action_count": round_result.action_count,
@@ -815,7 +815,6 @@ async def run_browser_guided_discovery(
     if outcome == DiscoveryOutcome.fixpoint and katana_budget_exhausted:
         outcome = DiscoveryOutcome.budget_exhausted
         stop_reason = "katana_crawl_budget"
-    final_evidence = checkpoint_evidence()
     result = DiscoveryResult(
         outcome=outcome,
         rounds=completed_rounds,
@@ -823,6 +822,10 @@ async def run_browser_guided_discovery(
         state_count=total_states,
         workflow_count=total_workflows,
         stop_reason=stop_reason,
+    )
+    final_evidence = job_persistence.evidence_for_discovery_result(
+        checkpoint_evidence(),
+        result,
     )
     return BrowserGuidedDiscoveryExecution(
         sitemap=current_sitemap,

@@ -189,6 +189,50 @@ async def test_discovery_completion_does_not_overwrite_cancelled_state(app) -> N
 
 
 @pytest.mark.asyncio
+async def test_discovery_completion_marks_partial_outcome_in_evidence(app) -> None:
+    baseline = {"entries": [], "tree": {"children": {}, "pages": []}}
+    await orchestrator.db.execute(
+        """
+        INSERT INTO jobs (job_id, status, target_url, created_at, baseline_sitemap)
+        VALUES (?, 'processing', ?, datetime('now'), ?)
+        """,
+        (
+            "job-partial-discovery",
+            "https://example.com",
+            orchestrator.serialize_sitemap(baseline)[0],
+        ),
+    )
+    result = orchestrator.DiscoveryResult(
+        outcome=orchestrator.DiscoveryOutcome.partial_failure,
+        rounds=1,
+        new_entry_count=0,
+        state_count=3,
+        workflow_count=1,
+        stop_reason="model_decision_failed",
+    )
+
+    assert await orchestrator.complete_discovery_job(
+        "job-partial-discovery",
+        baseline,
+        {"schema_version": 2, "completeness": "complete", "warnings": []},
+        result,
+        asyncio.Event(),
+    )
+
+    row = await orchestrator.db.fetch_one(
+        "SELECT crawl_evidence FROM jobs WHERE job_id = ?",
+        ("job-partial-discovery",),
+    )
+    assert row is not None
+    evidence = orchestrator.db.loads_json(row["crawl_evidence"])
+    assert evidence is not None
+    assert evidence["completeness"] == "partial"
+    assert evidence["warnings"] == [
+        "Discovery ended before fixpoint: model_decision_failed"
+    ]
+
+
+@pytest.mark.asyncio
 async def test_completion_loses_to_requested_cancellation(app) -> None:
     baseline = {"entries": [], "tree": {"children": {}, "pages": []}}
     await orchestrator.db.execute(
@@ -271,7 +315,12 @@ async def test_baseline_checkpoint_finalizes_with_discovery_metadata(app) -> Non
     )
     assert row is not None
     assert row["status"] == "completed"
-    assert orchestrator.db.loads_json(row["crawl_evidence"]) == evidence
+    finalized_evidence = orchestrator.db.loads_json(row["crawl_evidence"])
+    assert finalized_evidence is not None
+    assert finalized_evidence["completeness"] == "partial"
+    assert finalized_evidence["warnings"] == [
+        "Discovery ended before fixpoint: action_budget"
+    ]
     sitemap = orchestrator.db.loads_json(row["sitemap"])
     assert sitemap is not None
     assert sitemap["entries"] == baseline["entries"]

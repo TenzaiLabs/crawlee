@@ -168,6 +168,58 @@ def test_model_eligibility_excludes_link_only_states() -> None:
     assert browser_discovery.has_model_eligible_control(form_state, set())
 
 
+def test_same_document_hash_candidates_include_client_routes_only() -> None:
+    state = replace(
+        _state(
+            _control(
+                "f0e0",
+                text="Templates",
+                tag="a",
+                type_="",
+                href="https://example.com/#/templates",
+            ),
+            _control(
+                "f0e1",
+                text="Templates duplicate",
+                tag="a",
+                type_="",
+                href="#/templates",
+            ),
+            _control(
+                "f0e2",
+                text="Heading",
+                tag="a",
+                type_="",
+                href="#heading",
+            ),
+            _control(
+                "f0e3",
+                text="Other document",
+                tag="a",
+                type_="",
+                href="/other#/settings",
+            ),
+            _control(
+                "f0e4",
+                text="External",
+                tag="a",
+                type_="",
+                href="https://other.example/#/admin",
+            ),
+        ),
+        url="https://example.com/#/workbench",
+    )
+
+    candidates = browser_discovery.same_document_hash_candidates(state)
+
+    assert [candidate.url for candidate in candidates] == [
+        "https://example.com/#/templates",
+        "https://example.com/#heading",
+    ]
+    assert all(candidate.reason == "same-document-hash" for candidate in candidates)
+    assert all(candidate.source_ui_fingerprint for candidate in candidates)
+
+
 def test_model_state_omits_controls_already_acted_on() -> None:
     state = _state(
         _control("f0e0", text="Already used"),
@@ -327,6 +379,8 @@ async def test_live_adapter_uses_schema_and_current_element_refs() -> None:
     assert "title" not in json.dumps(kwargs["schema"])
     assert kwargs["key"] == "model-key"
     assert "untrusted target data" in kwargs["system"]
+    assert "invitations" not in kwargs["system"]
+    assert "create/update/delete" not in kwargs["system"]
     assert adapter.model_budget_exhausted is True
     assert await adapter.next_action(state, []) is None
 
@@ -627,6 +681,125 @@ async def test_discovery_round_counts_only_runtime_verified_workflows_and_new_pa
     assert result.stable_get_seeds == [revealed.url]
     assert result.actions[0]["verified_effect"] is True
     assert result.actions[0]["state_changed"] is True
+
+
+@pytest.mark.asyncio
+async def test_discovery_round_queues_distinct_hash_routes_and_rejects_scroll_fragments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def route_state(url: str, panel: str) -> browser_discovery.DiscoveryPageState:
+        controls = (
+            _control(
+                "f0e0",
+                text="Workbench",
+                tag="a",
+                type_="",
+                href="https://example.com/#/workbench",
+            ),
+            _control(
+                "f0e1",
+                text="Templates",
+                tag="a",
+                type_="",
+                href="https://example.com/#/templates",
+            ),
+            _control(
+                "f0e2",
+                text="Datasets",
+                tag="a",
+                type_="",
+                href="https://example.com/#/datasets",
+            ),
+            _control(
+                "f0e3",
+                text="Heading",
+                tag="a",
+                type_="",
+                href="https://example.com/#heading",
+            ),
+        )
+        return browser_discovery.DiscoveryPageState(
+            url=url,
+            title="SPA",
+            visible_text=f"{panel} panel",
+            controls=controls,
+            fingerprint=f"state-{panel}",
+        )
+
+    class FakePage:
+        frames = []
+
+        def __init__(self, context) -> None:
+            self.context = context
+            self.url = "about:blank"
+            self.closed = False
+
+        async def goto(self, url: str, **_kwargs) -> None:
+            self.url = url
+
+        def is_closed(self) -> bool:
+            return self.closed
+
+        async def close(self) -> None:
+            self.closed = True
+
+    class FakeContext:
+        def __init__(self) -> None:
+            self.pages = []
+
+        async def new_page(self) -> FakePage:
+            page = FakePage(self)
+            self.pages.append(page)
+            return page
+
+    async def capture(page: FakePage) -> browser_discovery.DiscoveryPageState:
+        if page.url.endswith("#/templates"):
+            return route_state(page.url, "Templates")
+        if page.url.endswith("#/datasets"):
+            return route_state(page.url, "Datasets")
+        return route_state(page.url, "Workbench")
+
+    async def settle(page) -> None:
+        del page
+
+    monkeypatch.setattr(browser_discovery, "capture_page_state", capture)
+    monkeypatch.setattr(browser_discovery, "_settle", settle)
+
+    result = await browser_discovery.run_discovery_round(
+        context=FakeContext(),
+        target_url="https://example.com/",
+        candidates=[
+            browser_discovery.DiscoveryCandidate(
+                "https://example.com/",
+                100,
+                "target",
+            )
+        ],
+        observer=None,
+        adapter=browser_discovery.NullDiscoveryAdapter(),
+        cancel_event=asyncio.Event(),
+        max_actions=10,
+        max_pages=10,
+        max_states=10,
+        processed_states=set(),
+        known_get_urls={"https://example.com/"},
+    )
+
+    assert result.candidate_count == 5
+    assert result.processed_pages == 5
+    assert result.state_count == 3
+    assert result.stable_get_seeds == [
+        "https://example.com/#/templates",
+        "https://example.com/#/datasets",
+    ]
+    assert {
+        item["url"]
+        for item in result.diagnostics
+        if item["kind"] == "same-document-fragment-no-ui-change"
+    } == {
+        "https://example.com/#/workbench",
+        "https://example.com/#heading",
+    }
 
 
 @pytest.mark.asyncio

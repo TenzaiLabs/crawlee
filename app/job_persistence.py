@@ -9,9 +9,15 @@ from typing import Any
 from . import db, parser
 from .common import sanitize_log_value
 from .job_status import TERMINAL_JOB_STATUSES
-from .models import DiscoveryResult, JobStatus
+from .models import DiscoveryOutcome, DiscoveryResult, JobStatus
 
 logger = logging.getLogger(__name__)
+
+_PARTIAL_DISCOVERY_OUTCOMES = {
+    DiscoveryOutcome.budget_exhausted,
+    DiscoveryOutcome.partial_failure,
+    DiscoveryOutcome.interrupted,
+}
 
 
 def _now() -> str:
@@ -24,6 +30,22 @@ def serialize_sitemap(sitemap: dict[str, Any]) -> tuple[str, int, int]:
     entries = sitemap.get("entries")
     entry_count = len(entries) if isinstance(entries, list) else 0
     return serialized, entry_count, len(serialized.encode("utf-8"))
+
+
+def evidence_for_discovery_result(
+    evidence: dict[str, Any],
+    result: DiscoveryResult,
+) -> dict[str, Any]:
+    finalized = dict(evidence)
+    raw_warnings = finalized.get("warnings")
+    warnings = [str(item) for item in raw_warnings] if isinstance(raw_warnings, list) else []
+    if result.outcome in _PARTIAL_DISCOVERY_OUTCOMES:
+        finalized["completeness"] = "partial"
+        warning = f"Discovery ended before fixpoint: {result.stop_reason}"
+        if warning not in warnings:
+            warnings.append(warning)
+    finalized["warnings"] = warnings
+    return finalized
 
 
 def _checkpoint_result_sitemap(
@@ -211,6 +233,7 @@ class JobPersistence:
         result: DiscoveryResult,
         cancel_event: asyncio.Event,
     ) -> bool:
+        evidence = evidence_for_discovery_result(evidence, result)
         finalized = dict(sitemap)
         finalized["discovery"] = result.model_dump(mode="json")
         serialized, entry_count, size_bytes = serialize_sitemap(finalized)
@@ -260,7 +283,8 @@ class JobPersistence:
             """
             SELECT baseline_sitemap,
                    discovery_checkpoint_sitemap,
-                   discovery_checkpoint_progress
+                   discovery_checkpoint_progress,
+                   crawl_evidence
             FROM jobs
             WHERE job_id = ?
             """,
@@ -286,12 +310,17 @@ class JobPersistence:
                 sitemap = _checkpoint_result_sitemap(row["baseline_sitemap"], result)
         else:
             sitemap = _checkpoint_result_sitemap(row["baseline_sitemap"], result)
+        persisted_evidence = db.loads_json(row["crawl_evidence"]) or {}
+        if not isinstance(persisted_evidence, dict):
+            persisted_evidence = {}
+        evidence = evidence_for_discovery_result(persisted_evidence, checkpoint_result)
         serialized, entry_count, size_bytes = serialize_sitemap(sitemap)
         placeholders = ",".join("?" for _ in expected_statuses)
         updated = await db.execute_rowcount(
             f"""
             UPDATE jobs
             SET sitemap = ?,
+                crawl_evidence = ?,
                 discovery_result = ?,
                 result_entry_count = ?,
                 result_size_bytes = ?,
@@ -304,6 +333,7 @@ class JobPersistence:
             """,
             (
                 serialized,
+                db.dumps_json(evidence),
                 checkpoint_result.model_dump_json(),
                 entry_count,
                 size_bytes,
