@@ -18,11 +18,25 @@ from .common import coerce_int
 from .settings import (
     CRAWLER_AUTH_ATTEMPTS,
     CRAWLER_AUTH_MAX_STEPS_DEFAULT,
+    CRAWLER_AUTH_NAVIGATION_ATTEMPTS,
+    CRAWLER_AUTH_NAVIGATION_RETRY_BASE_SECONDS,
     CRAWLER_AUTH_RETRY_BASE_SECONDS,
     CRAWLER_AUTH_TIMEOUT_SECONDS,
 )
 
 logger = logging.getLogger(__name__)
+
+_TRANSIENT_NAVIGATION_ERROR_MARKERS = (
+    "ERR_ADDRESS_UNREACHABLE",
+    "ERR_CONNECTION_CLOSED",
+    "ERR_CONNECTION_REFUSED",
+    "ERR_CONNECTION_RESET",
+    "ERR_CONNECTION_TIMED_OUT",
+    "ERR_EMPTY_RESPONSE",
+    "ERR_INTERNET_DISCONNECTED",
+    "ERR_NAME_NOT_RESOLVED",
+    "ERR_NETWORK_CHANGED",
+)
 
 
 @dataclass
@@ -430,6 +444,45 @@ async def _wait_or_cancel(delay: float, cancel_event: asyncio.Event) -> None:
     except TimeoutError:
         return
     raise asyncio.CancelledError
+
+
+def _transient_navigation_error_name(exc: BaseException) -> str | None:
+    if isinstance(exc, PlaywrightTimeoutError):
+        return "navigation timeout"
+    message = str(exc)
+    return next(
+        (marker for marker in _TRANSIENT_NAVIGATION_ERROR_MARKERS if marker in message),
+        None,
+    )
+
+
+async def _goto_with_transient_retries(
+    page: Any,
+    url: str,
+    *,
+    wait_until: str,
+    cancel_event: asyncio.Event,
+    attempts: int = CRAWLER_AUTH_NAVIGATION_ATTEMPTS,
+    retry_base_seconds: float = CRAWLER_AUTH_NAVIGATION_RETRY_BASE_SECONDS,
+) -> Any:
+    for attempt in range(attempts):
+        if cancel_event.is_set():
+            raise asyncio.CancelledError
+        try:
+            return await page.goto(url, wait_until=wait_until)
+        except (PlaywrightTimeoutError, PlaywrightError) as exc:
+            error_name = _transient_navigation_error_name(exc)
+            if error_name is None or attempt >= attempts - 1:
+                raise
+            logger.warning(
+                "Transient authentication entry navigation failure (%s); retrying (%d/%d)",
+                error_name,
+                attempt + 2,
+                attempts,
+            )
+            await _wait_or_cancel(retry_base_seconds * (2**attempt), cancel_event)
+
+    raise AssertionError("navigation retry loop exhausted without returning or raising")
 
 
 async def _fresh_totp_from_secret(
@@ -1582,7 +1635,12 @@ async def _authenticate_workflow(
         traffic_capture.attach(page)
         context.on("page", traffic_capture.attach)
 
-        await page.goto(prepared.login_url, wait_until="domcontentloaded")
+        await _goto_with_transient_retries(
+            page,
+            prepared.login_url,
+            wait_until="domcontentloaded",
+            cancel_event=cancel_event,
+        )
         controller = _AuthBrowserController(context, page, target_url)
         page_state = await controller.get_page_state()
         user_prompt = auth_browser.build_user_prompt(

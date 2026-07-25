@@ -143,6 +143,107 @@ def test_resolve_secrets_totp(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.asyncio
+async def test_auth_entry_navigation_retries_transient_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts: list[str] = []
+    waits: list[float] = []
+
+    class FakePage:
+        async def goto(self, url: str, *, wait_until: str):
+            attempts.append(f"{wait_until} {url}")
+            if len(attempts) == 1:
+                raise auth_agent.PlaywrightError("Page.goto: net::ERR_ADDRESS_UNREACHABLE")
+            return "response"
+
+    async def fake_wait(delay: float, cancel_event) -> None:
+        assert not cancel_event.is_set()
+        waits.append(delay)
+
+    monkeypatch.setattr(auth_agent, "_wait_or_cancel", fake_wait)
+
+    response = await auth_agent._goto_with_transient_retries(
+        FakePage(),
+        "https://example.com/login",
+        wait_until="domcontentloaded",
+        cancel_event=auth_agent.asyncio.Event(),
+        attempts=3,
+        retry_base_seconds=0.25,
+    )
+
+    assert response == "response"
+    assert attempts == [
+        "domcontentloaded https://example.com/login",
+        "domcontentloaded https://example.com/login",
+    ]
+    assert waits == [0.25]
+
+
+@pytest.mark.asyncio
+async def test_auth_entry_navigation_does_not_retry_nontransient_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    class FakePage:
+        async def goto(self, url: str, *, wait_until: str):
+            nonlocal attempts
+            del url, wait_until
+            attempts += 1
+            raise auth_agent.PlaywrightError("Page.goto: net::ERR_CERT_AUTHORITY_INVALID")
+
+    async def unexpected_wait(delay: float, cancel_event) -> None:
+        raise AssertionError(f"unexpected retry delay {delay} for {cancel_event}")
+
+    monkeypatch.setattr(auth_agent, "_wait_or_cancel", unexpected_wait)
+
+    with pytest.raises(auth_agent.PlaywrightError, match="ERR_CERT_AUTHORITY_INVALID"):
+        await auth_agent._goto_with_transient_retries(
+            FakePage(),
+            "https://example.com/login",
+            wait_until="domcontentloaded",
+            cancel_event=auth_agent.asyncio.Event(),
+            attempts=3,
+        )
+
+    assert attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_auth_entry_navigation_stops_after_retry_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    waits: list[float] = []
+
+    class FakePage:
+        async def goto(self, url: str, *, wait_until: str):
+            nonlocal attempts
+            del url, wait_until
+            attempts += 1
+            raise auth_agent.PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded")
+
+    async def fake_wait(delay: float, cancel_event) -> None:
+        assert not cancel_event.is_set()
+        waits.append(delay)
+
+    monkeypatch.setattr(auth_agent, "_wait_or_cancel", fake_wait)
+
+    with pytest.raises(auth_agent.PlaywrightTimeoutError, match="Timeout 30000ms exceeded"):
+        await auth_agent._goto_with_transient_retries(
+            FakePage(),
+            "https://example.com/login",
+            wait_until="domcontentloaded",
+            cancel_event=auth_agent.asyncio.Event(),
+            attempts=3,
+            retry_base_seconds=0.5,
+        )
+
+    assert attempts == 3
+    assert waits == [0.5, 1.0]
+
+
+@pytest.mark.asyncio
 async def test_extract_page_state_formats_payload():
     class FakePage:
         async def evaluate(self, _: str, __: int):

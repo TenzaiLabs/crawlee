@@ -516,6 +516,8 @@ The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `-
 | `CRAWLER_LOG_DIR` | `/data/logs` | Log output directory |
 | `CRAWLER_AUTH_MODEL` | `gpt-5.4-nano` | LLM model for AI auth |
 | `CRAWLER_AUTH_ATTEMPTS` | `3` | Auth retry attempts |
+| `CRAWLER_AUTH_NAVIGATION_ATTEMPTS` | `3` | Attempts for transient failures while opening the authentication entry page |
+| `CRAWLER_AUTH_NAVIGATION_RETRY_BASE_SECONDS` | `1` | Initial backoff for authentication entry navigation retries; doubles after each failure |
 | `CRAWLER_AUTH_MAX_STEPS` | `85` | Default max tool-calling steps for auth |
 | `CRAWLER_AUTH_TIMEOUT_SECONDS` | `300` | Total AI-auth deadline, including retries and verification |
 | `CRAWLER_DISCOVERY_MODEL` | `gpt-5.4-mini` | LLM model for browser-guided workflow decisions |
