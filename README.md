@@ -18,7 +18,10 @@ The service runs as a single-job worker. Jobs are accepted through the API, stor
 - **Orchestrator**: owns job status transitions, a job-scoped Chromium profile, bounded known-file discovery, both Katana lanes, browser-guided discovery, checkpoints, and cleanup.
 - **Authentication**: header-only configs are passed directly to the crawler; credential or login-url configs run the LLM auth agent before crawl.
 - **Crawler**: standard Katana handles static/JavaScript/form extraction; pure-headless Katana reuses the job Chrome through CDP for rendered behavior. The crawler remains auth-agnostic.
-- **Browser discovery**: Playwright and the LLM open fresh pages after Katana, exercise safe workflow controls, and return stable seeds to another two-lane Katana stage.
+- **Browser discovery**: Playwright opens fresh pages after Katana,
+  deterministically explores distinct same-document hash routes, lets the LLM
+  exercise remaining workflow controls, and returns stable seeds to another
+  two-lane Katana stage.
 - **Parser**: controlled-fetch, Katana, and passive-CDP evidence is aggregated into a completed-job sitemap by exact `(method, URL)` identity.
 
 Target certificate verification is intentionally disabled across controlled
@@ -325,8 +328,9 @@ boundary described here: start external targets, run a real
 `tenzai-crawler-server`, submit through HTTP, poll the persisted job, and inspect
 the returned sitemap. It does not use an in-process FastAPI harness.
 
-The latest repeated qualification is recorded in
-[`docs/browser-guided-discovery-qualification.md`](docs/browser-guided-discovery-qualification.md).
+Reproduce the repeated live-model qualification with
+`uv run python -m scripts.run_browser_discovery_qualification`. Its generated
+report and JSON result are local artifacts and are not versioned.
 
 ### 1. Check prerequisites
 
@@ -550,10 +554,13 @@ memory-budget, and restart recovery can finalize the latest valid sitemap. A
 Katana `crawl_timeout` with valid output is returned as a completed partial
 result instead of discarding the sitemap; `result_metadata.completeness` is
 `partial` and `result_metadata.warnings` identifies the affected lane and seed.
-A partial lane cannot establish a discovery fixpoint. A cancelled job keeps
-status `cancelled` while exposing any finalized checkpoint; cancellation before
-the baseline has no sitemap. Terminal result reads use only the persisted result
-and never reparse historical logs.
+A partial lane cannot establish a discovery fixpoint. Discovery outcomes that
+stop before a fixpoint (`budget_exhausted`, `partial_failure`, or `interrupted`)
+also force `result_metadata.completeness` to `partial` and add a warning with
+the discovery stop reason. A cancelled job keeps status `cancelled` while
+exposing any finalized checkpoint; cancellation before the baseline has no
+sitemap. Terminal result reads use only the persisted result and never reparse
+historical logs.
 
 ## Deployment
 

@@ -149,7 +149,7 @@ flowchart TD
       Session --> Known[Bounded robots and sitemap discovery]
       Known --> Standard[Standard Katana<br/>JavaScript, forms, classification]
       Standard --> Pure[Pure-headless Katana<br/>shared Chrome plus passive CDP]
-      Pure --> Guided[Playwright and LLM gap discovery]
+      Pure --> Guided[Hash-route queue plus Playwright and LLM gap discovery]
       Guided -->|stable seeds| Standard
       Standard --> Logs[Per-lane JSONL and terminal summaries]
       Pure --> Logs
@@ -165,7 +165,7 @@ flowchart TD
           <li><strong>Orchestrator:</strong> owns status transitions, checkpoints, budgets, and the single-job queue.</li>
           <li><strong>Auth agent:</strong> uses Playwright browser controls when login is required.</li>
           <li><strong>Crawler:</strong> runs standard and pure-headless Katana with target, scope, headers, and seeds.</li>
-          <li><strong>Browser discovery:</strong> explores workflow controls and returns stable seeds to Katana.</li>
+          <li><strong>Browser discovery:</strong> validates same-document hash routes, explores remaining workflow controls, and returns stable seeds to Katana.</li>
           <li><strong>Parser:</strong> aggregates controlled-fetch, Katana, and passive-CDP evidence.</li>
         </ul>
 
@@ -248,7 +248,9 @@ kubectl apply -f k8s/service.yaml</pre>
         <h2>Output</h2>
         <p>
           Completed jobs expose a <code>sitemap</code> object with a flat list of observed request
-          entries and a path tree for UI rendering. Log artifacts remain on disk for later review.
+          entries, a path tree for UI rendering, and a terminal discovery result. A discovery that
+          stops before fixpoint is returned with partial completeness and a warning naming its stop
+          reason. Log artifacts remain on disk for later review.
         </p>
 <pre>{
   "job_id": "6b1a...",
@@ -259,6 +261,10 @@ kubectl apply -f k8s/service.yaml</pre>
     "tree": {
       "children": {},
       "pages": []
+    },
+    "discovery": {
+      "outcome": "fixpoint",
+      "stop_reason": "complete_round_added_nothing"
     }
   }
 }</pre>

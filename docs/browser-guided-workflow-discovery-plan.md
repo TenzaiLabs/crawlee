@@ -48,7 +48,8 @@ Playwright authentication in job Chrome
 merge exact public endpoints + retain per-lane evidence
         |
         v
-Playwright/LLM opens fresh pages, explores gaps, and returns stable GET seeds
+Playwright queues distinct hash routes; the LLM explores remaining workflow gaps
+and both return stable GET seeds
         |
         +--> repeat the two Katana passes until fixpoint or budget
 ```
@@ -160,10 +161,10 @@ Katana itself uses CDP response interception and its built-in browser behavior.
 “Passive CDP” in this design refers only to the orchestrator's evidence
 observer.
 
-The LLM receives a conservative discovery objective, but its browser requests
-are not intercepted or blocked. Controlled fixtures record destructive markers
-in their server ledgers so E2E qualification can verify the behavior rather than
-changing it at runtime.
+The LLM receives a bounded discovery objective, but neither its action policy
+nor its browser requests use a destructive-looking-name blocklist. Controlled
+fixtures record destructive markers in their server ledgers so E2E
+qualification can verify the behavior rather than changing it at runtime.
 
 ### Authentication handoff
 
@@ -374,7 +375,10 @@ records the verified outcome before the next model call. Candidate navigation,
 including matching subdomains, remains orchestrator-owned.
 
 The model cannot control Katana or claim evidence. Page content is always
-untrusted target data.
+untrusted target data. Navigation links, including same-document client routes,
+are scheduled by the runtime instead of selected by the model. The model is not
+otherwise restricted from forms or controls based on labels such as create,
+update, invite, send, archive, or publish.
 
 ### Candidate selection and discovery rounds
 
@@ -382,16 +386,28 @@ Candidates begin with the target URL, authenticated landing pages, every
 successful in-scope HTML document emitted by Katana, and stable in-scope GET
 pages discovered through browser actions.
 
+Every captured page also contributes visible same-document links with a
+non-empty fragment. The runtime resolves each link against the current URL and
+queues each exact fragment URL once during the round. It opens that URL in a
+fresh page and compares a normalized rendered-UI fingerprint that excludes the
+URL and element-reference identities. A fragment becomes a stable GET seed only
+when it exposes a distinct rendered surface. An ordinary scroll anchor or route
+alias that reproduces the source UI is recorded as a diagnostic and does not
+trigger Katana enrichment. This exact queue bookkeeping prevents repeated
+browser work; it does not deduplicate or normalize Katana's page set.
+
 Enrichment seeds are not derived from the full round traffic window. Candidate
 `goto` requests, subresources, XHR/fetch endpoints, and URLs already present as
-known GET endpoints remain evidence but do not trigger Katana. Only a new
+known GET endpoints remain evidence but do not trigger Katana. Enrichment is
+triggered only by a validated distinct same-document hash route, a new
 successful in-scope CDP `Document` request within an action window, or the new
-stable page URL observed after that action, becomes an enrichment seed.
+stable page URL observed after that action.
 
 The orchestrator does not deduplicate, collapse, or template-normalize Katana
 pages. Katana's unique filter and `-fsu` result are authoritative. The
-orchestrator records only whether an exact candidate URL and UI state have
-already been handed to the LLM so it does not repeat completed work.
+orchestrator records only whether an exact candidate URL was already queued in
+the current round and whether an exact URL/UI state was already processed, so
+deterministic navigation and model work are not repeated.
 
 Each Katana process has its own unique filter, so the same endpoint may be
 emitted by the standard and pure-headless passes. Immutable evidence records
@@ -417,12 +433,15 @@ One discovery round is a bounded sweep:
 1. snapshot and rank all eligible candidates;
 2. visit each candidate once within the remaining page and action budgets;
 3. fingerprint its normalized UI state;
-4. apply deterministic UI actions when unambiguous;
-5. use the model for ambiguous controls, forms, and workflows;
-6. record state transitions and CDP-attributed evidence;
-7. collect new, action-derived, stable, in-scope document GET seeds;
-8. run one completed two-pass Katana enrichment stage with all new seeds;
-9. rebuild and rank the candidate set.
+4. queue visible same-document fragment links and retain only routes with a
+   distinct rendered UI;
+5. apply deterministic UI actions when unambiguous;
+6. use the model for ambiguous controls, forms, and workflows;
+7. record state transitions and CDP-attributed evidence;
+8. collect validated hash routes and new action-derived, stable, in-scope
+   document GET seeds;
+9. run one completed two-pass Katana enrichment stage with all new seeds;
+10. rebuild and rank the candidate set.
 
 The loop stops when a full sweep and enrichment stage add no endpoint, state,
 actionable control, or workflow step; all candidates are exhausted;
@@ -504,6 +523,13 @@ an interrupted discovery job with a valid baseline checkpoint is finalized from
 that checkpoint with outcome `interrupted`. Jobs interrupted before a
 checkpoint remain `failed_interrupted`.
 
+Any terminal discovery outcome that stopped before a fixpoint
+(`budget_exhausted`, `partial_failure`, or `interrupted`) forces
+`result_metadata.completeness = "partial"` and appends a warning containing the
+discovery stop reason. This applies both to normal completion from a partial
+checkpoint and to latest-checkpoint finalization during cancellation or
+recovery.
+
 Operator cancellation retains job status `cancelled`. If a valid baseline or
 partial discovery checkpoint exists, the newest valid checkpoint is published
 with outcome `interrupted` and stop reason `cancelled_after_checkpoint`, and
@@ -566,8 +592,7 @@ targets through the crawler server, verified all 24 persisted jobs after a
 server restart, found no cross-job isolation violation, and recorded 527
 sitemap entries. The browser fixture oracle independently proves that the
 currently missing runtime-XHR, rendered-navigation, cookie/`localStorage`,
-header, multi-seed, and bounded-perpetual-traffic controls are reachable. See
-`phase0-baseline-report.md` and `phase0-baseline-results.json`.
+header, multi-seed, and bounded-perpetual-traffic controls are reachable.
 
 - Complete manifests for every target with health checks, resets,
   expected baseline and browser-only endpoints, declared action sequences,
@@ -604,8 +629,7 @@ site C, site F, four auth-flow intermediates, Juice Shop, and Parabank. Reruns
 also showed that site D, security-question auth, and TOTP auth can vary from a
 severely incomplete first result to full expected coverage, so those first-run
 shortfalls are recorded as nondeterminism rather than confirmed lifecycle
-defects. See `phase0-baseline-report.md` and
-`phase0-baseline-results.json`.
+defects.
 
 - Stop starting, health-checking, and stopping the Proxify subprocess.
 - Remove proxy flags, proxy environment variables, fixed-port assumptions,
@@ -631,8 +655,7 @@ Playwright → Katana `-cwu` → Playwright retained cookies and origin
 `localStorage`; passive CDP observed pages, popups, frames, workers, and service
 workers; standard and pure-headless lanes exercised their assigned flags; both
 lanes emitted `queue_exhausted` for every input; and pure-headless `-H` reached
-the protected page with HTTP 200. See `browser-capability-spike-report.md` and
-`browser-capability-spike-results.json`.
+the protected page with HTTP 200.
 
 The build is derived from upstream source commit
 `0265c675d03de83b1a1f1935ffb9c8ca9e4c17aa`. The vendored patch SHA-256 is
@@ -701,7 +724,6 @@ Playwright, and navigates a fresh page before final cleanup. A 2-minute fixture
 job completed with 18 entries and survived server-restart retrieval. A second
 job reached `child.localhost` with the configured non-cookie auth header and
 received HTTP 200. Both jobs left no Chrome, Katana process, or profile behind.
-See `shared-browser-lifecycle-report.md`.
 
 - Add orchestrator-owned Chrome startup, CDP endpoint discovery, and cleanup.
 - Add passive CDP observation and crawl-scope authentication-header propagation.
@@ -727,7 +749,7 @@ after browser additions and each enrichment lane. Restart, cancellation,
 failure, the 60-minute whole-job deadline, and the shared 2-GiB process RSS
 ceiling all finalize the newest valid checkpoint; a corrupt partial falls back
 to the baseline, and a pre-checkpoint interruption fails. Legacy schemas remain
-intentionally unsupported. See `discovery-checkpoint-recovery-report.md`.
+intentionally unsupported.
 
 - Add and validate the discovery request configuration.
 - Add storage for the configuration, baseline checkpoint, raw evidence
@@ -799,6 +821,11 @@ Review correction on 2026-07-24: enrichment seeds now exclude candidate
 navigation, subresources, and already-known GET endpoints; workflow counts are
 computed from verified runtime effects rather than an adapter-owned counter.
 
+Follow-up on 2026-07-25: each rendered page now contributes deterministic
+same-document hash-route candidates. Exact fragment URLs are queued once per
+round, distinct rendered routes become two-lane Katana seeds, and scroll
+anchors or aliases with an unchanged UI surface are rejected diagnostically.
+
 - Consume Katana's candidate pages and knowledge-base classification without
   deduplicating or template-collapsing them.
 - Track only exact LLM-processed URL/state pairs to avoid repeated model work.
@@ -828,6 +855,12 @@ element refs. The live adapter and its response schema now live in
 Select controls with no value different from the current selection are omitted
 from model-eligible actions, preventing an impossible no-change retry loop.
 
+Follow-up on 2026-07-25: navigation links are explicitly runtime-owned, while
+the model prompt no longer blocks functional controls based on labels such as
+invite, create, update, archive, send, or publish. Completion and evidence
+reporting also mark every non-fixpoint partial outcome as partial rather than
+claiming complete coverage.
+
 - Add the discovery objective and prompt using the shared page-state tools.
 - Enforce model turn, action, state, and time budgets outside the model.
 - Cover malformed calls, prompt injection, stale references, ineffective loops,
@@ -841,14 +874,13 @@ as the crawl authority.
 
 Status on 2026-07-23: implemented and qualified for the controlled release
 boundary. The authoritative real-server run and targeted repaired-fixture
-reruns produce `complete-system-qualification.md` and
-`complete-system-qualification.json`: 21/21 controlled fixtures complete,
-10/10 browser-only endpoints, 5/5 request sequences, 11/11 lane markers, 24/24
-persisted results, and zero isolation violations. Juice Shop completes with a
-bounded discovery outcome. CrawlGround and ParaBank remain visible failed
-public canaries because pure-headless reports an incomplete queue after ten
-minutes; they do not invalidate the controlled gate. CrawlGround preserves its
-dual-pass baseline score of 44/59 but does not improve it.
+reruns completed 21/21 controlled fixtures, 10/10 browser-only endpoints, 5/5
+request sequences, 11/11 lane markers, and 24/24 persisted results with zero
+isolation violations. Juice Shop completes with a bounded discovery outcome.
+CrawlGround and ParaBank remain visible failed public canaries because
+pure-headless reports an incomplete queue after ten minutes; they do not
+invalidate the controlled gate. CrawlGround preserves its dual-pass baseline
+score of 44/59 but does not improve it.
 
 - Run every manifest target sequentially through the real server.
 - Restart the server and retrieve every persisted result.

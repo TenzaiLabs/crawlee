@@ -22,10 +22,9 @@ the DIT project's published model URL and verifies SHA-256
 installing it as `/root/.dit/model.json`.
 
 The source patch and model are qualified by
-`scripts/run_browser_capability_spike.py`; its current evidence is in
-`docs/browser-capability-spike-report.md` and
-`docs/browser-capability-spike-results.json`. The exact static binary produced
-from the pinned source with Go 1.25.7 has SHA-256
+`scripts/run_browser_capability_spike.py`. Its generated Markdown and JSON
+evidence under `docs/` is intentionally ignored rather than versioned. The
+exact static binary produced from the pinned source with Go 1.25.7 has SHA-256
 `49ab204962b91b4de9ee81b0f227716bae6f13ce71acadff60fe17e3ac1cb196`.
 
 The `tenzai.2` parser regression was reproduced against App-010's 687,309-byte

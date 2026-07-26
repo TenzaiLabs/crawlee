@@ -44,8 +44,8 @@ Use `--local-only` to exercise just the 21 repository fixtures. The runner
 starts a real `uv run tenzai-crawler-server` process with temporary database and
 log paths, submits and polls jobs only through HTTP, restarts the server to
 verify persisted retrieval, checks cross-job isolation and declared route
-markers, and writes
-`docs/phase0-baseline-report.md` plus `docs/phase0-baseline-results.json`.
+markers, and writes an ignored local Markdown report plus its JSON result under
+`docs/`.
 
 The browser-only positive controls for the three enhanced fixtures are opt-in:
 
