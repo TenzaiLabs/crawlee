@@ -12,7 +12,7 @@ dependencies = [
   "llm==0.31.1",
   "pyotp",
   "python-dotenv>=1.2.2",
-  "websockets>=15.0.1",
+  "websockets>=17.0",
 ]
 
 [project.optional-dependencies]
