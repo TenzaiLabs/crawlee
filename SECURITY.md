@@ -20,8 +20,8 @@ Use GitHub private vulnerability reporting for this repository when available. I
 - Reproduction steps with the smallest target or fixture that demonstrates the issue.
 - Expected vs. actual behavior.
 - Any logs or screenshots needed to understand impact, with secrets redacted.
-- Whether the issue requires debug endpoints, Kubernetes access, operator credentials, or a
-  network position outside the service.
+- Whether the issue requires debug endpoints, operator credentials, or a network position outside
+  the service.
 
 If private vulnerability reporting is not available, contact the maintainers through the
 repository owner's normal private security channel before disclosing details publicly.

@@ -34,7 +34,6 @@
       <a href="#api">API</a>
       <a href="#auth">Authentication</a>
       <a href="#architecture">Architecture</a>
-      <a href="#deployment">Deployment</a>
       <a href="#output">Output</a>
     </aside>
 
@@ -226,22 +225,12 @@ flowchart TD
             <h4>Deployment controls</h4>
             <ul>
               <li>Place the API behind trusted access controls before shared use.</li>
-              <li>Apply Kubernetes/network egress restrictions for crawl destinations.</li>
+              <li>Apply network egress restrictions for crawl destinations.</li>
               <li>Provide secrets through environment references, not plaintext job payloads.</li>
               <li>Keep GitHub Actions least-privilege and pinned to immutable action SHAs.</li>
             </ul>
           </article>
         </div>
-      </section>
-
-      <section id="deployment">
-        <h2>Deployment</h2>
-        <p>
-          Kubernetes manifests are provided for a single-replica StatefulSet with persistent
-          storage mounted at the service data path.
-        </p>
-<pre>kubectl apply -f k8s/statefulset.yaml
-kubectl apply -f k8s/service.yaml</pre>
       </section>
 
       <section id="output">

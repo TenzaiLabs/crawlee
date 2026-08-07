@@ -562,23 +562,12 @@ exposing any finalized checkpoint; cancellation before the baseline has no
 sitemap. Terminal result reads use only the persisted result and never reparse
 historical logs.
 
-## Deployment
-
-Apply Kubernetes manifests:
-
-```bash
-kubectl apply -f k8s/statefulset.yaml
-kubectl apply -f k8s/service.yaml
-```
-
 ## Known Limitations
 
 - Authorization extraction from browser traffic is heuristic and may miss unusual record shapes.
 - The LLM auth agent depends on the configured model, the quality of page accessibility data, and the supplied operator instructions for unusual flows.
 - TOTP is supported through an explicit auth-agent tool; other out-of-band MFA methods require additional tooling or operator-specific instructions.
 - Cancellation checks run in preflight/callbacks and long subprocess boundaries, not at the top of every tool function body.
-- Kubernetes manifests do not include explicit LLM provider env wiring by default.
-
 ## Security Posture
 
 Tenzai Crawler is designed for trusted operators. If exposed broadly, add API authentication/authorization and egress controls.
