@@ -227,9 +227,7 @@ async def test_discovery_completion_marks_partial_outcome_in_evidence(app) -> No
     evidence = orchestrator.db.loads_json(row["crawl_evidence"])
     assert evidence is not None
     assert evidence["completeness"] == "partial"
-    assert evidence["warnings"] == [
-        "Discovery ended before fixpoint: model_decision_failed"
-    ]
+    assert evidence["warnings"] == ["Discovery ended before fixpoint: model_decision_failed"]
 
 
 @pytest.mark.asyncio
@@ -318,9 +316,7 @@ async def test_baseline_checkpoint_finalizes_with_discovery_metadata(app) -> Non
     finalized_evidence = orchestrator.db.loads_json(row["crawl_evidence"])
     assert finalized_evidence is not None
     assert finalized_evidence["completeness"] == "partial"
-    assert finalized_evidence["warnings"] == [
-        "Discovery ended before fixpoint: action_budget"
-    ]
+    assert finalized_evidence["warnings"] == ["Discovery ended before fixpoint: action_budget"]
     sitemap = orchestrator.db.loads_json(row["sitemap"])
     assert sitemap is not None
     assert sitemap["entries"] == baseline["entries"]
@@ -1162,9 +1158,7 @@ def test_baseline_evidence_marks_process_deadline_partial() -> None:
         "termination_reason": "process_deadline",
         "records": [{"url": "https://example.com/partial"}],
     }
-    assert evidence["warnings"] == [
-        "Katana pure-headless baseline ended with process_deadline"
-    ]
+    assert evidence["warnings"] == ["Katana pure-headless baseline ended with process_deadline"]
 
 
 @pytest.mark.asyncio

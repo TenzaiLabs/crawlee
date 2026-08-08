@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import shutil
+import signal
+import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -45,15 +48,77 @@ async def _local_testsite() -> AsyncIterator[str]:
         thread.join(timeout=5)
 
 
+def _reserve_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        return int(listener.getsockname()[1])
+
+
+@asynccontextmanager
+async def _crawler_server(tmp_path: Path) -> AsyncIterator[str]:
+    port = _reserve_port()
+    base_url = f"http://127.0.0.1:{port}"
+    log_path = tmp_path / "crawler-server.log"
+    log_file = log_path.open("wb")
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "CRAWLER_HOST": "127.0.0.1",
+            "CRAWLER_PORT": str(port),
+            "CRAWLER_DB_PATH": str(tmp_path / "jobs.db"),
+            "CRAWLER_LOG_DIR": str(tmp_path / "logs"),
+        }
+    )
+    process = await asyncio.create_subprocess_exec(
+        "uv",
+        "run",
+        "tenzai-crawler-server",
+        cwd=Path(__file__).resolve().parents[1],
+        env=environment,
+        stdout=log_file,
+        stderr=asyncio.subprocess.STDOUT,
+        start_new_session=True,
+    )
+    try:
+        async with httpx.AsyncClient(base_url=base_url, timeout=2) as client:
+            for _ in range(120):
+                if process.returncode is not None:
+                    log_file.flush()
+                    raise RuntimeError(
+                        f"crawler server exited with {process.returncode}:\n"
+                        f"{log_path.read_text(errors='replace')}"
+                    )
+                try:
+                    response = await client.get("/openapi.json")
+                    if response.status_code == 200:
+                        break
+                except httpx.HTTPError:
+                    pass
+                await asyncio.sleep(0.25)
+            else:
+                raise RuntimeError("crawler server readiness timed out")
+        yield base_url
+    finally:
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGTERM)
+            try:
+                await asyncio.wait_for(process.wait(), timeout=10)
+            except TimeoutError:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGKILL)
+                await process.wait()
+        log_file.close()
+
+
 @pytest.mark.asyncio
-async def test_happy_path_crawl_succeeds(app_with_orchestrator):
+async def test_happy_path_crawl_succeeds(tmp_path: Path):
     if os.getenv("RUN_E2E") != "1":
         pytest.skip("Set RUN_E2E=1 to run end-to-end crawl scenario")
     if shutil.which("katana") is None:
         pytest.skip("End-to-end crawl requires the katana binary")
-    async with _local_testsite() as target_url:
-        transport = httpx.ASGITransport(app=app_with_orchestrator)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with _local_testsite() as target_url, _crawler_server(tmp_path) as base_url:
+        async with httpx.AsyncClient(base_url=base_url) as client:
             response = await client.post(
                 "/jobs",
                 json={

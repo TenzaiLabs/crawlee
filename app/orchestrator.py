@@ -327,9 +327,7 @@ def _katana_run_warnings(
 ) -> list[str]:
     warnings: list[str] = []
     if run.termination_reason is not None:
-        warnings.append(
-            f"Katana {run.lane} {phase} ended with {run.termination_reason}"
-        )
+        warnings.append(f"Katana {run.lane} {phase} ended with {run.termination_reason}")
     if run.terminal_summary is None:
         return warnings
     inputs = run.terminal_summary.get("inputs")
@@ -591,7 +589,7 @@ async def run_browser_guided_discovery(
     discovery_evidence: dict[str, Any] = {"schema_version": 1, "rounds": []}
     enrichment_evidence: list[dict[str, Any]] = []
     total_actions = 0
-    total_pages = 0
+    total_llm_pages = 0
     total_states = 0
     total_workflows = 0
     completed_rounds = 0
@@ -631,13 +629,10 @@ async def run_browser_guided_discovery(
     for round_number in range(1, discovery_config.max_rounds + 1):
         _raise_if_cancel_requested(cancel_event)
         remaining_actions = discovery_config.max_actions - total_actions
-        remaining_pages = discovery_config.max_llm_pages - total_pages
+        remaining_llm_pages = discovery_config.max_llm_pages - total_llm_pages
         remaining_states = CRAWLER_DISCOVERY_MAX_STATES - total_states
         if remaining_actions <= 0:
             stop_reason = "action_budget"
-            break
-        if remaining_pages <= 0:
-            stop_reason = "page_budget"
             break
         if remaining_states <= 0:
             stop_reason = "state_budget"
@@ -660,7 +655,7 @@ async def run_browser_guided_discovery(
                 ],
                 remaining_budgets={
                     "actions": remaining_actions,
-                    "pages": remaining_pages,
+                    "llm_pages": max(0, remaining_llm_pages),
                     "states": remaining_states,
                     "seconds": max(0, round(remaining_seconds, 3)),
                 },
@@ -678,7 +673,7 @@ async def run_browser_guided_discovery(
                             adapter=adapter,
                             cancel_event=cancel_event,
                             max_actions=remaining_actions,
-                            max_pages=remaining_pages,
+                            max_llm_pages=max(0, remaining_llm_pages),
                             max_states=remaining_states,
                             processed_states=processed_states,
                             known_get_urls={
@@ -696,7 +691,7 @@ async def run_browser_guided_discovery(
 
         completed_rounds += 1
         total_actions += round_result.action_count
-        total_pages += round_result.processed_pages
+        total_llm_pages += round_result.llm_page_count
         total_states += round_result.state_count
         total_workflows += round_result.workflow_count
         before_round_keys = _entry_keys(current_sitemap)
@@ -715,6 +710,7 @@ async def run_browser_guided_discovery(
             "round": round_number,
             "candidate_count": round_result.candidate_count,
             "processed_page_count": round_result.processed_pages,
+            "llm_page_count": round_result.llm_page_count,
             "state_count": round_result.state_count,
             "action_count": round_result.action_count,
             "workflow_count": round_result.workflow_count,
@@ -801,6 +797,9 @@ async def run_browser_guided_discovery(
         if round_result.model_budget_exhausted:
             stop_reason = "model_turn_budget"
             break
+        if round_result.llm_page_budget_exhausted:
+            stop_reason = "llm_page_budget"
+            break
         if (
             round_result.state_count == 0
             and round_result.action_count == 0
@@ -815,7 +814,7 @@ async def run_browser_guided_discovery(
             elif total_states >= CRAWLER_DISCOVERY_MAX_STATES:
                 stop_reason = "state_budget"
             else:
-                stop_reason = "page_budget"
+                stop_reason = "llm_page_budget"
             break
 
     if outcome == DiscoveryOutcome.fixpoint and katana_budget_exhausted:
