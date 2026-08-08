@@ -326,6 +326,12 @@ def _katana_run_warnings(
     phase: str,
 ) -> list[str]:
     warnings: list[str] = []
+    if run.termination_reason is not None:
+        warnings.append(
+            f"Katana {run.lane} {phase} ended with {run.termination_reason}"
+        )
+    if run.terminal_summary is None:
+        return warnings
     inputs = run.terminal_summary.get("inputs")
     if not isinstance(inputs, list):
         return warnings

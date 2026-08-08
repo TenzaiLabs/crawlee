@@ -531,7 +531,7 @@ The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `-
 | `CRAWLER_JOB_TIMEOUT_SECONDS` | `3600` | Whole-job wall-clock deadline across auth, baseline, discovery, and finalization |
 | `CRAWLER_JOB_MEMORY_LIMIT_BYTES` | `2147483648` | Shared RSS ceiling for the job Chrome and active Katana process groups |
 | `CRAWLER_SUBPROCESS_TIMEOUT` | `720` | Subprocess inactivity timeout (seconds) |
-| `CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS` | `720` | Katana wall deadline, including shutdown after its 10-minute crawl budget |
+| `CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS` | `720` | Katana wall deadline, after which usable output is retained as a partial result |
 | `CRAWLER_ENABLE_DEBUG_ENDPOINTS` | off | Set `1` to enable debug routes |
 
 ## Output
