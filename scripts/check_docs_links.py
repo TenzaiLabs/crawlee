@@ -4,7 +4,11 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 DOCS_ROOT = Path("docs")
-HTML_FILES = (DOCS_ROOT / "index.html", DOCS_ROOT / "docs.html")
+HTML_FILES = (
+    DOCS_ROOT / "index.html",
+    DOCS_ROOT / "concept.html",
+    DOCS_ROOT / "docs.html",
+)
 
 
 class LocalLinkParser(HTMLParser):

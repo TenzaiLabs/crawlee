@@ -11,6 +11,10 @@ Tenzai Crawler is an async-native FastAPI service for crawling websites with Kat
 
 The service runs as a single-job worker. Jobs are accepted through the API, stored as queued records, and drained serially.
 
+Read the [concept overview](docs/concept.html) or the DEFCON presentation,
+[Improving crawling with an LLM (PDF)](docs/ImprovingCrawlingWithAnLLM.pdf), for
+the thesis behind the design.
+
 ## Architecture
 
 - **API**: FastAPI endpoints create, inspect, list, and cancel crawl jobs.

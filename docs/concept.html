@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Concept - Tenzai Crawler</title>
+  <meta name="description" content="Why Tenzai Crawler combines deterministic crawling with bounded AI for authentication and ambiguous browser workflows." />
+  <meta property="og:title" content="Tenzai Crawler Concept" />
+  <meta property="og:description" content="Deterministic crawling with bounded AI for the parts of a web application that require interpretation." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="assets/tenzai-favicon-48.png" type="image/png" sizes="48x48" />
+  <link rel="stylesheet" href="assets/site.css" />
+  <script defer src="assets/vendor/mermaid-11.15.0.min.js"></script>
+  <script defer src="assets/architecture.js"></script>
+</head>
+<body>
+  <nav class="site-nav" aria-label="Primary">
+    <a class="brand" href="index.html">
+      <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+      <span>Tenzai Crawler</span>
+    </a>
+    <div class="links">
+      <a href="index.html">Overview</a>
+      <a class="active" href="concept.html">Concept</a>
+      <a href="docs.html">Docs</a>
+      <a href="ImprovingCrawlingWithAnLLM.pdf">PDF</a>
+    </div>
+  </nav>
+
+  <main class="doc-shell wrap">
+    <aside class="toc" aria-label="Concept sections">
+      <a href="#thesis">Thesis</a>
+      <a href="#limits">Where crawlers stop</a>
+      <a href="#boundary">Division of work</a>
+      <a href="#loop">Discovery loop</a>
+      <a href="#evaluation">Evaluation</a>
+    </aside>
+
+    <article class="doc-content">
+      <h1>Concept</h1>
+      <p>
+        Tenzai Crawler keeps repeatable work deterministic and uses AI only when a page requires
+        interpretation.
+      </p>
+
+      <section id="thesis">
+        <h2>Thesis</h2>
+        <div class="doc-callout">
+          Use deterministic code for repeatable crawl work. Use AI for ambiguous interaction.
+        </div>
+        <p>
+          A crawler already knows how to fetch pages, follow links, apply scope, deduplicate URLs,
+          and record evidence. Replacing that work with a model would add cost and uncertainty
+          without adding useful judgment.
+        </p>
+        <p>
+          Some application states do require judgment. Login forms suck and come in dozens of versions. Controls can be
+          ambiguous. Wizards and multi-step workflows may reveal routes only after a sequence of
+          browser actions.
+        </p>
+      </section>
+
+      <section id="limits">
+        <h2>Where ordinary crawlers stop</h2>
+        <div class="threat-grid">
+          <article>
+            <h4>Login</h4>
+            <p>Session state hides routes that a public crawl cannot reach.</p>
+          </article>
+          <article>
+            <h4>Safety</h4>
+            <p>Stopping the crawler from hitting destructive paths require explicit policy</p>
+          </article>
+          <article>
+            <h4>Wizards</h4>
+            <p>Branching steps expose states that do not have stable links.</p>
+          </article>
+          <article>
+            <h4>Multi-step flows</h4>
+            <p>Useful requests may appear only after interactions across pages.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="boundary">
+        <h2>Division of work</h2>
+        <div class="features">
+          <article class="feature">
+            <h3>Deterministic core</h3>
+            <p>
+              The orchestrator and Katana own scope, crawl execution, budgets, job state,
+              checkpoints, and sitemap evidence.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>Bounded AI</h3>
+            <p>
+              AI selects login actions when authentication is requested and handles ambiguous
+              controls after deterministic discovery.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>Runtime verification</h3>
+            <p>
+              Browser and network evidence decide whether authentication worked, an action changed
+              state, or a URL is a useful crawl seed.
+            </p>
+          </article>
+        </div>
+        <p>
+          Manual-header jobs do not invoke AI authentication.
+        </p>
+      </section>
+
+      <section id="loop">
+        <h2>Discovery loop</h2>
+        <p>
+          The crawler establishes a baseline first. Playwright then handles distinct client-side
+          states, using deterministic actions when they are unambiguous and a model only for the
+          remaining workflow gaps. Verified GET URLs return to Katana for another crawl stage.
+        </p>
+        <div class="diagram-card" aria-label="Deterministic crawl and bounded AI discovery loop">
+          <pre class="mermaid">
+flowchart LR
+      Baseline[Deterministic baseline<br/>Katana] --> Gaps[Unresolved<br/>browser state]
+      Gaps --> Action[Bounded action<br/>code first, AI when needed]
+      Action --> Verify[Runtime<br/>verification]
+      Verify --> Seeds[Stable GET seeds]
+      Seeds --> Baseline
+      Baseline --> Result[Checkpointed sitemap]
+          </pre>
+        </div>
+        <p>
+          The loop stops at a discovery fixpoint or a configured budget. Partial results retain a
+          stop reason instead of claiming complete coverage.
+        </p>
+      </section>
+
+      <section id="evaluation">
+        <h2>Evaluation</h2>
+        <p>The design is evaluated across four dimensions.</p>
+        <div class="threat-grid">
+          <article>
+            <h4>Coverage</h4>
+            <p>How much of the application did the run reach?</p>
+          </article>
+          <article>
+            <h4>Safety</h4>
+            <p>Did the run stay within scope and avoid harmful outcomes?</p>
+          </article>
+          <article>
+            <h4>Speed</h4>
+            <p>How much time and model work did discovery require?</p>
+          </article>
+          <article>
+            <h4>Reliability</h4>
+            <p>Does repeated execution produce usable, explained results?</p>
+          </article>
+        </div>
+        <div class="doc-callout">
+          Tenzai Crawler is not a fully autonomous browser agent.
+        </div>
+        <p>
+          Read the DEFCON 34 Red Team Village presentation,
+          <a href="ImprovingCrawlingWithAnLLM.pdf">Improving crawling with an LLM (PDF)</a>.
+        </p>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="made-by">
+        <span>Made by</span>
+        <a href="https://tenzai.com" aria-label="Tenzai">
+          <img src="assets/tenzai-logo.svg" alt="Tenzai" />
+        </a>
+      </div>
+      <div class="small">Tenzai Crawler docs · <a href="docs.html">Docs</a></div>
+    </div>
+  </footer>
+</body>
+</html>

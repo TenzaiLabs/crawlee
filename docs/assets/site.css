@@ -367,6 +367,7 @@ pre .p {
 
 .doc-content {
   max-width: 820px;
+  min-width: 0;
 }
 
 .doc-content h1 {
