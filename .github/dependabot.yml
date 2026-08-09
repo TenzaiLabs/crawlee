@@ -26,6 +26,12 @@ updates:
     directory: /
     exclude-paths:
       - testsites/**
+    # Dependabot's uv updater currently ignores exclude-paths for nested
+    # manifests (dependabot/dependabot-core#15102). These packages are used
+    # only by testsites, so ignore them until that upstream bug is fixed.
+    ignore:
+      - dependency-name: flask
+      - dependency-name: pillow
     schedule:
       interval: weekly
     groups:
