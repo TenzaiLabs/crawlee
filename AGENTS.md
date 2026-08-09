@@ -15,7 +15,8 @@ E2E is opt-in (`RUN_E2E=1`) and requires `katana` in `PATH`.
 ## Guardrails
 
 - Keep I/O async and preserve the single-job design.
-- Never persist plaintext secrets. Store references such as `{{env:VAR_NAME}}`.
+- Treat persisted `auth_config` values and job-status responses as sensitive. Environment
+  references such as `{{env:VAR_NAME}}` are recommended, but plaintext values are supported.
 - The orchestrator owns auth/crawl flow and status transitions.
 - Run AI auth only for `auth_config` containing `credentials` or `login_url`; headers alone are manual-header mode.
 - Keep the crawler auth-agnostic: it accepts headers, not auth internals.

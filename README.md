@@ -275,6 +275,10 @@ Authentication is optional. `auth_config` controls which mode runs.
 
 Use header-only `auth_config` when the operator already has headers or cookies. This mode does not run the LLM auth agent.
 
+The service persists the submitted `auth_config` and returns it from the job-status API. Use
+environment references when the job record should not contain the resolved credential, and protect
+the jobs database and API as sensitive if plaintext values are submitted.
+
 ```json
 {
   "target_url": "https://example.com",
@@ -528,10 +532,11 @@ The crawler auth runner uses temporary DB/log paths by default. Use `--case`, `-
 | `CRAWLER_DISCOVERY_MAX_MODEL_TURNS` | `40` | Hard model-turn budget for browser discovery |
 | `CRAWLER_DISCOVERY_MAX_STATES` | `120` | Hard unique UI-state budget for browser discovery |
 | `CRAWLER_DISCOVERY_TIMEOUT_SECONDS` | `300` | Total browser-guided action/model deadline |
+| `CRAWLER_DISCOVERY_ACTION_SETTLE_TIMEOUT_SECONDS` | `15` | Maximum settling budget after navigation or a browser action |
 | `CRAWLER_JOB_TIMEOUT_SECONDS` | `3600` | Whole-job wall-clock deadline across auth, baseline, discovery, and finalization |
 | `CRAWLER_JOB_MEMORY_LIMIT_BYTES` | `2147483648` | Shared RSS ceiling for the job Chrome and active Katana process groups |
 | `CRAWLER_SUBPROCESS_TIMEOUT` | `720` | Subprocess inactivity timeout (seconds) |
-| `CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS` | `720` | Katana wall deadline, including shutdown after its 10-minute crawl budget |
+| `CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS` | `720` | Katana wall deadline, after which usable output is retained as a partial result |
 | `CRAWLER_ENABLE_DEBUG_ENDPOINTS` | off | Set `1` to enable debug routes |
 
 ## Output
@@ -562,23 +567,12 @@ exposing any finalized checkpoint; cancellation before the baseline has no
 sitemap. Terminal result reads use only the persisted result and never reparse
 historical logs.
 
-## Deployment
-
-Apply Kubernetes manifests:
-
-```bash
-kubectl apply -f k8s/statefulset.yaml
-kubectl apply -f k8s/service.yaml
-```
-
 ## Known Limitations
 
 - Authorization extraction from browser traffic is heuristic and may miss unusual record shapes.
 - The LLM auth agent depends on the configured model, the quality of page accessibility data, and the supplied operator instructions for unusual flows.
 - TOTP is supported through an explicit auth-agent tool; other out-of-band MFA methods require additional tooling or operator-specific instructions.
 - Cancellation checks run in preflight/callbacks and long subprocess boundaries, not at the top of every tool function body.
-- Kubernetes manifests do not include explicit LLM provider env wiring by default.
-
 ## Security Posture
 
 Tenzai Crawler is designed for trusted operators. If exposed broadly, add API authentication/authorization and egress controls.

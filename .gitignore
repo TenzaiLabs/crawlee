@@ -15,9 +15,6 @@ build/
 # Runtime data
 .data/
 .env
-proxify_logs/
-proxify_logs.jsonl
-
 # Generated crawl comparisons
 docs/browser-capability-spike-report.md
 docs/browser-capability-spike-results.json

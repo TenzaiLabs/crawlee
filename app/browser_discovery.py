@@ -16,6 +16,7 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from .cdp_observer import PassiveCDPObserver
 from .common import is_host_in_scope
+from .settings import CRAWLER_DISCOVERY_ACTION_SETTLE_TIMEOUT_SECONDS
 
 _CONTROL_SELECTOR = "a[href],button,input,select,textarea,[role=button],[role=tab],[role=link]"
 _REF_ATTRIBUTE = "data-tenzai-discovery-ref"
@@ -90,11 +91,13 @@ class DiscoveryRoundResult:
     request_evidence: list[dict[str, Any]] = field(default_factory=list)
     response_evidence: list[dict[str, Any]] = field(default_factory=list)
     processed_pages: int = 0
+    llm_page_count: int = 0
     action_count: int = 0
     state_count: int = 0
     workflow_count: int = 0
     budget_exhausted: bool = False
     model_budget_exhausted: bool = False
+    llm_page_budget_exhausted: bool = False
     model_failure_count: int = 0
     candidate_count: int = 0
 
@@ -568,10 +571,17 @@ def state_without_acted_controls(
 
 
 async def _settle(page: Any) -> None:
-    with contextlib.suppress(PlaywrightError, PlaywrightTimeoutError):
-        await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-    with contextlib.suppress(PlaywrightError, PlaywrightTimeoutError):
-        await page.wait_for_timeout(300)
+    deadline = asyncio.get_running_loop().time() + CRAWLER_DISCOVERY_ACTION_SETTLE_TIMEOUT_SECONDS
+    for load_state in ("domcontentloaded", "networkidle"):
+        remaining_ms = int(max(0.0, deadline - asyncio.get_running_loop().time()) * 1000)
+        if remaining_ms <= 0:
+            return
+        with contextlib.suppress(PlaywrightError, PlaywrightTimeoutError):
+            await page.wait_for_load_state(load_state, timeout=remaining_ms)
+    remaining_ms = int(max(0.0, deadline - asyncio.get_running_loop().time()) * 1000)
+    if remaining_ms > 0:
+        with contextlib.suppress(PlaywrightError, PlaywrightTimeoutError):
+            await page.wait_for_timeout(min(300, remaining_ms))
 
 
 def _frame_index(ref: str) -> int:
@@ -684,7 +694,7 @@ async def run_discovery_round(
     adapter: DiscoveryAdapter,
     cancel_event: asyncio.Event,
     max_actions: int,
-    max_pages: int,
+    max_llm_pages: int,
     max_states: int,
     processed_states: set[tuple[str, str]],
     known_get_urls: set[str] | None = None,
@@ -694,6 +704,7 @@ async def run_discovery_round(
     response_start = len(observer.responses) if observer is not None else 0
     acted_controls: set[tuple[str, str]] = set()
     known_seed_urls = set(known_get_urls or ())
+    model_operated_pages: set[int] = set()
     candidate_queue = list(candidates)
     scheduled_candidate_urls = {candidate.url for candidate in candidate_queue}
     result.candidate_count = len(candidate_queue)
@@ -702,7 +713,7 @@ async def run_discovery_round(
     while candidate_index < len(candidate_queue):
         candidate = candidate_queue[candidate_index]
         candidate_index += 1
-        if result.processed_pages >= max_pages or result.action_count >= max_actions:
+        if result.action_count >= max_actions or result.state_count >= max_states:
             result.budget_exhausted = True
             break
         if cancel_event.is_set():
@@ -760,6 +771,14 @@ async def run_discovery_round(
                 )
                 action = deterministic_action(state, acted_controls)
                 if action is None and has_model_eligible_control(state, acted_controls):
+                    page_identity = id(page)
+                    if page_identity not in model_operated_pages:
+                        if result.llm_page_count >= max_llm_pages:
+                            result.llm_page_budget_exhausted = True
+                            result.budget_exhausted = True
+                            break
+                        model_operated_pages.add(page_identity)
+                        result.llm_page_count += 1
                     try:
                         action = await adapter.next_action(
                             state_without_acted_controls(state, acted_controls),
@@ -864,6 +883,8 @@ async def run_discovery_round(
                 if not opened_page.is_closed():
                     with contextlib.suppress(PlaywrightError):
                         await opened_page.close()
+        if result.llm_page_budget_exhausted:
+            break
 
     if result.action_count >= max_actions:
         result.budget_exhausted = True

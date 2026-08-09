@@ -54,7 +54,9 @@ RUN_E2E=1 uv run pytest -q tests/test_scenarios.py
 ## Auth and Secret Handling
 
 Do not commit secrets, cookies, bearer tokens, captured credentials, private crawl logs, or
-plaintext `auth_config` values.
+plaintext `auth_config` values. The runtime intentionally persists submitted `auth_config` and
+returns it through the job API, so use environment references when resolved values do not need to
+be stored.
 
 Use environment references such as:
 
@@ -107,7 +109,7 @@ Keep Pages workflow changes conservative:
 
 Before opening or merging a PR:
 
-- Confirm the change does not persist plaintext secrets.
+- Confirm secrets do not escape the documented persisted `auth_config` and job-status response.
 - Confirm auth mode behavior is unchanged or explicitly tested.
 - Confirm dangerous-path and auth-recorded exclusions still work when touching crawler behavior.
 - Run `uv run pre-commit run -a`, plus focused tests for the touched code.

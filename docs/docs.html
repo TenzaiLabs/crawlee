@@ -34,7 +34,6 @@
       <a href="#api">API</a>
       <a href="#auth">Authentication</a>
       <a href="#architecture">Architecture</a>
-      <a href="#deployment">Deployment</a>
       <a href="#output">Output</a>
     </aside>
 
@@ -123,8 +122,9 @@ curl http://localhost:8000/jobs/&lt;job_id&gt;</pre>
   }
 }</pre>
         <p>
-          Secret templates are resolved in memory before authentication. Do not submit plaintext
-          secrets in job payloads.
+          Secret templates are resolved in memory before authentication. The submitted auth config
+          is persisted and returned by the job API, so protect the jobs database and API as
+          sensitive when submitting plaintext values.
         </p>
       </section>
 
@@ -180,7 +180,7 @@ flowchart TD
             <h4>Assets</h4>
             <ul>
               <li>Job records and target history in SQLite.</li>
-              <li>Auth config references and resolved in-memory secrets.</li>
+              <li>Persisted auth config values and resolved in-memory secrets.</li>
               <li>Captured cookies, headers, request logs, and completed sitemaps.</li>
               <li>Browser, Katana, and subprocess control surfaces.</li>
             </ul>
@@ -226,22 +226,12 @@ flowchart TD
             <h4>Deployment controls</h4>
             <ul>
               <li>Place the API behind trusted access controls before shared use.</li>
-              <li>Apply Kubernetes/network egress restrictions for crawl destinations.</li>
-              <li>Provide secrets through environment references, not plaintext job payloads.</li>
+              <li>Apply network egress restrictions for crawl destinations.</li>
+              <li>Prefer environment references and protect the persisted job database and API.</li>
               <li>Keep GitHub Actions least-privilege and pinned to immutable action SHAs.</li>
             </ul>
           </article>
         </div>
-      </section>
-
-      <section id="deployment">
-        <h2>Deployment</h2>
-        <p>
-          Kubernetes manifests are provided for a single-replica StatefulSet with persistent
-          storage mounted at the service data path.
-        </p>
-<pre>kubectl apply -f k8s/statefulset.yaml
-kubectl apply -f k8s/service.yaml</pre>
       </section>
 
       <section id="output">
