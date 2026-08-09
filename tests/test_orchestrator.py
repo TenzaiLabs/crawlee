@@ -227,9 +227,7 @@ async def test_discovery_completion_marks_partial_outcome_in_evidence(app) -> No
     evidence = orchestrator.db.loads_json(row["crawl_evidence"])
     assert evidence is not None
     assert evidence["completeness"] == "partial"
-    assert evidence["warnings"] == [
-        "Discovery ended before fixpoint: model_decision_failed"
-    ]
+    assert evidence["warnings"] == ["Discovery ended before fixpoint: model_decision_failed"]
 
 
 @pytest.mark.asyncio
@@ -318,9 +316,7 @@ async def test_baseline_checkpoint_finalizes_with_discovery_metadata(app) -> Non
     finalized_evidence = orchestrator.db.loads_json(row["crawl_evidence"])
     assert finalized_evidence is not None
     assert finalized_evidence["completeness"] == "partial"
-    assert finalized_evidence["warnings"] == [
-        "Discovery ended before fixpoint: action_budget"
-    ]
+    assert finalized_evidence["warnings"] == ["Discovery ended before fixpoint: action_budget"]
     sitemap = orchestrator.db.loads_json(row["sitemap"])
     assert sitemap is not None
     assert sitemap["entries"] == baseline["entries"]
@@ -1125,6 +1121,44 @@ def test_baseline_evidence_marks_timed_out_lane_partial() -> None:
     assert evidence["warnings"] == [
         "Katana pure-headless baseline ended with crawl_timeout for https://example.com"
     ]
+
+
+def test_baseline_evidence_marks_process_deadline_partial() -> None:
+    standard = orchestrator.crawler.KatanaRunResult(
+        lane="standard",
+        terminal_summary={
+            "schema_version": 1,
+            "status": "completed",
+            "inputs": [{"input": "https://example.com", "reason": "queue_exhausted"}],
+        },
+    )
+    pure_headless = orchestrator.crawler.KatanaRunResult(
+        lane="pure-headless",
+        terminal_summary=None,
+        outcome="partial",
+        termination_reason="process_deadline",
+    )
+
+    evidence = orchestrator.build_baseline_evidence(
+        known_file_result=orchestrator.known_files.KnownFileResult(
+            seeds=[], documents=[], diagnostics=[], attempts=0
+        ),
+        standard_run=standard,
+        standard_records=[],
+        pure_headless_run=pure_headless,
+        pure_headless_records=[{"url": "https://example.com/partial"}],
+        browser_evidence={"schema_version": 1},
+    )
+
+    assert evidence["completeness"] == "partial"
+    assert evidence["katana"]["pure_headless"] == {
+        "lane": "pure-headless",
+        "outcome": "partial",
+        "terminal_summary": None,
+        "termination_reason": "process_deadline",
+        "records": [{"url": "https://example.com/partial"}],
+    }
+    assert evidence["warnings"] == ["Katana pure-headless baseline ended with process_deadline"]
 
 
 @pytest.mark.asyncio

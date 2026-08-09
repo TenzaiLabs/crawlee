@@ -181,6 +181,7 @@ async def test_run_crawl_sanitizes_artifact_and_requires_queue_exhaustion(
     assert "Cookie: [redacted]" in artifact
     assert "session=abc" not in artifact
     assert result.lane == "standard"
+    assert result.terminal_summary is not None
     assert result.terminal_summary["inputs"][0]["reason"] == "queue_exhausted"
 
 
@@ -201,6 +202,7 @@ async def test_run_crawl_returns_partial_result_for_budget_exhaustion(
     )
 
     assert result.outcome == "partial"
+    assert result.terminal_summary is not None
     assert result.terminal_summary["inputs"][0]["reason"] == "crawl_timeout"
 
 
@@ -252,14 +254,27 @@ async def test_run_crawl_enforces_process_wall_clock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def stalled_process(*_args, **_kwargs):
+        await _kwargs["on_output"](
+            '{"request":{"method":"GET","endpoint":"https://example.com/partial"}}\n'
+        )
         await asyncio.sleep(60)
         return SubprocessResult(exit_code=0, output="")
 
     monkeypatch.setattr(crawler, "run_safe_subprocess", stalled_process)
     monkeypatch.setattr(crawler, "CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS", 0.01)
 
-    with pytest.raises(crawler.KatanaProcessDeadlineExceeded):
-        await crawler.run_crawl(
-            crawler.CrawlConfig(target_url="https://example.com"),
-            output_path=str(tmp_path / "job.jsonl"),
-        )
+    result = await crawler.run_crawl(
+        crawler.CrawlConfig(target_url="https://example.com"),
+        output_path=str(tmp_path / "job.jsonl"),
+    )
+
+    assert result.outcome == "partial"
+    assert result.terminal_summary is None
+    assert result.termination_reason == "process_deadline"
+    assert result.evidence() == {
+        "lane": "standard",
+        "outcome": "partial",
+        "terminal_summary": None,
+        "termination_reason": "process_deadline",
+    }
+    assert "https://example.com/partial" in (tmp_path / "job.jsonl").read_text()

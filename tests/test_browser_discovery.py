@@ -542,6 +542,26 @@ async def test_live_adapter_retries_schema_echo_within_turn_budget() -> None:
 
 
 @pytest.mark.asyncio
+async def test_settle_uses_the_server_owned_fifteen_second_budget() -> None:
+    load_calls: list[tuple[str, int]] = []
+    timeout_calls: list[int] = []
+
+    class FakePage:
+        async def wait_for_load_state(self, state: str, *, timeout: int) -> None:
+            load_calls.append((state, timeout))
+
+        async def wait_for_timeout(self, timeout: int) -> None:
+            timeout_calls.append(timeout)
+
+    await browser_discovery._settle(FakePage())
+
+    assert browser_discovery.CRAWLER_DISCOVERY_ACTION_SETTLE_TIMEOUT_SECONDS == 15.0
+    assert [state for state, _timeout in load_calls] == ["domcontentloaded", "networkidle"]
+    assert all(0 < timeout <= 15_000 for _state, timeout in load_calls)
+    assert timeout_calls == [300]
+
+
+@pytest.mark.asyncio
 async def test_discovery_round_records_stale_model_reference(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -595,7 +615,7 @@ async def test_discovery_round_records_stale_model_reference(
         adapter=cast(browser_discovery.DiscoveryAdapter, StaleAdapter()),
         cancel_event=asyncio.Event(),
         max_actions=5,
-        max_pages=1,
+        max_llm_pages=1,
         max_states=5,
         processed_states=set(),
     )
@@ -608,6 +628,79 @@ async def test_discovery_round_records_stale_model_reference(
             "target": "f0e99",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_llm_page_budget_counts_only_pages_sent_to_the_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakePage:
+        frames = []
+
+        def __init__(self) -> None:
+            self.url = "about:blank"
+            self.closed = False
+
+        async def goto(self, url: str, **_kwargs) -> None:
+            self.url = url
+
+        def is_closed(self) -> bool:
+            return self.closed
+
+        async def close(self) -> None:
+            self.closed = True
+
+    class FakeContext:
+        async def new_page(self) -> FakePage:
+            return FakePage()
+
+    class FinishAdapter:
+        async def next_action(self, state, history):
+            del state, history
+            return None
+
+    async def capture(page: FakePage) -> browser_discovery.DiscoveryPageState:
+        controls = ()
+        if not page.url.endswith("/static"):
+            controls = (
+                _control("f0e0", text="First choice"),
+                _control("f0e1", text="Second choice"),
+            )
+        return browser_discovery.DiscoveryPageState(
+            url=page.url,
+            title="Candidate",
+            visible_text="Candidate controls",
+            controls=controls,
+            fingerprint=f"state-{page.url}",
+        )
+
+    async def settle(page) -> None:
+        del page
+
+    monkeypatch.setattr(browser_discovery, "capture_page_state", capture)
+    monkeypatch.setattr(browser_discovery, "_settle", settle)
+
+    result = await browser_discovery.run_discovery_round(
+        context=FakeContext(),
+        target_url="https://example.com",
+        candidates=[
+            browser_discovery.DiscoveryCandidate("https://example.com/static", 100, "fixture"),
+            browser_discovery.DiscoveryCandidate("https://example.com/workflow-one", 90, "fixture"),
+            browser_discovery.DiscoveryCandidate("https://example.com/workflow-two", 80, "fixture"),
+        ],
+        observer=None,
+        adapter=cast(browser_discovery.DiscoveryAdapter, FinishAdapter()),
+        cancel_event=asyncio.Event(),
+        max_actions=5,
+        max_llm_pages=1,
+        max_states=5,
+        processed_states=set(),
+    )
+
+    assert result.processed_pages == 3
+    assert result.llm_page_count == 1
+    assert result.llm_page_budget_exhausted is True
+    assert result.budget_exhausted is True
 
 
 @pytest.mark.asyncio
@@ -671,7 +764,7 @@ async def test_discovery_round_counts_only_runtime_verified_workflows_and_new_pa
         adapter=browser_discovery.NullDiscoveryAdapter(),
         cancel_event=asyncio.Event(),
         max_actions=5,
-        max_pages=1,
+        max_llm_pages=1,
         max_states=5,
         processed_states=set(),
         known_get_urls={initial.url},
@@ -779,7 +872,7 @@ async def test_discovery_round_queues_distinct_hash_routes_and_rejects_scroll_fr
         adapter=browser_discovery.NullDiscoveryAdapter(),
         cancel_event=asyncio.Event(),
         max_actions=10,
-        max_pages=10,
+        max_llm_pages=10,
         max_states=10,
         processed_states=set(),
         known_get_urls={"https://example.com/"},
@@ -890,7 +983,7 @@ async def test_candidate_navigation_and_subresources_do_not_become_enrichment_se
         adapter=browser_discovery.NullDiscoveryAdapter(),
         cancel_event=asyncio.Event(),
         max_actions=5,
-        max_pages=1,
+        max_llm_pages=1,
         max_states=5,
         processed_states=set(),
     )

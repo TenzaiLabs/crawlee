@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import ipaddress
 import json
 import logging
@@ -30,14 +31,11 @@ PURE_HEADLESS_DOM_WAIT_SECONDS = 2
 
 KatanaLane = Literal["standard", "pure-headless"]
 KatanaCompletion = Literal["complete", "partial"]
+KatanaTerminationReason = Literal["process_deadline"]
 _COMPLETED_TERMINAL_REASONS = {"queue_exhausted", "crawl_timeout", "input_failure"}
 
 
 class KatanaRunError(RuntimeError):
-    pass
-
-
-class KatanaProcessDeadlineExceeded(KatanaRunError):
     pass
 
 
@@ -57,15 +55,19 @@ class CrawlConfig:
 @dataclass(frozen=True)
 class KatanaRunResult:
     lane: KatanaLane
-    terminal_summary: dict[str, Any]
+    terminal_summary: dict[str, Any] | None
     outcome: KatanaCompletion = "complete"
+    termination_reason: KatanaTerminationReason | None = None
 
     def evidence(self) -> dict[str, Any]:
-        return {
+        evidence: dict[str, Any] = {
             "lane": self.lane,
             "outcome": self.outcome,
             "terminal_summary": self.terminal_summary,
         }
+        if self.termination_reason is not None:
+            evidence["termination_reason"] = self.termination_reason
+        return evidence
 
 
 def _unique_patterns(patterns: list[str]) -> list[str]:
@@ -290,6 +292,7 @@ async def run_crawl(
     Path(terminal_path).unlink(missing_ok=True)
     malformed_json_lines = 0
     log_file = open_text_writer(output_path)
+    result = None
 
     async def _on_output(line: str) -> None:
         nonlocal malformed_json_lines
@@ -307,6 +310,7 @@ async def run_crawl(
         log_file.write(json.dumps(sanitize_record(record), ensure_ascii=False) + "\n")
         log_file.flush()
 
+    process_deadline_exceeded = False
     try:
         try:
             async with asyncio.timeout(CRAWLER_KATANA_PROCESS_TIMEOUT_SECONDS):
@@ -322,15 +326,34 @@ async def run_crawl(
                     memory_budget=memory_budget,
                     diagnostic_tail_bytes=0,
                 )
-        except TimeoutError as exc:
-            raise KatanaProcessDeadlineExceeded(
-                f"Katana {lane} process exceeded its wall-clock deadline"
-            ) from exc
+        except TimeoutError:
+            process_deadline_exceeded = True
     finally:
         log_file.close()
 
     if cancel_event is not None and cancel_event.is_set():
         raise asyncio.CancelledError
+    if process_deadline_exceeded:
+        with contextlib.suppress(KatanaTerminalSummaryError):
+            terminal_summary = _load_terminal_summary(terminal_path, crawl_inputs(config))
+            return KatanaRunResult(
+                lane=lane,
+                terminal_summary=terminal_summary,
+                outcome=_terminal_outcome(terminal_summary),
+            )
+        logger.warning(
+            "Katana process exceeded its wall-clock deadline; retaining partial output "
+            "target_url=%s lane=%s",
+            config.target_url,
+            lane,
+        )
+        return KatanaRunResult(
+            lane=lane,
+            terminal_summary=None,
+            outcome="partial",
+            termination_reason="process_deadline",
+        )
+    assert result is not None
     if result.exit_code != 0:
         raise KatanaRunError(f"Katana {lane} exited with code {result.exit_code}")
     if malformed_json_lines:
