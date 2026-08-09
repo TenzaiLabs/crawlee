@@ -10,7 +10,7 @@ from app import auth_agent, cdp_observer, orchestrator
 
 
 @pytest.mark.asyncio
-async def test_run_auth_if_needed_does_not_turn_agent_hints_into_crawl_policy(
+async def test_run_auth_if_needed_turns_safe_agent_hints_into_crawl_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def fake_authenticate(
@@ -58,7 +58,10 @@ async def test_run_auth_if_needed_does_not_turn_agent_hints_into_crawl_policy(
         "https://example.com/projects/alpha",
         "https://example.com/app/dashboard",
     ]
+    assert auth_context.dynamic_exclude_patterns == ["/logout(?:$|[/?#])"]
     assert auth_context.auth_blocked_url_count == 2
+    assert auth_context.auth_applied_blocked_url_count == 1
+    assert auth_context.auth_ignored_blocked_url_count == 1
 
 
 def test_build_generated_exclusions_payload() -> None:
@@ -66,22 +69,30 @@ def test_build_generated_exclusions_payload() -> None:
         headers=["Cookie: session=abc"],
         extra_seed_urls=["https://example.com/app/dashboard"],
         discovered_urls=["https://example.com/app/dashboard"],
+        dynamic_exclude_patterns=["/logout(?:$|[/?#])"],
         auth_blocked_url_count=1,
+        auth_applied_blocked_url_count=1,
+        auth_ignored_blocked_url_count=0,
     )
     config = orchestrator.crawler.CrawlConfig(
         target_url="https://example.com",
         scope_config={"exclude_filters": ["/admin"]},
+        dynamic_exclude_patterns=auth_context.dynamic_exclude_patterns,
     )
 
     assert orchestrator.build_generated_exclusions_payload(config, auth_context) == {
         "auth_blocked_url_count": 1,
-        "auth_applied_blocked_url_count": 0,
-        "auth_ignored_blocked_url_count": 1,
-        "auth_dynamic_patterns": [],
+        "auth_applied_blocked_url_count": 1,
+        "auth_ignored_blocked_url_count": 0,
+        "auth_dynamic_patterns": ["/logout(?:$|[/?#])"],
         "auth_discovered_url_count": 1,
         "auth_discovered_urls": ["https://example.com/app/dashboard"],
         "extra_seed_urls": ["https://example.com/app/dashboard"],
-        "effective_patterns": ["/admin"],
+        "effective_patterns": [
+            *orchestrator.crawler.DEFAULT_EXCLUSION_PATTERNS,
+            "/admin",
+            "/logout(?:$|[/?#])",
+        ],
     }
 
 
@@ -1045,7 +1056,10 @@ async def test_browser_guided_discovery_enriches_new_get_seeds_to_fixpoint(
         job_id="job",
         target_url="https://example.com",
         scope_config=None,
-        auth_context=orchestrator.CrawlAuthContext(headers=[]),
+        auth_context=orchestrator.CrawlAuthContext(
+            headers=[],
+            dynamic_exclude_patterns=["/logout(?:$|[/?#])"],
+        ),
         discovery_config=orchestrator.DiscoveryConfig(),
         job_browser=cast(orchestrator.browser_session.BrowserSession, FakeBrowserSession()),
         known_file_result=orchestrator.known_files.KnownFileResult(
@@ -1074,6 +1088,10 @@ async def test_browser_guided_discovery_enriches_new_get_seeds_to_fixpoint(
         "https://example.com/api/runtime",
         "https://example.com/api/runtime",
     ]
+    assert all(
+        config.dynamic_exclude_patterns == ["/logout(?:$|[/?#])"]
+        for config, _lane in crawl_configs
+    )
     assert len(log_paths) == 2
     assert lifecycle == [
         "playwright:browser-discovery-1",

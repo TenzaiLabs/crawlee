@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app import crawler
 from scripts import run_testsite_comparison
 from scripts.run_auth_agent_tests import AuthAgentSiteCase
 
@@ -46,6 +47,25 @@ def test_no_auth_agent_variant_drops_only_llm_auth_config() -> None:
         run_testsite_comparison._case_for_variant(manual_case, variant).auth_config
         == manual_case.auth_config
     )
+
+
+def test_disable_safety_guards_removes_defaults_and_auth_conversion() -> None:
+    original_defaults = crawler.DEFAULT_EXCLUSION_PATTERNS
+    original_converter = crawler.blocked_urls_to_exclude_patterns
+    try:
+        run_testsite_comparison._disable_safety_guards()
+
+        assert crawler.DEFAULT_EXCLUSION_PATTERNS == []
+        assert (
+            crawler.blocked_urls_to_exclude_patterns(
+                ["/logout"],
+                target_url="https://example.com",
+            )
+            == []
+        )
+    finally:
+        crawler.DEFAULT_EXCLUSION_PATTERNS = original_defaults
+        crawler.blocked_urls_to_exclude_patterns = original_converter
 
 
 def test_classify_result_marks_unsafe_when_blocked_url_is_crawled() -> None:

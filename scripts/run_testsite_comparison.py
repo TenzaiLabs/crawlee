@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import importlib
 import json
 import os
 import statistics
@@ -107,6 +108,22 @@ def _configure_runtime_environment(args: argparse.Namespace, temp_dir: Path) -> 
     os.environ["CRAWLER_LOG_DIR"] = str(temp_dir / "logs")
     os.environ["CRAWLER_SUBPROCESS_TIMEOUT"] = str(args.subprocess_timeout)
     os.environ["CRAWLER_AUTH_ATTEMPTS"] = str(args.auth_attempts)
+
+
+def _disable_safety_guards() -> None:
+    crawler = importlib.import_module("app.crawler")
+    crawler.DEFAULT_EXCLUSION_PATTERNS = []
+
+    def blocked_urls_to_exclude_patterns(
+        blocked_urls: list[str] | None,
+        *,
+        target_url: str,
+        base_url: str | None = None,
+    ) -> list[str]:
+        del blocked_urls, target_url, base_url
+        return []
+
+    crawler.blocked_urls_to_exclude_patterns = blocked_urls_to_exclude_patterns
 
 
 def _entry_count(sitemap: dict[str, Any] | None) -> int:
@@ -264,6 +281,8 @@ async def _run_variant(
     try:
         _configure_runtime_environment(args, temp_dir)
         main = _import_main_app()
+        if not variant.safety_guards_enabled:
+            _disable_safety_guards()
         scope_config = _build_scope_config(args)
         results: list[ComparisonResult] = []
         transport = httpx.ASGITransport(app=main.app)
@@ -493,7 +512,10 @@ def _write_report(
         f"- Crawl duration: `{args.crawl_duration}`.",
         f"- Max depth: `{args.max_depth}`.",
         f"- Headless Katana hybrid mode: `{args.headless}`.",
-        "- The crawler applies no inferred destructive-route exclusions.",
+        (
+            "- Safety guards: default dangerous-path exclusions plus auth-recorded "
+            "blocked URLs."
+        ),
         (
             "- No-auth-agent variant keeps manual `Authorization` headers because header-only "
             "auth does not invoke the AI auth agent."

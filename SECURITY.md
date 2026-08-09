@@ -51,8 +51,10 @@ Examples of security issues worth reporting:
   leakage through logs, command output, crawl evidence, generated reports, or docs.
 - Auth-boundary bypasses where header-only mode triggers AI auth or AI auth runs without a login
   URL or credentials.
-- Crawl behavior that violates operator-supplied scope or explicit exclusion configuration. The
-  runtime intentionally does not infer or block destructive-looking routes.
+- Crawl behavior that violates operator-supplied scope, built-in dangerous-path exclusions,
+  explicit exclusion configuration, or valid same-scope exclusions recorded by the auth agent.
+  These filters are enforced by Katana; they are not an egress firewall for redirects,
+  subresources, known-file fetching, or Playwright browser actions.
 - SSRF or egress-control bypasses in `target_url`, `login_url`, redirects, or
   extra seed URLs.
 - Cancellation or process-lifecycle bugs that leave Katana or browser processes running.

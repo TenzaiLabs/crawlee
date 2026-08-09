@@ -67,9 +67,10 @@ small source manifests, and keeping generated dependency artifacts out of the
 repo prevents `testsites/` fixtures from creating Dependabot alert noise.
 
 In each `sitemap.json`, `entries` are URLs that should be reachable.
-`blocked_entries` are destructive or session-ending observation markers. The
-runner reports whether they appear; the crawler does not infer a runtime block
-from the fixture declaration.
+`blocked_entries` are destructive or session-ending regression markers. They
+must remain absent from guarded crawler results, and exclusion positive controls
+must prove that the same routes are reached when safety guards are disabled. The
+fixture declaration itself does not create a runtime exclusion.
 
 ## Ports
 

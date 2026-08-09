@@ -47,7 +47,10 @@ class CrawlAuthContext:
     landing_url: str | None = None
     extra_seed_urls: list[str] = field(default_factory=list)
     discovered_urls: list[str] = field(default_factory=list)
+    dynamic_exclude_patterns: list[str] = field(default_factory=list)
     auth_blocked_url_count: int = 0
+    auth_applied_blocked_url_count: int = 0
+    auth_ignored_blocked_url_count: int = 0
 
 
 class _JobCancellationRequested(Exception):
@@ -148,7 +151,22 @@ async def _run_auth_if_needed(
         context=browser_context,
     )
     merged_headers.extend(auth_result.headers)
+    dynamic_exclude_patterns = crawler.blocked_urls_to_exclude_patterns(
+        auth_result.blocked_urls,
+        target_url=target_url,
+        base_url=auth_result.landing_url or target_url,
+    )
+    if dynamic_exclude_patterns:
+        logger.info(
+            "Auth produced %d dynamic crawl exclusion pattern(s)",
+            len(dynamic_exclude_patterns),
+        )
     auth_blocked_url_count = len(auth_result.blocked_urls)
+    auth_applied_blocked_url_count = len(dynamic_exclude_patterns)
+    auth_ignored_blocked_url_count = max(
+        0,
+        auth_blocked_url_count - auth_applied_blocked_url_count,
+    )
 
     extra_seed_urls = _merge_extra_seed_urls(
         target_url=target_url,
@@ -167,7 +185,10 @@ async def _run_auth_if_needed(
         landing_url=auth_result.landing_url,
         extra_seed_urls=extra_seed_urls,
         discovered_urls=auth_result.discovered_urls,
+        dynamic_exclude_patterns=dynamic_exclude_patterns,
         auth_blocked_url_count=auth_blocked_url_count,
+        auth_applied_blocked_url_count=auth_applied_blocked_url_count,
+        auth_ignored_blocked_url_count=auth_ignored_blocked_url_count,
     )
 
 
@@ -201,9 +222,9 @@ def build_generated_exclusions_payload(
 ) -> dict[str, Any]:
     return {
         "auth_blocked_url_count": auth_context.auth_blocked_url_count,
-        "auth_applied_blocked_url_count": 0,
-        "auth_ignored_blocked_url_count": auth_context.auth_blocked_url_count,
-        "auth_dynamic_patterns": [],
+        "auth_applied_blocked_url_count": auth_context.auth_applied_blocked_url_count,
+        "auth_ignored_blocked_url_count": auth_context.auth_ignored_blocked_url_count,
+        "auth_dynamic_patterns": list(auth_context.dynamic_exclude_patterns),
         "auth_discovered_url_count": len(auth_context.discovered_urls),
         "auth_discovered_urls": list(auth_context.discovered_urls),
         "extra_seed_urls": list(auth_context.extra_seed_urls),
@@ -389,6 +410,7 @@ async def run_katana_lane(
         scope_config=scope_config,
         headers=auth_context.headers or None,
         extra_seed_urls=[*auth_context.extra_seed_urls, *seed_urls] or None,
+        dynamic_exclude_patterns=auth_context.dynamic_exclude_patterns or None,
         cdp_url=cdp_url if lane == "pure-headless" else None,
     )
     run = await job_browser.guard(
@@ -455,6 +477,7 @@ async def run_baseline_phase(
         scope_config=scope_config,
         headers=auth_context.headers or None,
         extra_seed_urls=[*auth_context.extra_seed_urls, *known_file_result.seeds] or None,
+        dynamic_exclude_patterns=auth_context.dynamic_exclude_patterns or None,
     )
     await update_job_generated_exclusions(
         job_id,

@@ -322,7 +322,13 @@ Use `credentials` and/or `login_url` when the service should log in before crawl
   temporary clean context in the same Chrome instance. A public `200`, cookies,
   storage, or a changed URL alone is not sufficient evidence.
 - Cookies, captured auth headers, and the authenticated landing URL are passed to Katana.
-- URLs the auth agent considers unsafe may be recorded as evidence, but are not converted into Katana exclusions. Operator-supplied scope exclusions remain explicit inputs.
+- Every Katana pass applies the built-in `logout`, `signout`, `log-out`, `sign-out`,
+  `delete`, `remove`, `unsubscribe`, and `deactivate` exclusion patterns.
+- Same-scope HTTP(S) URLs the auth agent records as unsafe are normalized to escaped
+  path patterns and merged with the built-in patterns and operator-supplied
+  `exclude_filters`/`exclude_regex`. Invalid, root-only, and cross-scope hints are ignored.
+- Job status reports the resulting policy under `generated_exclusions`, including
+  applied and ignored auth-hint counts, dynamic patterns, and the effective pattern list.
 - Secret templates `{{env:VAR}}`, `{{totp:VAR}}`, and `{{totp_seed:SECRET}}` are resolved only in memory before auth.
 - `auth_config.api_key` is rejected; use `api_key_env` instead.
 

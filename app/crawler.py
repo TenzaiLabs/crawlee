@@ -10,9 +10,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
-from .common import coerce_int, open_text_reader, open_text_writer
+from .common import coerce_int, is_host_in_scope, open_text_reader, open_text_writer
 from .log_records import sanitize_record
 from .process import ProcessMemoryBudget, run_safe_subprocess
 from .scope_config import validate_scope_config
@@ -23,6 +23,16 @@ from .settings import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_EXCLUSION_PATTERNS = [
+    "logout",
+    "signout",
+    "log-out",
+    "sign-out",
+    "delete",
+    "remove",
+    "unsubscribe",
+    "deactivate",
+]
 DEFAULT_CRAWL_DURATION = "10m"
 KATANA_MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 KATANA_SIMILARITY_THRESHOLD = 10
@@ -49,6 +59,7 @@ class CrawlConfig:
     scope_config: dict[str, Any] | None = None
     headers: list[str] | None = None
     extra_seed_urls: list[str] | None = None
+    dynamic_exclude_patterns: list[str] | None = None
     cdp_url: str | None = None
 
 
@@ -80,21 +91,50 @@ def _unique_patterns(patterns: list[str]) -> list[str]:
     return ordered
 
 
-def build_exclusion_patterns(config: CrawlConfig) -> list[str]:
-    """Return only caller-supplied Katana filters.
+def blocked_urls_to_exclude_patterns(
+    blocked_urls: list[str] | None,
+    *,
+    target_url: str,
+    base_url: str | None = None,
+) -> list[str]:
+    """Convert authentication URL hints into safe Katana exclusion regexes."""
+    if not blocked_urls:
+        return []
 
-    The server does not infer destructive routes or convert authentication-agent
-    observations into crawl policy.
-    """
+    patterns: list[str] = []
+    base = base_url or target_url
+    for blocked_url in blocked_urls:
+        url_text = str(blocked_url).strip()
+        if not url_text or len(url_text) > 2048:
+            continue
+
+        parsed = urlparse(urljoin(base, url_text))
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            continue
+        if not is_host_in_scope(parsed.hostname, target_url):
+            continue
+
+        path = parsed.path.rstrip("/")
+        if not path:
+            continue
+        patterns.append(f"{re.escape(path)}(?:$|[/?#])")
+
+    return _unique_patterns(patterns)
+
+
+def build_exclusion_patterns(config: CrawlConfig) -> list[str]:
+    """Return built-in, caller-supplied, and authentication-derived filters."""
 
     scope_config = config.scope_config or {}
-    filters: list[str] = []
+    filters = DEFAULT_EXCLUSION_PATTERNS.copy()
     extra_filters = scope_config.get("exclude_filters")
     if isinstance(extra_filters, list):
         filters.extend(str(item) for item in extra_filters if item)
     exclude_regex = scope_config.get("exclude_regex")
     if exclude_regex:
         filters.append(str(exclude_regex))
+    if config.dynamic_exclude_patterns:
+        filters.extend(str(pattern) for pattern in config.dynamic_exclude_patterns if pattern)
     return _unique_patterns(filters)
 
 

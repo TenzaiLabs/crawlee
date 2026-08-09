@@ -56,8 +56,8 @@
         </p>
         <div class="doc-callout">
           The crawler stays auth-agnostic. The orchestrator decides whether authentication is
-          required and passes headers, cookies, stable seed URLs, and operator-supplied scope
-          configuration into the crawl step.
+          required and passes headers, cookies, stable seed URLs, and a merged built-in,
+          operator-supplied, and auth-derived exclusion policy into the crawl step.
         </div>
       </section>
 
@@ -219,7 +219,7 @@ flowchart TD
             <ul>
               <li>Orchestrator-owned auth decisions and status transitions.</li>
               <li>Header-only auth mode that never invokes AI auth.</li>
-              <li>Explicit scope validation and evidence-only reporting of auth-recorded or destructive-looking URLs.</li>
+              <li>Built-in dangerous-path filters plus escaped same-scope exclusions recorded by the auth agent and explicit operator filters.</li>
               <li>Whole-job time and memory budgets, cancelled-checkpoint publication, bounded subprocess diagnostics, and async process-group cleanup.</li>
               <li>Debug endpoints disabled by default.</li>
             </ul>

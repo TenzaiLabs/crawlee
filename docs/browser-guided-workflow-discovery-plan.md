@@ -151,9 +151,12 @@ defect to investigate before qualification.
 ### Katana trust boundary
 
 Katana is trusted to apply its own scope, uniqueness, similar-URL filtering,
-redirect behavior, and browser actions. The orchestrator does not block HTTP
-methods, destructive-looking routes, or Katana requests. It also does not impose
-a second rate limiter, URL deduplicator, or page-count limit.
+redirect behavior, browser actions, and crawl exclusions. Before every standard
+or pure-headless pass, the orchestrator supplies one ordered exclusion policy:
+the built-in dangerous-path patterns, operator-supplied filters, and safe
+same-scope path patterns derived from URLs recorded by the authentication agent.
+Katana enforces that policy; the orchestrator does not intercept requests or
+impose a second rate limiter, URL deduplicator, or page-count limit.
 
 For pure-headless, Katana scope governs action admission and emitted results;
 it is not a pre-egress boundary for every redirect or browser subresource.
@@ -161,10 +164,11 @@ Katana itself uses CDP response interception and its built-in browser behavior.
 “Passive CDP” in this design refers only to the orchestrator's evidence
 observer.
 
-The LLM receives a bounded discovery objective, but neither its action policy
-nor its browser requests use a destructive-looking-name blocklist. Controlled
-fixtures record destructive markers in their server ledgers so E2E
-qualification can verify the behavior rather than changing it at runtime.
+The browser-discovery LLM receives a bounded objective, but its Playwright
+requests are not governed by Katana's dangerous-path blocklist. Controlled
+fixtures therefore retain destructive markers in their server ledgers. The
+exclusion policy protects Katana traversal; it is not a general browser-egress
+firewall.
 
 ### Authentication handoff
 
@@ -175,7 +179,14 @@ free-form page-state and browser-tool loop and returns:
 - structured cookies;
 - crawl-scope header material;
 - authenticated landing URL;
-- discovered seed URLs.
+- discovered seed URLs;
+- unsafe URL hints for Katana exclusion.
+
+The orchestrator resolves relative hints against the authenticated landing URL,
+accepts only HTTP(S) URLs within the target host scope, drops root-only or invalid
+hints, and converts the remaining paths to escaped boundary-aware regexes. It
+persists total, applied, and ignored counts plus the effective merged policy in
+the job's `generated_exclusions` response field.
 
 Credentialed authentication is accepted only through deterministic browser
 evidence. Browser route identity preserves fragments, so hash-router states such
@@ -838,7 +849,7 @@ anchors or aliases with an unchanged UI surface are rejected diagnostically.
 
 Delivery: all 10 declared browser-only endpoints and all required request
 sequences on sites B/E/F. Their ledgers report whether any destructive marker
-was reached; the runtime does not block it.
+was reached, including Playwright traffic outside Katana exclusion enforcement.
 
 ### Step 8 — Integrate the live LLM
 
@@ -930,8 +941,9 @@ No in-process FastAPI harness is an acceptance path.
   request sequences.
 - Any fixture with a required interaction sequence reports at least one
   runtime-verified workflow; model- or adapter-declared counts are not accepted.
-- Destructive-route ledger hits are reported explicitly; the runtime does not
-  block them or hide them from results.
+- Destructive-route ledger hits are reported explicitly. Katana exclusion
+  regressions fail the controlled gate, while the ledger also exposes browser
+  traffic outside Katana enforcement.
 - Every controlled-target request is accounted for.
 - Proxyless baseline entries remain a subset of final entries.
 - Lane-specific fixtures prove standard Katana owns `-jc/-jsl/-fx`,
@@ -977,7 +989,8 @@ Rewrite or remove:
   evidence;
 - rewrite orchestrator tests around the shared browser and checkpoint lifecycle;
 - replace the in-process scenario test with real-server E2E;
-- retain raw-Katana exclusion tests only as capability diagnostics.
+- retain raw-Katana exclusion tests as active regressions with an unguarded
+  positive control proving that blocked routes are otherwise reachable.
 
 The unit, lint, and type suites remain required hygiene. Obsolete architectural
 expectations are rewritten or removed instead of constraining the new design.

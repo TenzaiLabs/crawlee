@@ -36,7 +36,9 @@ def test_standard_command_assigns_static_analysis_and_classification_flags() -> 
         flag not in command
         for flag in ("-cwu", "-xhr", "-hybrid", "-known-files", "-kf", "-fpt", "-iqp")
     )
-    assert "-crawl-out-scope" not in command
+    assert _flag_value(command, "-crawl-out-scope") == "|".join(
+        crawler.DEFAULT_EXCLUSION_PATTERNS
+    )
 
 
 def test_standard_command_honors_explicit_scope_and_client_limits_only() -> None:
@@ -69,9 +71,67 @@ def test_standard_command_honors_explicit_scope_and_client_limits_only() -> None
     assert _flag_value(command, "-cs") == r"example\.com$"
     assert _flag_value(command, "-ct") == "90s"
     assert _flag_value(command, "-timeout") == "20"
-    assert _flag_value(command, "-crawl-out-scope") == "/admin|/danger-zone"
+    assert _flag_value(command, "-crawl-out-scope") == "|".join(
+        [*crawler.DEFAULT_EXCLUSION_PATTERNS, "/admin", "/danger-zone"]
+    )
     assert _flag_value(command, "-H") == "Cookie: session=abc"
-    assert crawler.build_exclusion_patterns(config) == ["/admin", "/danger-zone"]
+    assert crawler.build_exclusion_patterns(config) == [
+        *crawler.DEFAULT_EXCLUSION_PATTERNS,
+        "/admin",
+        "/danger-zone",
+    ]
+
+
+def test_blocked_urls_to_exclude_patterns_normalizes_safe_same_scope_urls() -> None:
+    patterns = crawler.blocked_urls_to_exclude_patterns(
+        [
+            "https://example.com/logout?next=/",
+            "/account/delete/",
+            "/account/delete",
+            "javascript:alert(1)",
+            "mailto:test@example.com",
+            "https://evil.test/logout",
+            "https://example.com/#logout",
+        ],
+        target_url="https://example.com",
+        base_url="https://example.com/app/dashboard",
+    )
+
+    assert patterns == [
+        "/logout(?:$|[/?#])",
+        "/account/delete(?:$|[/?#])",
+    ]
+
+
+def test_katana_commands_merge_and_deduplicate_dynamic_exclusions() -> None:
+    dynamic_pattern = "/account/delete(?:$|[/?#])"
+    config = crawler.CrawlConfig(
+        target_url="https://example.com",
+        scope_config={
+            "exclude_filters": ["/admin", "/admin"],
+            "exclude_regex": "/danger-zone",
+        },
+        dynamic_exclude_patterns=[dynamic_pattern, "/admin"],
+        cdp_url="ws://127.0.0.1:9222/devtools/browser/abc",
+    )
+    expected = [
+        *crawler.DEFAULT_EXCLUSION_PATTERNS,
+        "/admin",
+        "/danger-zone",
+        dynamic_pattern,
+    ]
+
+    assert crawler.build_exclusion_patterns(config) == expected
+    standard = crawler.build_standard_katana_command(
+        config,
+        terminal_summary_path="standard-terminal.json",
+    )
+    pure_headless = crawler.build_pure_headless_katana_command(
+        config,
+        terminal_summary_path="pure-headless-terminal.json",
+    )
+    assert _flag_value(standard, "-crawl-out-scope") == "|".join(expected)
+    assert _flag_value(pure_headless, "-crawl-out-scope") == "|".join(expected)
 
 
 def test_pure_headless_command_uses_shared_chrome_and_browser_flags() -> None:
@@ -90,6 +150,9 @@ def test_pure_headless_command_uses_shared_chrome_and_browser_flags() -> None:
     assert _flag_value(command, "-pls") == "domcontentloaded"
     assert _flag_value(command, "-dwt") == "2"
     assert _flag_value(command, "-mfc") == "0"
+    assert _flag_value(command, "-crawl-out-scope") == "|".join(
+        crawler.DEFAULT_EXCLUSION_PATTERNS
+    )
     assert all(flag in command for flag in ("-xhr", "-kb", "-fsu", "-fst"))
     assert all(
         flag not in command for flag in ("-jc", "-jsl", "-fx", "-td", "-mrs", "-rl", "-known-files")
