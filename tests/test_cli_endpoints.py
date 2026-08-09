@@ -141,6 +141,25 @@ async def test_discovery_config_defaults_is_persisted_and_returned(app):
 
 
 @pytest.mark.asyncio
+async def test_submitted_plaintext_auth_config_is_persisted_and_returned(app):
+    auth_config = {
+        "login_url": "https://example.com/login",
+        "credentials": {"email": "operator@example.com", "password": "plain-secret"},
+    }
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        created = await client.post(
+            "/jobs",
+            json={"target_url": "https://example.com", "auth_config": auth_config},
+        )
+        response = await client.get(f"/jobs/{created.json()['job_id']}")
+
+    assert created.status_code == 201
+    assert response.status_code == 200
+    assert response.json()["auth_config"] == auth_config
+
+
+@pytest.mark.asyncio
 async def test_discovery_config_accepts_lower_limits_and_rejects_server_cap_excess(app):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:

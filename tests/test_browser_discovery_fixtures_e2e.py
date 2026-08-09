@@ -99,7 +99,7 @@ async def _run_production_discovery_round(
                 adapter=browser_discovery.ScriptedDiscoveryAdapter(scripted_actions),
                 cancel_event=asyncio.Event(),
                 max_actions=40,
-                max_pages=10,
+                max_llm_pages=10,
                 max_states=40,
                 processed_states=set(),
             )

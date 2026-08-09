@@ -20,8 +20,8 @@ Use GitHub private vulnerability reporting for this repository when available. I
 - Reproduction steps with the smallest target or fixture that demonstrates the issue.
 - Expected vs. actual behavior.
 - Any logs or screenshots needed to understand impact, with secrets redacted.
-- Whether the issue requires debug endpoints, Kubernetes access, operator credentials, or a
-  network position outside the service.
+- Whether the issue requires debug endpoints, operator credentials, or a network position outside
+  the service.
 
 If private vulnerability reporting is not available, contact the maintainers through the
 repository owner's normal private security channel before disclosing details publicly.
@@ -38,15 +38,17 @@ Important boundaries:
 - Header-only `auth_config` is manual-header mode and must not trigger AI auth.
 - The crawler remains auth-agnostic and accepts only target, headers, scope, seed URLs, and
   exclusion patterns.
-- Secrets should be referenced as environment templates such as `{{env:APP_PASSWORD}}`; plaintext
-  credentials should not be committed, persisted, or included in reports.
+- The submitted `auth_config` is persisted and returned by the job API. Environment templates such
+  as `{{env:APP_PASSWORD}}` are recommended so resolved values remain in memory. Protect the jobs
+  database and API as sensitive when operators submit plaintext values.
 - Debug endpoints must stay disabled unless explicitly needed.
 
 ## In Scope
 
 Examples of security issues worth reporting:
 
-- Plaintext secret persistence or secret leakage in logs, command output, API responses, or docs.
+- Secret leakage outside the documented `auth_config` job record and job-status response, including
+  leakage through logs, command output, crawl evidence, generated reports, or docs.
 - Auth-boundary bypasses where header-only mode triggers AI auth or AI auth runs without a login
   URL or credentials.
 - Crawl behavior that violates operator-supplied scope or explicit exclusion configuration. The

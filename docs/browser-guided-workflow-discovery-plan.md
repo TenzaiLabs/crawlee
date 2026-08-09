@@ -541,11 +541,13 @@ cancellation.
 There is no migration, fallback parser, backfill, or compatibility behavior for
 old database rows or Proxify-only logs.
 
-There is no general content or evidence redaction. The repository guardrail still
-requires that plaintext credentials, cookie and authorization values, TOTP
-seeds, and literal secret values never be persisted. The ephemeral Chrome
-profile is also never persisted as a job artifact. All other Katana, CDP, and
-workflow evidence may be retained as emitted.
+There is no general content or evidence redaction. The submitted `auth_config`
+is persisted and returned by the job-status API, including plaintext credential,
+cookie, authorization, or TOTP values when the operator submits them. Environment
+references remain the recommended input because they keep resolved values out of
+the job record. Deployments must therefore treat the jobs database and job API as
+sensitive. The ephemeral Chrome profile is never persisted as a job artifact.
+All other Katana, CDP, and workflow evidence may be retained as emitted.
 
 ### Budgets
 
@@ -891,8 +893,14 @@ score of 44/59 but does not improve it.
   release gate.
 - Publish machine-readable and Markdown qualification reports.
 
-Delivery: final release evidence for functionality, observed destructive-route
-behavior, persistence, and cleanup.
+Here, "release evidence" means the generated JSON and Markdown qualification
+reports containing the per-target outcomes, endpoint and sequence counts,
+destructive-route observations, restart retrieval, isolation, and cleanup
+checks. These reports are local, gitignored artifacts rather than runtime inputs
+or versioned product files; the qualification runners regenerate them.
+
+Delivery: regenerated qualification reports for functionality, observed
+destructive-route behavior, persistence, and cleanup.
 
 ## E2E Test Authority
 
@@ -952,7 +960,7 @@ Keep or adapt:
 - API validation and serialization;
 - queue and cancellation behavior;
 - DB and persisted sitemap behavior;
-- authentication and secret non-persistence;
+- authentication and the documented persisted-auth-config contract;
 - subprocess cancellation and cleanup;
 - manifest validation;
 - sitemap schema and additive merge invariants.
